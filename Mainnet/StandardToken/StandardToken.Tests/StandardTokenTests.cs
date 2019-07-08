@@ -21,7 +21,6 @@ namespace Stratis.SmartContracts.Samples.Tests
 
         public StandardTokenTests()
         {
-            var network = new SmartContractPosTest();
             this.mockContractLogger = new Mock<IContractLogger>();
             this.mockPersistentState = new Mock<IPersistentState>();
             this.mockContractState = new Mock<ISmartContractState>();
@@ -78,7 +77,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
 
             // Setup the Message.Sender address
@@ -96,7 +94,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly_When_NonZero()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
             ulong newApproval = 2000;
 
@@ -118,7 +115,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Does_Not_Set_Approval_If_Different()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
             ulong newApproval = 2000;
 
@@ -139,11 +135,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Allowance_Gets_Correctly()
+        public void Allowance_Returns_Correct_Allowance()
         {
-            ulong balance = 100_000;
-            ulong approval = 1000;
-
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
             var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
@@ -154,7 +147,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_0_Returns_True()
+        public void TransferTo_0_Returns_True()
         {
             ulong amount = 0;
 
@@ -169,7 +162,38 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_Greater_Than_Balance_Returns_False()
+        public void TransferTo_Full_Balance_Returns_True()
+        {
+            ulong balance = 10000;
+            ulong amount = balance;
+            ulong destinationBalance = 123;
+
+            // Setup the Message.Sender address
+            this.mockContractState.Setup(m => m.Message)
+                .Returns(new Message(this.contract, this.sender, 0));
+
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+
+            // Setup the balance of the sender's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
+
+            // Setup the balance of the recipient's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance);
+
+            Assert.True(standardToken.TransferTo(this.destination, amount));
+
+            // Verify we queried the balance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+
+            // Verify we set the sender's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.sender}", balance - amount));
+
+            // Verify we set the receiver's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", destinationBalance + amount));
+        }
+
+        [Fact]
+        public void TransferTo_Greater_Than_Balance_Returns_False()
         {
             ulong balance = 0;
             ulong amount = balance + 1;
@@ -190,7 +214,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_To_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
+        public void TransferTo_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
         {
             ulong destinationBalance = ulong.MaxValue;
             ulong senderBalance = 100;
@@ -218,7 +242,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_To_Destination_Success_Returns_True()
+        public void TransferTo_Destination_Success_Returns_True()
         {
             ulong destinationBalance = 400_000;
             ulong senderBalance = 100;
@@ -279,6 +303,43 @@ namespace Stratis.SmartContracts.Samples.Tests
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = this.owner, To = this.destination, Amount = amount }));
+        }
+
+        [Fact]
+        public void TransferFrom_Full_Balance_Returns_True()
+        {
+            ulong allowance = 1000;
+            ulong amount = allowance;
+            ulong balance = amount; // Balance should be the same as the amount we are trying to send
+
+            // Setup the Message.Sender address
+            this.mockContractState.Setup(m => m.Message)
+                .Returns(new Message(this.contract, this.sender, 0));
+
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+
+            // Setup the balance of the owner in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
+
+            // Setup the balance of the address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+
+            Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
+
+            // Verify we queried the sender's allowance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+
+            // Verify we queried the owner's balance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+
+            // Verify we set the sender's allowance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.sender}", allowance - amount));
+
+            // Verify we set the owner's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", balance - amount));
+
+            // Verify we set the destination's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", amount));
         }
 
         [Fact]
@@ -519,11 +580,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void NewContract_Sets_Name_And_Symbol()
+        public void Constructor_Sets_Name_And_Symbol()
         {
-            ulong balance = 100;
-            ulong amount = 27;
-
             Address subject = this.sender;
 
             this.mockContractState.Setup(m => m.Message)
