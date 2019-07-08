@@ -21,7 +21,6 @@ namespace Stratis.SmartContracts.Samples.Tests
 
         public StandardTokenTests()
         {
-            var network = new SmartContractPosTest();
             this.mockContractLogger = new Mock<IContractLogger>();
             this.mockPersistentState = new Mock<IPersistentState>();
             this.mockContractState = new Mock<ISmartContractState>();
@@ -78,7 +77,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
 
             // Setup the Message.Sender address
@@ -96,7 +94,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly_When_NonZero()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
             ulong newApproval = 2000;
 
@@ -118,7 +115,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Does_Not_Set_Approval_If_Different()
         {
-            ulong balance = 100_000;
             ulong approval = 1000;
             ulong newApproval = 2000;
 
@@ -141,9 +137,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Allowance_Returns_Correct_Allowance()
         {
-            ulong balance = 100_000;
-            ulong approval = 1000;
-
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
             var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
@@ -521,9 +514,6 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Constructor_Sets_Name_And_Symbol()
         {
-            ulong balance = 100;
-            ulong amount = 27;
-
             Address subject = this.sender;
 
             this.mockContractState.Setup(m => m.Message)
