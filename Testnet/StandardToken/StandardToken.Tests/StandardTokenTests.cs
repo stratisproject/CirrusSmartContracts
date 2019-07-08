@@ -162,6 +162,37 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
+        public void Transfer_Full_Balance_Returns_True()
+        {
+            ulong balance = 10000;
+            ulong amount = balance;
+            ulong destinationBalance = 123;
+
+            // Setup the Message.Sender address
+            this.mockContractState.Setup(m => m.Message)
+                .Returns(new Message(this.contract, this.sender, 0));
+
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+
+            // Setup the balance of the sender's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
+
+            // Setup the balance of the recipient's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance);
+
+            Assert.True(standardToken.TransferTo(this.destination, amount));
+
+            // Verify we queried the balance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+
+            // Verify we set the sender's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.sender}", balance - amount));
+
+            // Verify we set the receiver's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", destinationBalance + amount));
+        }
+
+        [Fact]
         public void Transfer_Greater_Than_Balance_Returns_False()
         {
             ulong balance = 0;
