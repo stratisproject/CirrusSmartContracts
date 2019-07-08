@@ -139,7 +139,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Allowance_Gets_Correctly()
+        public void Allowance_Returns_Correct_Allowance()
         {
             ulong balance = 100_000;
             ulong approval = 1000;
@@ -519,7 +519,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void NewContract_Sets_Name_And_Symbol()
+        public void Constructor_Sets_Name_And_Symbol()
         {
             ulong balance = 100;
             ulong amount = 27;
