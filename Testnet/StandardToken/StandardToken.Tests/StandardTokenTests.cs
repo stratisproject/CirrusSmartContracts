@@ -275,6 +275,43 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
+        public void TransferFrom_Full_Balance_Returns_True()
+        {
+            ulong allowance = 1000;
+            ulong amount = allowance;
+            ulong balance = amount; // Balance should be the same as the amount we are trying to send
+
+            // Setup the Message.Sender address
+            this.mockContractState.Setup(m => m.Message)
+                .Returns(new Message(this.contract, this.sender, 0));
+
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+
+            // Setup the balance of the owner in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
+
+            // Setup the balance of the address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+
+            Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
+
+            // Verify we queried the sender's allowance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+
+            // Verify we queried the owner's balance
+            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+
+            // Verify we set the sender's allowance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.sender}", allowance - amount));
+
+            // Verify we set the owner's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", balance - amount));
+
+            // Verify we set the destination's balance
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", amount));
+        }
+
+        [Fact]
         public void TransferFrom_Greater_Than_Senders_Allowance_Returns_False()
         {
             ulong allowance = 0;
