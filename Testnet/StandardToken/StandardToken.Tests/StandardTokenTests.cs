@@ -147,7 +147,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_0_Returns_True()
+        public void TransferTo_0_Returns_True()
         {
             ulong amount = 0;
 
@@ -162,7 +162,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_Full_Balance_Returns_True()
+        public void TransferTo_Full_Balance_Returns_True()
         {
             ulong balance = 10000;
             ulong amount = balance;
@@ -193,7 +193,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_Greater_Than_Balance_Returns_False()
+        public void TransferTo_Greater_Than_Balance_Returns_False()
         {
             ulong balance = 0;
             ulong amount = balance + 1;
@@ -214,7 +214,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_To_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
+        public void TransferTo_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
         {
             ulong destinationBalance = ulong.MaxValue;
             ulong senderBalance = 100;
@@ -242,7 +242,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Transfer_To_Destination_Success_Returns_True()
+        public void TransferTo_Destination_Success_Returns_True()
         {
             ulong destinationBalance = 400_000;
             ulong senderBalance = 100;
