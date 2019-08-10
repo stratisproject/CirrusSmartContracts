@@ -203,10 +203,57 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockPersistentState.Setup(s => s.GetUInt64("Index")).Returns(airdrop.Index + 1);
             Assert.Equal((uint)3, airdrop.Index);
         }
+
+        [Fact]
+        public void SignUp_LogsStatus()
+        {
+
+        }
         #endregion
 
         #region Withdraw Tests
-        #endregion
 
+        [Fact]
+        public void Withdraw_Success()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_Fail_AirdropStillOpen()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_Fail_AccountPreviouslyFunded()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_Fail_TokenContractTransferFailure()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_AmountCalculationIsCorrect()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_SetFundedStatus()
+        {
+
+        }
+
+        [Fact]
+        public void Withdraw_LogsStatus()
+        {
+
+        }
+        #endregion
     }
 }
