@@ -5,6 +5,15 @@ using System;
 
 public class Airdrop : SmartContract 
 {
+    /// <summary>
+    /// Constructor used to create a new Airdrop. Assigns total supply of airdrop, the
+    /// contract address for the token being airdropped and the endblock that the
+    /// airdrop closes on.
+    /// </summary>
+    /// <param name="smartContractState">The execution state for the contract.</param>
+    /// <param name="totalSupply">The total amount that will be airdropped.</param>
+    /// <param name="tokenContractAddress">The smart contract address of the token being airdropped.</param>
+    /// <param name="endBlock">The block that ends the sign up period and allows withdrawing.</param>
     public Airdrop(
         ISmartContractState smartContractState,
         ulong totalSupply,
@@ -51,6 +60,11 @@ public class Airdrop : SmartContract
         PersistentState.SetStruct($"Status:{address}", status);
     }
 
+    /// <summary>
+    /// Airdrop signup, validates the account signing up, increments the index
+    /// by 1, updates and logs senders new status. 
+    /// </summary>
+    /// <returns>Boolean Success</returns>
     public bool SignUp()
     {
         if (Block.Number > this.EndBlock) return false;
@@ -66,6 +80,12 @@ public class Airdrop : SmartContract
         return true;
     }
 
+    /// <summary>
+    /// Withdraw funds after sign up period has closed. Validates account status, calculates amount to airdrop,
+    /// calls the airdropped tokens contract address to transfer amount to sender. If success, updates and
+    /// logs sender status.
+    /// </summary>
+    /// <returns>Boolean Success</returns>
     public bool Withdraw()
     {
         if (Block.Number < this.EndBlock) return false;
