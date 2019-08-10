@@ -1,0 +1,23 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Airdrop", "Airdrop\Airdrop.csproj", "{7E13814B-F41B-4788-9509-7A487B2BBE43}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Airdrop.Tests", "Airdrop.Tests\Airdrop.Tests.csproj", "{6B6F1149-DEFC-43B4-B8CC-4E99986B58D7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E13814B-F41B-4788-9509-7A487B2BBE43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E13814B-F41B-4788-9509-7A487B2BBE43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E13814B-F41B-4788-9509-7A487B2BBE43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E13814B-F41B-4788-9509-7A487B2BBE43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B6F1149-DEFC-43B4-B8CC-4E99986B58D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B6F1149-DEFC-43B4-B8CC-4E99986B58D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B6F1149-DEFC-43B4-B8CC-4E99986B58D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B6F1149-DEFC-43B4-B8CC-4E99986B58D7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
