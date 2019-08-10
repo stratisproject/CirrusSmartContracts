@@ -5,8 +5,12 @@ using System;
 
 public class Airdrop : SmartContract 
 {
-    public Airdrop(ISmartContractState smartContractState, ulong totalSupply, Address tokenContractAddress, ulong endBlock)
-        : base(smartContractState)
+    public Airdrop(
+        ISmartContractState smartContractState,
+        ulong totalSupply,
+        Address tokenContractAddress,
+        ulong endBlock
+    ) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.TokenContractAddress = tokenContractAddress;
@@ -31,10 +35,10 @@ public class Airdrop : SmartContract
         private set => PersistentState.SetUInt64(nameof(this.EndBlock), value);
     }
 
-    private ulong Index
+    public ulong Index
     {
-        get => this.PersistentState.GetUInt64("Index");
-        set => PersistentState.SetUInt64("Index", value);
+        get => PersistentState.GetUInt64("Index");
+        private set => PersistentState.SetUInt64("Index", value);
     }
 
     public Status GetAccountStatus(Address address)
@@ -49,7 +53,7 @@ public class Airdrop : SmartContract
 
     public bool SignUp()
     {
-        if (this.Block.Number > this.EndBlock) return false;
+        if (Block.Number > this.EndBlock) return false;
 
         if (GetAccountStatus(Message.Sender) != Status.UNAPPROVED) return false;
 
@@ -64,7 +68,7 @@ public class Airdrop : SmartContract
 
     public bool Withdraw()
     {
-        if (this.Block.Number < this.EndBlock) return false;
+        if (Block.Number < this.EndBlock) return false;
 
         if (GetAccountStatus(Message.Sender) != Status.APPROVED) return false;
 
