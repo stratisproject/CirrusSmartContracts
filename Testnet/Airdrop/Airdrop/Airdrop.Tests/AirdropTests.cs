@@ -194,14 +194,11 @@ namespace Stratis.SmartContracts.Samples.Tests
             airdrop.SignUp();
             this.mockPersistentState.Verify(s => s.SetUInt64("Index", airdrop.Index + 1));
 
-            this.mockPersistentState.Setup(s => s.GetUInt64("Index")).Returns(airdrop.Index + 1);
-            Assert.Equal((uint)1, airdrop.Index);
-
-            this.mockPersistentState.Setup(s => s.GetUInt64("Index")).Returns(airdrop.Index + 1);
-            Assert.Equal((uint)2, airdrop.Index);
-
-            this.mockPersistentState.Setup(s => s.GetUInt64("Index")).Returns(airdrop.Index + 1);
-            Assert.Equal((uint)3, airdrop.Index);
+            for (uint i = 1; i < 4; i++)
+            {
+                this.mockPersistentState.Setup(s => s.GetUInt64("Index")).Returns(i);
+                Assert.Equal(i, airdrop.Index);
+            }
         }
 
         [Fact]
@@ -216,19 +213,60 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Withdraw_Success()
         {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
+            this.mockPersistentState.Setup(e => e.GetUInt64("Index")).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
 
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.totalSupply, this.destination, this.endBlock);
+
+            this.mockPersistentState.Setup(s => s.GetStruct<Airdrop.Status>($"Status:{this.owner}")).Returns(Airdrop.Status.APPROVED);
+
+            var result = airdrop.Withdraw();
+
+            this.mockPersistentState.Verify(s => s.GetStruct<Airdrop.Status>($"Status:{this.owner}"));
+
+            Assert.True(result);
         }
 
         [Fact]
         public void Withdraw_Fail_AirdropStillOpen()
         {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
+            this.mockPersistentState.Setup(e => e.GetUInt64("Index")).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
 
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.totalSupply, this.destination, this.endBlock);
+
+            var result = airdrop.Withdraw();
+
+            this.mockPersistentState.Verify(e => e.GetUInt64("EndBlock"));
+
+            Assert.False(result);
         }
 
         [Fact]
         public void Withdraw_Fail_AccountPreviouslyFunded()
         {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
+            this.mockPersistentState.Setup(e => e.GetUInt64("Index")).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
 
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.totalSupply, this.destination, this.endBlock);
+
+            this.mockPersistentState.Setup(s => s.GetStruct<Airdrop.Status>($"Status:{this.owner}")).Returns(Airdrop.Status.FUNDED);
+
+            var result = airdrop.Withdraw();
+
+            this.mockPersistentState.Verify(e => e.GetUInt64("EndBlock"));
+            this.mockPersistentState.Verify(e => e.GetStruct<Airdrop.Status>($"Status:{this.owner}"));
+
+            Assert.False(result, "Failure - Account has already been funded");
         }
 
         [Fact]
