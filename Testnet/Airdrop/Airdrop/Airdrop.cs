@@ -75,13 +75,14 @@ public class Airdrop : SmartContract
             ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
             if (amount == 0 && RegistrationIsClosed)
             {
-                AmountToDistribute = TotalSupply / NumberOfRegistrants;
+                amount = TotalSupply / NumberOfRegistrants;
+                AmountToDistribute = amount;
             }
 
-            return AmountToDistribute;
+            return amount;
         }
 
-        set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
+        private set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
     }
 
     /// <summary>Returns whether or not the registration period is closed.</summary>
@@ -92,7 +93,8 @@ public class Airdrop : SmartContract
             bool isClosed = PersistentState.GetBool(nameof(RegistrationIsClosed));
             if (!isClosed && EndBlock > 0)
             {
-                return Block.Number > EndBlock;
+                isClosed = Block.Number > EndBlock;
+                RegistrationIsClosed = isClosed;
             }
 
             return isClosed;
