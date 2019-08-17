@@ -113,8 +113,6 @@ public class Airdrop : SmartContract
     private void SetAccountStatus(Address address, Status status)
     {
         PersistentState.SetStruct($"Status:{address}", status);
-
-        Log(new StatusLog { Owner = address, Status = status });
     }
 
     /// <summary>Validates and registers accounts. See <see cref="AddRegistrantExecute(Address)"/></summary>
@@ -132,7 +130,7 @@ public class Airdrop : SmartContract
     /// <summary>Closes registration for the airdrop if endblock is not set.</summary>
     public bool CloseRegistration()
     {
-        if (Message.Sender != Owner || EndBlock > 0)
+        if (Message.Sender != Owner)
         {
             return false;
         }
@@ -148,23 +146,24 @@ public class Airdrop : SmartContract
     /// </summary>
     public bool Withdraw()
     {
-        bool invalidAddressStatus = GetAccountStatus(Message.Sender) != Status.ENROLLED;
-        if (invalidAddressStatus || RegistrationIsClosed)
+        bool invalidAccountStatus = GetAccountStatus(Message.Sender) != Status.ENROLLED;
+        if (invalidAccountStatus || !RegistrationIsClosed)
         {
             return false;
         }
 
-        object[] transferParams = {
-            new TransferParams { Address = Message.Sender, Amount = AmountToDistribute }
-        };
+        var transferParams = new object[] { Address, AmountToDistribute };
 
-        ITransferResult result = Call(TokenContractAddress, 0, "TransferTo", transferParams);
+        ITransferResult result = Call(TokenContractAddress, AmountToDistribute, "TransferTo", transferParams, 10_000);
+
         if (result == null || !result.Success)
         {
             return false;
         }
 
         SetAccountStatus(Message.Sender, Status.FUNDED);
+
+        Log(new StatusLog { Registrant = Message.Sender, Status = Status.FUNDED });
 
         return true;
     }
@@ -182,19 +181,15 @@ public class Airdrop : SmartContract
 
         SetAccountStatus(registrant, Status.ENROLLED);
 
-        return true;
-    }
+        Log(new StatusLog { Registrant = Message.Sender, Status = Status.ENROLLED });
 
-    public struct TransferParams
-    {
-        public Address Address;
-        public ulong Amount;
+        return true;
     }
 
     public struct StatusLog
     {
         [Index]
-        public Address Owner;
+        public Address Registrant;
 
         public Status Status;
     }
