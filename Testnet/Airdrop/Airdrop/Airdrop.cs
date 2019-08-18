@@ -172,7 +172,7 @@ public class Airdrop : SmartContract
     private bool AddRegistrantExecute(Address registrant)
     {
         bool invalidAddressStatus = GetAccountStatus(registrant) != Status.NOT_ENROLLED;
-        if (invalidAddressStatus || RegistrationIsClosed)
+        if (invalidAddressStatus || RegistrationIsClosed || NumberOfRegistrants >= this.TotalSupply)
         {
             return false;
         }

@@ -1,6 +1,4 @@
-using System;
 using Moq;
-using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.CLR;
 using Stratis.SmartContracts;
 using Xunit;
@@ -171,6 +169,39 @@ namespace Tests
         }
 
         [Fact]
+        public void Register_Fail_MoreRegistrantsThanSupply()
+        {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(10);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(1);
+
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, 1, this.endBlock);
+
+            var result = airdrop.Register();
+            Assert.False(result);
+
+            this.mockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{this.registrant}"));
+            this.mockPersistentState.Verify(s => s.GetBool($"RegistrationIsClosed"));
+            this.mockPersistentState.Verify(s => s.GetUInt64($"TotalSupply"));
+            this.mockPersistentState.Verify(s => s.GetUInt64($"NumberOfRegistrants"));
+
+            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            Assert.False(registrationIsClosed);
+
+            var accountStatus = airdrop.GetAccountStatus(this.registrant);
+            Assert.Equal(Status.NOT_ENROLLED, accountStatus);
+
+            var _totalSupply = airdrop.TotalSupply;
+            Assert.Equal((ulong)1, _totalSupply);
+
+            var numRegistrants = airdrop.NumberOfRegistrants;
+            Assert.Equal((ulong)10, numRegistrants);
+        }
+
+        [Fact]
         public void Register_Success_NumberOfRegistrantsIncrement()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
@@ -235,28 +266,20 @@ namespace Tests
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
-
-            //object[] transferParams = {
-            //    new TransferParams { Address = this.registrant, Amount = this.totalSupply }
-            //};
-
-            //this.mockContractState.Setup(e => e.InternalTransactionExecutor.Call(this.mockContractState.Object, this.tokenContract, this.totalSupply, "TransferTo", transferParams, 1000)).Returns(new TransferResult());
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(Status.ENROLLED);
+            var withdrawParams = new WithdrawExuecuteParams
+            {
+                Airdrop = airdrop,
+                Status = Status.ENROLLED,
+                ExpectedAmountToDistribute = this.totalSupply,
+                transferResult = new TransferResult(success: true)
+            };
 
-            //var test = this.mockContractState.Object.InternalTransactionExecutor.Call(this.mockContractState.Object, this.tokenContract, this.totalSupply, "TransferTo", transferParams, 1000);
-
-            var result = airdrop.Withdraw();
-
-            this.mockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{this.registrant}"));
-            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Status.FUNDED));
-
-            var status = airdrop.GetAccountStatus(this.registrant);
-
-            Assert.Equal(Airdrop.Status.FUNDED, status);
+            var result = WithdrawExecute(withdrawParams);
 
             Assert.True(result);
         }
@@ -265,67 +288,29 @@ namespace Tests
         public void Withdraw_Fail_AirdropStillOpen()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
-            this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
-
-            //object[] transferParams = {
-            //    new TransferParams { Address = this.registrant, Amount = 100 }
-            //};
-
-            //this.mockInternalExecutor.Setup(e => e.Call(this.mockContractState.Object, this.tokenContract, this.totalSupply, "TransferTo", transferParams, 10_000)).Returns(new TransferResult());
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            var result = airdrop.Withdraw();
+            var withdrawParams = new WithdrawExuecuteParams
+            {
+                Airdrop = airdrop,
+                Status = Status.ENROLLED,
+                ExpectedAmountToDistribute = this.totalSupply,
+                transferResult = new TransferResult(success: true)
+            };
 
-            this.mockPersistentState.Verify(e => e.GetUInt64("EndBlock"));
+            var result = WithdrawExecute(withdrawParams);
 
             Assert.False(result);
         }
 
         [Fact]
-        public void Withdraw_Fail_AccountPreviouslyFunded()
-        {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
-            this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
-            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
-            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
-
-            // Initialize the smart contract set constructor props
-            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
-
-            this.mockPersistentState.Setup(s => s.GetStruct<Airdrop.Status>($"Status:{this.registrant}")).Returns(Airdrop.Status.FUNDED);
-
-            var result = airdrop.Withdraw();
-
-            this.mockPersistentState.Verify(e => e.GetUInt64("EndBlock"));
-            this.mockPersistentState.Verify(e => e.GetStruct<Airdrop.Status>($"Status:{this.registrant}"));
-
-            Assert.False(result, "Failure - Account has already been funded");
-        }
-
-        [Fact]
-        public void Withdraw_Fail_TokenContractTransferFailure()
-        {
-
-        }
-
-        [Fact]
-        public void Withdraw_AmountCalculationIsCorrect()
-        {
-
-        }
-
-        [Fact]
-        public void Withdraw_SetFundedStatus()
-        {
-
-        }
-
-        [Fact]
-        public void Withdraw_LogsStatus()
+        public void Withdraw_Fail_IncorrectAccountStatus()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
@@ -336,49 +321,109 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            Assert.True(WithdrawExecute(airdrop, Status.ENROLLED));
+            var withdrawParams = new WithdrawExuecuteParams
+            {
+                Airdrop = airdrop,
+                Status = Status.FUNDED,
+                ExpectedAmountToDistribute = this.totalSupply,
+                transferResult = new TransferResult(success: true)
+            };
+            var result = WithdrawExecute(withdrawParams);
+            Assert.False(result);
+
+            withdrawParams = new WithdrawExuecuteParams
+            {
+                Airdrop = airdrop,
+                Status = Status.NOT_ENROLLED,
+                ExpectedAmountToDistribute = this.totalSupply,
+                transferResult = new TransferResult(success: true)
+            };
+            result = WithdrawExecute(withdrawParams);
+            Assert.False(result);
         }
 
-        private bool WithdrawExecute(Airdrop airdrop, Status accountStatus)
+        [Fact]
+        public void Withdraw_Fail_TokenContractTransferFailure()
         {
-            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(accountStatus);
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
-            accountStatus = airdrop.GetAccountStatus(this.registrant);
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
+            var withdrawParams = new WithdrawExuecuteParams
+            {
+                Airdrop = airdrop,
+                Status = Status.ENROLLED,
+                ExpectedAmountToDistribute = this.totalSupply,
+                transferResult = new TransferResult(success: false)
+            };
+
+            var result = WithdrawExecute(withdrawParams);
+
+            // Contract should fail
+            Assert.False(result);
+
+            var accountStatus = airdrop.GetAccountStatus(this.registrant);
+
+            // Status should not be set to funded for user
+            Assert.Equal(Status.ENROLLED, accountStatus);
+        }
+
+        private bool WithdrawExecute(WithdrawExuecuteParams withdrawParams)
+        {
+            // Set status specified by param
+            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(withdrawParams.Status);
+            // Get the acount status from the contract method
+            var accountStatus = withdrawParams.Airdrop.GetAccountStatus(this.registrant);
+            // Ensure the status was retrieved from persistant state
             this.mockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{this.registrant}"));
-
+            // Fail if account status is not enrolled
             if (accountStatus != Status.ENROLLED)
             {
                 return false;
             }
 
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
-
+            // Check if the airdrops registration is cold.
+            var registrationIsClosed = withdrawParams.Airdrop.RegistrationIsClosed;
+            // Ensure persistent state is checked
             this.mockPersistentState.Verify(s => s.GetBool($"RegistrationIsClosed"));
-
+            // If registration is closed, fail
             if (registrationIsClosed == false)
             {
                 return false;
             }
 
-
-            var amountToDistribute = airdrop.AmountToDistribute;
+            // Get the amount to distribute from the contract method
+            var amountToDistribute = withdrawParams.Airdrop.AmountToDistribute;
+            // Ensure the amount to distribute was retrieved from persistant state
             this.mockPersistentState.Verify(s => s.GetUInt64($"AmountToDistribute"));
-
-            Assert.True(amountToDistribute == 100_000);
+            // Assert the amount to distibute is whats expected
+            Assert.True(amountToDistribute == withdrawParams.ExpectedAmountToDistribute);
+            // Create transfer params to use in mock call
             var transferParams = new object[] { this.registrant, amountToDistribute };
 
+            // Mock the calls expected result
             this.mockInternalExecutor.Setup(e => e
-                .Call(this.mockContractState.Object, this.tokenContract, this.totalSupply, "TransferTo", transferParams, 1000))
-                .Returns(new TransferResult());
+                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 1000))
+                .Returns(withdrawParams.transferResult);
 
+            // Make call and retrieve the result
             var result = this.mockContractState.Object.InternalTransactionExecutor
-                .Call(this.mockContractState.Object, this.tokenContract, this.totalSupply, "TransferTo", transferParams, 1000);
-
+                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 1000);
+            // Fail if result was not successful
             if (result.Success == false)
             {
                 return false;
             }
+
+            // Act as normal method would, set FUNDED account status
+            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(Status.FUNDED);
+            // Act as normal method would, log the new status
+            this.mockContractLogger.Setup(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = this.registrant, Status = Status.FUNDED })).Verifiable();
 
             return true;
         }
@@ -583,11 +628,24 @@ namespace Tests
             Assert.Equal((ulong)10_000, amountToDistribute);
         }
         #endregion
+
         public class TransferResult : ITransferResult
         {
-            public object ReturnValue => null;
+            public TransferResult(bool success = true)
+            {
+                Success = success;
+            }
 
-            public bool Success => true;
+            public object ReturnValue => null;
+            public bool Success { get; set; }
+        }
+
+        public struct WithdrawExuecuteParams
+        {
+            public Airdrop Airdrop;
+            public Status Status;
+            public ulong ExpectedAmountToDistribute;
+            public TransferResult transferResult;
         }
     }
 }
