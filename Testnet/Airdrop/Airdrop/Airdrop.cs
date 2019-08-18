@@ -3,13 +3,13 @@
 public class Airdrop : SmartContract
 {
     /// <summary>
-    /// Constructor used to create a new Airdrop. Assigns total supply of airdrop, the
+    /// Constructor used to create a new Airdrop contract. Assigns total supply of airdrop, the
     /// contract address for the token being airdropped and the endblock that the airdrop closes on.
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="tokenContractAddress">The smart contract address of the token being airdropped.</param>
     /// <param name="totalSupply">The total amount that will be airdropped, amount will be divided amongst registrants.</param>
-    /// <param name="endBlock">The block that ends the sign up period and allows withdrawing, use 0 to manually end airdrop using <see cref="CloseRegistration"/>.</param>
+    /// <param name="endBlock">The block that ends the sign up period and allows withdrawing, can use 0 to manually end airdrop using <see cref="CloseRegistration"/>.</param>
     public Airdrop(
         ISmartContractState smartContractState,
         Address tokenContractAddress,
@@ -23,20 +23,14 @@ public class Airdrop : SmartContract
         Owner = Message.Sender;
     }
 
-    /// <summary>
-    /// The total supply that will be distributed during this airdrop. This contract's address is the address
-    /// that needs to hold or have approval to move the TotalSupply input at the <see cref="TokenContractAddress"/>
-    /// </summary>
+    /// <summary>The total supply of the token that will be distributed during this airdrop.</summary>
     public ulong TotalSupply
     {
         get => PersistentState.GetUInt64(nameof(TotalSupply));
         private set => PersistentState.SetUInt64(nameof(TotalSupply), value);
     }
 
-    /// <summary>
-    /// The contract address of the token that will be distributed. This smart contracts 
-    /// address must hold or be approved to transfer the TotalSupply at this address. 
-    /// </summary>
+    /// <summary>The contract address of the token that will be distributed. This smart contracts address must hold the TotalSupply at this address.</summary>
     public Address TokenContractAddress
     {
         get => PersistentState.GetAddress(nameof(TokenContractAddress));
@@ -121,13 +115,13 @@ public class Airdrop : SmartContract
         return AddRegistrantExecute(Message.Sender);
     }
 
-    /// <summary>Allows owner of the contract to manually add a new registrant.</summary>
+    /// <summary>Allows owner of the contract to manually add a new registrant. See <see cref="AddRegistrantExecute(Address)"</summary>
     public bool AddRegistrant(Address registrant)
     {
         return Message.Sender == Owner && AddRegistrantExecute(registrant);
     }
 
-    /// <summary>Closes registration for the airdrop if endblock is not set.</summary>
+    /// <summary>Allows owner to close registration for the airdrop at any time.</summary>
     public bool CloseRegistration()
     {
         if (Message.Sender != Owner)
@@ -141,8 +135,8 @@ public class Airdrop : SmartContract
     }
 
     /// <summary>
-    /// Withdraw funds after sign up period has closed. Validates account status and calls the tokens contract
-    /// address that is being airdropped to transfer amount to sender. On success, set senders new status.
+    /// Withdraw funds after registration period has closed. Validates account status and calls the tokens contract
+    /// address that is being airdropped to transfer amount to sender. On success, set senders new status and log it.
     /// </summary>
     public bool Withdraw()
     {
@@ -168,7 +162,7 @@ public class Airdrop : SmartContract
         return true;
     }
 
-    /// <summary>Validate and add a new registrant if registration isn't already closed.</summary>
+    /// <summary>Validates and adds a new registrant. Updates the NumberOfRegistrants, account status, and logs result.</summary>
     private bool AddRegistrantExecute(Address registrant)
     {
         bool invalidAddressStatus = GetAccountStatus(registrant) != Status.NOT_ENROLLED;
