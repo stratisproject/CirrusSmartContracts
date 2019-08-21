@@ -175,7 +175,7 @@ public class Airdrop : SmartContract
 
         SetAccountStatus(registrant, Status.ENROLLED);
 
-        Log(new StatusLog { Registrant = Message.Sender, Status = Status.ENROLLED });
+        Log(new StatusLog { Registrant = registrant, Status = Status.ENROLLED });
 
         return true;
     }
