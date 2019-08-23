@@ -115,7 +115,7 @@ public class Airdrop : SmartContract
         return AddRegistrantExecute(Message.Sender);
     }
 
-    /// <summary>Allows owner of the contract to manually add a new registrant. See <see cref="AddRegistrantExecute(Address)"</summary>
+    /// <summary>Allows owner of the contract to manually add a new registrant. See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool AddRegistrant(Address registrant)
     {
         return Message.Sender == Owner && AddRegistrantExecute(registrant);
@@ -141,14 +141,14 @@ public class Airdrop : SmartContract
     public bool Withdraw()
     {
         bool invalidAccountStatus = GetAccountStatus(Message.Sender) != Status.ENROLLED;
-        if (invalidAccountStatus || !RegistrationIsClosed)
+        if (invalidAccountStatus || !RegistrationIsClosed || AmountToDistribute == 0)
         {
             return false;
         }
 
-        var transferParams = new object[] { Address, AmountToDistribute };
+        var transferParams = new object[] { Message.Sender, AmountToDistribute };
 
-        ITransferResult result = Call(TokenContractAddress, AmountToDistribute, "TransferTo", transferParams, 10_000);
+        ITransferResult result = Call(TokenContractAddress, AmountToDistribute, "TransferTo", transferParams);
 
         if (result == null || !result.Success)
         {
@@ -165,6 +165,12 @@ public class Airdrop : SmartContract
     /// <summary>Validates and adds a new registrant. Updates the NumberOfRegistrants, account status, and logs result.</summary>
     private bool AddRegistrantExecute(Address registrant)
     {
+
+        if (registrant == Owner)
+        {
+            return false;
+        }
+
         bool invalidAddressStatus = GetAccountStatus(registrant) != Status.NOT_ENROLLED;
         if (invalidAddressStatus || RegistrationIsClosed || NumberOfRegistrants >= this.TotalSupply)
         {
