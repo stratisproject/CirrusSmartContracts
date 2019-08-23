@@ -41,7 +41,7 @@ namespace Tests
         [Fact]
         public void Constructor_Sets_Properties()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.airdropContractOwner, 0));
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
@@ -50,6 +50,7 @@ namespace Tests
             this.mockPersistentState.Verify(s => s.SetUInt64(nameof(Airdrop.TotalSupply), this.totalSupply));
             this.mockPersistentState.Verify(s => s.SetUInt64(nameof(Airdrop.EndBlock), this.endBlock));
             this.mockPersistentState.Verify(s => s.SetAddress(nameof(Airdrop.TokenContractAddress), this.tokenContract));
+            this.mockPersistentState.Verify(s => s.SetAddress(nameof(Airdrop.Owner), this.airdropContractOwner));
         }
 
         [Fact]
@@ -84,49 +85,43 @@ namespace Tests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
             var result = airdrop.Register();
 
-            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Airdrop.Status.ENROLLED));
-
-            Assert.True(result);
-        }
-
-        [Fact]
-        public void Register_Success_SetsEnrolledStatus()
-        {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
-            this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
-            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
-
-            // Initialize the smart contract set constructor props
-            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
-
-            var result = airdrop.Register();
-
-            // Assert status succeeds
-            Assert.True(result);
-
-            // Verfies that this was run during SignUp
             this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Status.ENROLLED));
+
+            Assert.True(result);
+
+            // Verfies the new status was set
+            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Status.ENROLLED));
+            // Verify the new status was logged
+            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = this.registrant, Status = Status.ENROLLED }));
         }
 
         [Fact]
-        public void Register_Success_LogsStatus()
+        public void Register_Success_WithEndBlock_0_UntilRegistrationIsClosed()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
-            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(0);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
-            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, 0);
 
             var result = airdrop.Register();
 
-            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = this.registrant, Status = Status.ENROLLED }));
+            Assert.True(result);
+
+            this.mockPersistentState.Setup(e => e.GetBool("RegistrationIsClosed")).Returns(true);
+
+            result = airdrop.Register();
+
+            Assert.False(result);
         }
 
         [Fact]
@@ -135,6 +130,7 @@ namespace Tests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
@@ -151,11 +147,15 @@ namespace Tests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
             var result = airdrop.Register();
+
+            // Verify the status was set for the registrant to Enrolled
+            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Status.ENROLLED));
 
             // Assert status succeeds
             Assert.True(result);
@@ -165,6 +165,24 @@ namespace Tests
 
             result = airdrop.Register();
 
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void Register_Fail_RegistrantIsOwner()
+        {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.airdropContractOwner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
+            this.mockPersistentState.Setup(e => e.GetAddress("Owner")).Returns(this.airdropContractOwner);
+
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+            var result = airdrop.Register();
+
+            // Assert status succeeds
             Assert.False(result);
         }
 
@@ -208,6 +226,7 @@ namespace Tests
             this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(this.index);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
@@ -222,6 +241,28 @@ namespace Tests
             }
         }
 
+        //[Fact]
+        //public void Register_Fail_NumberOfRegistrantsNotIncremented()
+        //{
+        //    this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+        //    this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
+        //    this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(this.index);
+        //    this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+        //    this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
+
+        //    // Initialize the smart contract set constructor props
+        //    var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+        //    var result = airdrop.Register();
+        //    this.mockPersistentState.Verify(s => s.SetUInt64("NumberOfRegistrants", airdrop.NumberOfRegistrants + 1));
+
+        //    for (uint i = 1; i < 5; i++)
+        //    {
+        //        this.mockPersistentState.Setup(s => s.GetUInt64("NumberOfRegistrants")).Returns(i);
+        //        Assert.Equal(i, airdrop.NumberOfRegistrants);
+        //    }
+        //}
+
         [Fact]
         public void AddRegistrant_Success()
         {
@@ -229,13 +270,14 @@ namespace Tests
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
             this.mockPersistentState.Setup(e => e.GetAddress("Owner")).Returns(this.airdropContractOwner);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
             var result = airdrop.AddRegistrant(this.registrant);
 
-            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Airdrop.Status.ENROLLED));
+            this.mockPersistentState.Verify(s => s.SetStruct($"Status:{this.registrant}", Status.ENROLLED));
 
             Assert.True(result);
         }
@@ -247,11 +289,29 @@ namespace Tests
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
             this.mockPersistentState.Setup(e => e.GetAddress("Owner")).Returns(this.airdropContractOwner);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
             var result = airdrop.AddRegistrant(this.registrant);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void AddRegistrant_Fail_SenderAndRegistrantAreBothOwner()
+        {
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.airdropContractOwner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetAddress("Owner")).Returns(this.airdropContractOwner);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
+
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+            var result = airdrop.AddRegistrant(this.airdropContractOwner);
 
             Assert.False(result);
         }
@@ -262,7 +322,9 @@ namespace Tests
         [Fact]
         public void Withdraw_Success()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            Address sender = this.registrant;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, sender, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
@@ -271,8 +333,9 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            var withdrawParams = new WithdrawExuecuteParams
+            var withdrawParams = new WithdrawExecuteParams
             {
+                Sender = sender,
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = this.totalSupply,
@@ -287,7 +350,9 @@ namespace Tests
         [Fact]
         public void Withdraw_Fail_AirdropStillOpen()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            Address sender = this.registrant;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, sender, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
@@ -296,8 +361,9 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            var withdrawParams = new WithdrawExuecuteParams
+            var withdrawParams = new WithdrawExecuteParams
             {
+                Sender = sender,
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = this.totalSupply,
@@ -312,7 +378,9 @@ namespace Tests
         [Fact]
         public void Withdraw_Fail_IncorrectAccountStatus()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            Address sender = this.registrant;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, sender, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
@@ -321,8 +389,9 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            var withdrawParams = new WithdrawExuecuteParams
+            var withdrawParams = new WithdrawExecuteParams
             {
+                Sender = sender,
                 Airdrop = airdrop,
                 Status = Status.FUNDED,
                 ExpectedAmountToDistribute = this.totalSupply,
@@ -331,8 +400,9 @@ namespace Tests
             var result = WithdrawExecute(withdrawParams);
             Assert.False(result);
 
-            withdrawParams = new WithdrawExuecuteParams
+            withdrawParams = new WithdrawExecuteParams
             {
+                Sender = sender,
                 Airdrop = airdrop,
                 Status = Status.NOT_ENROLLED,
                 ExpectedAmountToDistribute = this.totalSupply,
@@ -345,7 +415,9 @@ namespace Tests
         [Fact]
         public void Withdraw_Fail_TokenContractTransferFailure()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+            Address sender = this.registrant;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, sender, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
             this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
@@ -354,8 +426,9 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
-            var withdrawParams = new WithdrawExuecuteParams
+            var withdrawParams = new WithdrawExecuteParams
             {
+                Sender = sender,
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = this.totalSupply,
@@ -373,14 +446,46 @@ namespace Tests
             Assert.Equal(Status.ENROLLED, accountStatus);
         }
 
-        private bool WithdrawExecute(WithdrawExuecuteParams withdrawParams)
+        [Fact]
+        public void Withdraw_Fail_AmountToDistributesZero()
+        {
+            Address sender = this.registrant;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, sender, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(1_000_001);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(1);
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(0);
+
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+            var withdrawParams = new WithdrawExecuteParams
+            {
+                Sender = sender,
+                Airdrop = airdrop,
+                Status = Status.ENROLLED,
+                ExpectedAmountToDistribute = 0,
+                transferResult = new TransferResult(success: false)
+            };
+
+            var result = WithdrawExecute(withdrawParams);
+
+            this.mockPersistentState.Verify(e => e.GetUInt64("AmountToDistribute"));
+            Assert.Equal((ulong)0, airdrop.AmountToDistribute);
+
+            // Contract should fail
+            Assert.False(result);
+        }
+
+        private bool WithdrawExecute(WithdrawExecuteParams withdrawParams)
         {
             // Set status specified by param
-            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(withdrawParams.Status);
+            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{withdrawParams.Sender}")).Returns(withdrawParams.Status);
             // Get the acount status from the contract method
-            var accountStatus = withdrawParams.Airdrop.GetAccountStatus(this.registrant);
+            var accountStatus = withdrawParams.Airdrop.GetAccountStatus(withdrawParams.Sender);
             // Ensure the status was retrieved from persistant state
-            this.mockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{this.registrant}"));
+            this.mockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{withdrawParams.Sender}"));
             // Fail if account status is not enrolled
             if (accountStatus != Status.ENROLLED)
             {
@@ -404,16 +509,16 @@ namespace Tests
             // Assert the amount to distibute is whats expected
             Assert.True(amountToDistribute == withdrawParams.ExpectedAmountToDistribute);
             // Create transfer params to use in mock call
-            var transferParams = new object[] { this.registrant, amountToDistribute };
+            var transferParams = new object[] { withdrawParams.Sender, amountToDistribute };
 
             // Mock the calls expected result
             this.mockInternalExecutor.Setup(e => e
-                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 1000))
+                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 10_000))
                 .Returns(withdrawParams.transferResult);
 
             // Make call and retrieve the result
             var result = this.mockContractState.Object.InternalTransactionExecutor
-                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 1000);
+                .Call(this.mockContractState.Object, this.tokenContract, amountToDistribute, "TransferTo", transferParams, 10_000);
             // Fail if result was not successful
             if (result.Success == false)
             {
@@ -421,9 +526,9 @@ namespace Tests
             }
 
             // Act as normal method would, set FUNDED account status
-            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{this.registrant}")).Returns(Status.FUNDED);
+            this.mockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{withdrawParams.Sender}")).Returns(Status.FUNDED);
             // Act as normal method would, log the new status
-            this.mockContractLogger.Setup(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = this.registrant, Status = Status.FUNDED })).Verifiable();
+            this.mockContractLogger.Setup(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = withdrawParams.Sender, Status = Status.FUNDED })).Verifiable();
 
             return true;
         }
@@ -464,7 +569,7 @@ namespace Tests
         }
 
         [Fact]
-        public void RegistrationIsClosed_IsFalse_IfCurrentBlockIsLessThanEndBlock()
+        public void RegistrationIsClosed_IsFalse_IfCurrentBlockIsLessThanOrEqualToEndBlock()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
@@ -474,7 +579,12 @@ namespace Tests
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
             var registrationIsClosed = airdrop.RegistrationIsClosed;
+            Assert.False(registrationIsClosed);
 
+
+            this.mockContractState.Setup(b => b.Block.Number).Returns(this.endBlock);
+
+            registrationIsClosed = airdrop.RegistrationIsClosed;
             Assert.False(registrationIsClosed);
         }
 
@@ -504,6 +614,8 @@ namespace Tests
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
 
+            Assert.False(airdrop.RegistrationIsClosed);
+
             var result = airdrop.CloseRegistration();
 
             Assert.True(result);
@@ -523,9 +635,12 @@ namespace Tests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
             this.mockContractState.Setup(b => b.Block.Number).Returns(0);
             this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetAddress("Owner")).Returns(this.airdropContractOwner);
 
             // Initialize the smart contract set constructor props
             var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+            Assert.False(airdrop.RegistrationIsClosed);
 
             var result = airdrop.CloseRegistration();
 
@@ -565,6 +680,24 @@ namespace Tests
             amountToDistribute = airdrop.AmountToDistribute;
 
             Assert.Equal((ulong)3, amountToDistribute);
+
+
+            // Starting with 10 tokens / 4 registrants = 2 each
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(10);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(4);
+
+            amountToDistribute = airdrop.AmountToDistribute;
+
+            Assert.Equal((ulong)2, amountToDistribute);
+
+
+            // Starting with 100_000_000_000 tokens / 5456 registrants = 18328445 each
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(100_000_000_000);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(5456);
+
+            amountToDistribute = airdrop.AmountToDistribute;
+
+            Assert.Equal((ulong)18328445, amountToDistribute);
         }
 
         [Fact]
@@ -640,8 +773,9 @@ namespace Tests
             public bool Success { get; set; }
         }
 
-        public struct WithdrawExuecuteParams
+        public struct WithdrawExecuteParams
         {
+            public Address Sender;
             public Airdrop Airdrop;
             public Status Status;
             public ulong ExpectedAmountToDistribute;
