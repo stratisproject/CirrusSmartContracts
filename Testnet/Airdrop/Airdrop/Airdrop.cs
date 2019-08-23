@@ -165,7 +165,6 @@ public class Airdrop : SmartContract
     /// <summary>Validates and adds a new registrant. Updates the NumberOfRegistrants, account status, and logs result.</summary>
     private bool AddRegistrantExecute(Address registrant)
     {
-
         if (registrant == Owner)
         {
             return false;
