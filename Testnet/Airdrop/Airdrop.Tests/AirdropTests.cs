@@ -241,7 +241,62 @@ namespace Tests
             }
         }
 
-        //[Fact]
+          [Fact]
+        public void Register_Fail_NumberOfRegistrantsNotIncremented()
+        {
+            ulong totalNumberOfRegistrants = 0;
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.airdropContractOwner, 0));
+            this.mockContractState.Setup(b => b.Block.Number).Returns(999_999);
+            this.mockPersistentState.Setup(e => e.GetUInt64("NumberOfRegistrants")).Returns(() => { return totalNumberOfRegistrants; });
+            this.mockPersistentState.Setup(e => e.SetUInt64("NumberOfRegistrants", It.IsAny<ulong>())).Callback<string, ulong>((key, value) => { totalNumberOfRegistrants = value; });
+            this.mockPersistentState.Setup(e => e.GetUInt64("EndBlock")).Returns(this.endBlock);
+            this.mockPersistentState.Setup(e => e.GetUInt64("TotalSupply")).Returns(this.totalSupply);
+
+            Dictionary<string, Status> registrations = new Dictionary<string, Status>();
+            this.mockPersistentState.Setup(e => e.GetStruct<Status>($"Status:{this.registrant}"))
+                .Returns<string>((key) =>
+                {
+                    if (registrations.ContainsKey(key))
+                    {
+                        return registrations[key];
+                    }
+
+                    return Status.NOT_ENROLLED;
+                });
+            this.mockPersistentState.Setup(e => e.SetStruct($"Status:{this.registrant}", It.IsAny<Status>()))
+                .Callback<string, Status>((key, value) =>
+                {
+                    if (registrations.ContainsKey(key))
+                    {
+                        registrations[key] = value;
+                    }
+                    else
+                    {
+                        registrations.Add(key, value);
+                    }
+                });
+
+            // Initialize the smart contract set constructor props
+            var airdrop = new Airdrop(this.mockContractState.Object, this.tokenContract, this.totalSupply, this.endBlock);
+
+            Assert.Equal((ulong)0, totalNumberOfRegistrants);
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
+
+            // call first time with registrant that is not registered yet.
+            var result = airdrop.Register();
+
+            Assert.True(result);
+            this.mockPersistentState.Verify(s => s.SetUInt64("NumberOfRegistrants", It.IsAny<ulong>()), Times.Once);
+            Assert.Equal((ulong)1, totalNumberOfRegistrants);
+
+            // call second time with same registrant that is already registered.
+            result = airdrop.Register();
+            Assert.False(result);
+            Assert.Equal((ulong)1, totalNumberOfRegistrants);
+
+            // verify it's not called more times than before. It should still be only once.
+            this.mockPersistentState.Verify(s => s.SetUInt64("NumberOfRegistrants", It.IsAny<ulong>()), Times.Once);
+        }
         //public void Register_Fail_NumberOfRegistrantsNotIncremented()
         //{
         //    this.mockContractState.Setup(m => m.Message).Returns(new Message(this.airdropContract, this.registrant, 0));
