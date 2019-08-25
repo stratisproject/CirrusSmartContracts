@@ -23,18 +23,18 @@ public class Airdrop : SmartContract
         Owner = Message.Sender;
     }
 
-    /// <summary>The total supply of the token that will be distributed during this airdrop.</summary>
-    public ulong TotalSupply
-    {
-        get => PersistentState.GetUInt64(nameof(TotalSupply));
-        private set => PersistentState.SetUInt64(nameof(TotalSupply), value);
-    }
-
     /// <summary>The contract address of the token that will be distributed. This smart contracts address must hold the TotalSupply at this address.</summary>
     public Address TokenContractAddress
     {
         get => PersistentState.GetAddress(nameof(TokenContractAddress));
         private set => PersistentState.SetAddress(nameof(TokenContractAddress), value);
+    }
+
+    /// <summary>The total supply of the token that will be distributed during this airdrop.</summary>
+    public ulong TotalSupply
+    {
+        get => PersistentState.GetUInt64(nameof(TotalSupply));
+        private set => PersistentState.SetUInt64(nameof(TotalSupply), value);
     }
 
     /// <summary>
@@ -47,18 +47,18 @@ public class Airdrop : SmartContract
         private set => PersistentState.SetUInt64(nameof(EndBlock), value);
     }
 
-    /// <summary>The total number of registrants for this airdrop.</summary>
-    public ulong NumberOfRegistrants
-    {
-        get => PersistentState.GetUInt64(nameof(NumberOfRegistrants));
-        private set => PersistentState.SetUInt64(nameof(NumberOfRegistrants), value);
-    }
-
     /// <summary>Address of the owner of this contract, used to authenticate some methods.</summary>
     public Address Owner
     {
         get => PersistentState.GetAddress(nameof(Owner));
         private set => PersistentState.SetAddress(nameof(Owner), value);
+    }
+
+    /// <summary>The total number of registrants for this airdrop.</summary>
+    public ulong NumberOfRegistrants
+    {
+        get => PersistentState.GetUInt64(nameof(NumberOfRegistrants));
+        private set => PersistentState.SetUInt64(nameof(NumberOfRegistrants), value);
     }
 
     /// <summary>Calculates and sets the amount to distribute to each registrant.</summary>
