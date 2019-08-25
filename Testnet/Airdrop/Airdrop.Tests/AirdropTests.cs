@@ -15,12 +15,15 @@ namespace Tests
         private readonly Mock<IInternalTransactionExecutor> MockInternalExecutor;
         private readonly Address Owner;
         private readonly Address Registrant;
+        private readonly Address RegistrantTwo;
         private readonly Address TokenContractAddress;
         private readonly Address AirdropContractAddress;
         private readonly ulong TotalSupply;
         private readonly ulong EndBlock;
-        private readonly ulong NumberOfRegistrants;
+        private ulong NumberOfRegistrants;
         private ulong CurrentBlock;
+        private Dictionary<string, Status> Registrations;
+        private bool RegistrationIsClosed;
 
         public AirdropTests()
         {
@@ -33,27 +36,34 @@ namespace Tests
             MockContractState.Setup(s => s.InternalTransactionExecutor).Returns(MockInternalExecutor.Object);
             Owner = "0x0000000000000000000000000000000000000001".HexToAddress();
             Registrant = "0x0000000000000000000000000000000000000002".HexToAddress();
-            TokenContractAddress = "0x0000000000000000000000000000000000000003".HexToAddress();
-            AirdropContractAddress = "0x0000000000000000000000000000000000000004".HexToAddress();
+            RegistrantTwo = "0x0000000000000000000000000000000000000003".HexToAddress();
+            TokenContractAddress = "0x0000000000000000000000000000000000000004".HexToAddress();
+            AirdropContractAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
             TotalSupply = 100_000;
             EndBlock = 1_000_000;
             NumberOfRegistrants = 0;
             CurrentBlock = 1;
+            Registrations = new Dictionary<string, Status>();
+            RegistrationIsClosed = false;
         }
 
         [Fact]
         public void Constructor_Sets_Properties()
         {
-            MockContractState.Setup(m => m.Message).Returns(new Message(AirdropContractAddress, Owner, 0));
-
-            // Initialize the smart contract set constructor props
-            var airdrop = new Airdrop(MockContractState.Object, TokenContractAddress, TotalSupply, EndBlock);
+            var airdrop = InitializeTest(Owner, Owner, CurrentBlock, EndBlock, TotalSupply);
 
             // Verify that PersistentState was called with the total supply, name, symbol and endblock
             MockPersistentState.Verify(s => s.SetUInt64(nameof(TotalSupply), TotalSupply));
+            Assert.Equal(TotalSupply, airdrop.TotalSupply);
+
             MockPersistentState.Verify(s => s.SetUInt64(nameof(EndBlock), EndBlock));
+            Assert.Equal(EndBlock, airdrop.EndBlock);
+
             MockPersistentState.Verify(s => s.SetAddress(nameof(TokenContractAddress), TokenContractAddress));
+            Assert.Equal(TokenContractAddress, airdrop.TokenContractAddress);
+
             MockPersistentState.Verify(s => s.SetAddress(nameof(Owner), Owner));
+            Assert.Equal(Owner, airdrop.Owner);
         }
 
         [Fact]
@@ -82,31 +92,38 @@ namespace Tests
         [Fact]
         public void Register_Success()
         {
+            var expectedStatus = Status.ENROLLED;
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
             var result = airdrop.Register();
 
-            MockPersistentState.Verify(s => s.SetStruct($"Status:{Registrant}", Status.ENROLLED));
-
             Assert.True(result);
 
             // Verfies the new status was set
-            MockPersistentState.Verify(s => s.SetStruct($"Status:{Registrant}", Status.ENROLLED));
+            MockPersistentState.Verify(s => s.SetStruct($"Status:{Registrant}", expectedStatus));
+            var status = airdrop.GetAccountStatus(Registrant);
+            Assert.Equal(expectedStatus, status);
+
+            // Verify Number of registrants was incremented
+            MockPersistentState.Verify(s => s.SetUInt64(nameof(NumberOfRegistrants), 1));
+            Assert.Equal((ulong)1, NumberOfRegistrants);
+
             // Verify the new status was logged
-            MockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = Registrant, Status = Status.ENROLLED }));
+            MockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = Registrant, Status = expectedStatus }));
         }
 
         [Fact]
         public void Register_Success_WithEndBlock_0_UntilRegistrationIsClosed()
         {
-            ulong _endBlock = 0;
-            var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, _endBlock, TotalSupply);
+            ulong endBlock = 0;
+            var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, endBlock, TotalSupply);
 
             var result = airdrop.Register();
             Assert.True(result);
 
-            MockPersistentState.Setup(e => e.GetBool("RegistrationIsClosed")).Returns(true);
+            MockPersistentState.Setup(x => x.GetBool(nameof(RegistrationIsClosed))).Returns(true);
 
+            MockContractState.Setup(m => m.Message).Returns(new Message(AirdropContractAddress, RegistrantTwo, 0));
             result = airdrop.Register();
             Assert.False(result);
         }
@@ -127,18 +144,12 @@ namespace Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
             var result = airdrop.Register();
-
             // Verify the status was set for the registrant to Enrolled
             MockPersistentState.Verify(s => s.SetStruct($"Status:{Registrant}", Status.ENROLLED));
-
             // Assert status succeeds
             Assert.True(result);
 
-            // Set the status manually in persistent state
-            MockPersistentState.Setup(s => s.GetStruct<Status>($"Status:{Registrant}")).Returns(Status.ENROLLED);
-
             result = airdrop.Register();
-
             Assert.False(result);
         }
 
@@ -154,15 +165,15 @@ namespace Tests
         [Fact]
         public void Register_Fail_MoreRegistrantsThanSupply()
         {
-            ulong _totalSupply = 1;
-            var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, _totalSupply);
+            ulong totalSupply = 1;
+            var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, totalSupply);
             MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(10);
 
             var result = airdrop.Register();
             Assert.False(result);
 
             MockPersistentState.Verify(s => s.GetStruct<Status>($"Status:{Registrant}"));
-            MockPersistentState.Verify(s => s.GetBool("RegistrationIsClosed"));
+            MockPersistentState.Verify(s => s.GetBool(nameof(RegistrationIsClosed)));
             MockPersistentState.Verify(s => s.GetUInt64(nameof(TotalSupply)));
             MockPersistentState.Verify(s => s.GetUInt64(nameof(NumberOfRegistrants)));
 
@@ -172,8 +183,8 @@ namespace Tests
             var accountStatus = airdrop.GetAccountStatus(Registrant);
             Assert.Equal(Status.NOT_ENROLLED, accountStatus);
 
-            _totalSupply = airdrop.TotalSupply;
-            Assert.Equal((ulong)1, _totalSupply);
+            totalSupply = airdrop.TotalSupply;
+            Assert.Equal((ulong)1, totalSupply);
 
             var numRegistrants = airdrop.NumberOfRegistrants;
             Assert.Equal((ulong)10, numRegistrants);
@@ -198,46 +209,21 @@ namespace Tests
         [Fact]
         public void Register_Fail_NumberOfRegistrantsNotIncremented()
         {
-            ulong totalNumberOfRegistrants = 0;
-            var registrations = new Dictionary<string, Status>();
+            var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
-            MockContractState.Setup(m => m.Message).Returns(new Message(AirdropContractAddress, Owner, 0));
-            MockContractState.Setup(b => b.Block.Number).Returns(999_999);
-            MockPersistentState.Setup(e => e.GetUInt64(nameof(EndBlock))).Returns(EndBlock);
-            MockPersistentState.Setup(e => e.GetUInt64(nameof(TotalSupply))).Returns(TotalSupply);
-
-            MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(totalNumberOfRegistrants);
-
-            MockPersistentState.Setup(e => e.SetUInt64(nameof(NumberOfRegistrants), It.IsAny<ulong>()))
-                .Callback<string, ulong>((key, value) => { totalNumberOfRegistrants = value; });
-
-            MockPersistentState.Setup(e => e.GetStruct<Status>($"Status:{Registrant}"))
-                .Returns<string>(key => registrations.ContainsKey(key) ? registrations[key] : Status.NOT_ENROLLED);
-
-            MockPersistentState.Setup(e => e.SetStruct($"Status:{Registrant}", It.IsAny<Status>()))
-                .Callback<string, Status>((key, value) =>
-                {
-                    if (registrations.ContainsKey(key)) registrations[key] = value;
-                    else registrations.Add(key, value);
-                });
-
-            // Initialize the smart contract set constructor props
-            var airdrop = new Airdrop(MockContractState.Object, TokenContractAddress, TotalSupply, EndBlock);
-
-            Assert.Equal((ulong)0, totalNumberOfRegistrants);
-            MockContractState.Setup(m => m.Message).Returns(new Message(AirdropContractAddress, Registrant, 0));
+            Assert.Equal((ulong)0, NumberOfRegistrants);
 
             // call first time with registrant that is not registered yet.
             var result = airdrop.Register();
 
             Assert.True(result);
             MockPersistentState.Verify(s => s.SetUInt64(nameof(NumberOfRegistrants), It.IsAny<ulong>()), Times.Once);
-            Assert.Equal((ulong)1, totalNumberOfRegistrants);
+            Assert.Equal((ulong)1, NumberOfRegistrants);
 
             // call second time with same registrant that is already registered.
             result = airdrop.Register();
             Assert.False(result);
-            Assert.Equal((ulong)1, totalNumberOfRegistrants);
+            Assert.Equal((ulong)1, NumberOfRegistrants);
 
             // verify it's not called more times than before. It should still be only once.
             MockPersistentState.Verify(s => s.SetUInt64(nameof(NumberOfRegistrants), It.IsAny<ulong>()), Times.Once);
@@ -290,7 +276,7 @@ namespace Tests
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
-                transferResult = new TransferResult(success: true)
+                TransferResult = new TransferResult(success: true)
             };
 
             var result = WithdrawExecute(withdrawParams);
@@ -310,7 +296,7 @@ namespace Tests
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
-                transferResult = new TransferResult(success: true)
+                TransferResult = new TransferResult(success: true)
             };
 
             var result = WithdrawExecute(withdrawParams);
@@ -331,7 +317,7 @@ namespace Tests
                 Airdrop = airdrop,
                 Status = Status.FUNDED,
                 ExpectedAmountToDistribute = TotalSupply,
-                transferResult = new TransferResult(success: true)
+                TransferResult = new TransferResult(success: true)
             };
             var result = WithdrawExecute(withdrawParams);
             Assert.False(result);
@@ -355,7 +341,7 @@ namespace Tests
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
-                transferResult = new TransferResult(success: false)
+                TransferResult = new TransferResult(success: false)
             };
 
             var result = WithdrawExecute(withdrawParams);
@@ -374,8 +360,8 @@ namespace Tests
         {
             CurrentBlock = EndBlock + 1;
             Address sender = Registrant;
-            ulong _totalSupply = 0;
-            var airdrop = InitializeTest(sender, Owner, CurrentBlock, EndBlock, _totalSupply);
+            ulong totalSupply = 0;
+            var airdrop = InitializeTest(sender, Owner, CurrentBlock, EndBlock, totalSupply);
             MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(1);
 
             var withdrawParams = new WithdrawExecuteParams
@@ -384,7 +370,7 @@ namespace Tests
                 Airdrop = airdrop,
                 Status = Status.ENROLLED,
                 ExpectedAmountToDistribute = 0,
-                transferResult = new TransferResult(success: false)
+                TransferResult = new TransferResult(success: false)
             };
 
             var result = WithdrawExecute(withdrawParams);
@@ -413,7 +399,7 @@ namespace Tests
             // Check if the airdrops registration is cold.
             var registrationIsClosed = withdrawParams.Airdrop.RegistrationIsClosed;
             // Ensure persistent state is checked
-            MockPersistentState.Verify(s => s.GetBool("RegistrationIsClosed"));
+            MockPersistentState.Verify(s => s.GetBool(nameof(RegistrationIsClosed)));
             // If registration is closed, fail
             if (registrationIsClosed == false)
             {
@@ -432,7 +418,7 @@ namespace Tests
             // Mock the calls expected result
             MockInternalExecutor.Setup(e => e
                 .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferTo", transferParams, 10_000))
-                .Returns(withdrawParams.transferResult);
+                .Returns(withdrawParams.TransferResult);
 
             // Make call and retrieve the result
             var result = MockContractState.Object.InternalTransactionExecutor
@@ -458,7 +444,7 @@ namespace Tests
         public void RegistrationIsClosed_IsTrue_IfPersistentStateIsTrue()
         {
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            MockPersistentState.Setup(s => s.GetBool("RegistrationIsClosed")).Returns(true);
+            MockPersistentState.Setup(s => s.GetBool(nameof(RegistrationIsClosed))).Returns(true);
 
             var registrationIsClosed = airdrop.RegistrationIsClosed;
             Assert.True(registrationIsClosed);
@@ -498,8 +484,8 @@ namespace Tests
             var result = airdrop.CloseRegistration();
             Assert.True(result);
 
-            MockPersistentState.Verify(s => s.SetBool("RegistrationIsClosed", true));
-            MockPersistentState.Setup(s => s.GetBool("RegistrationIsClosed")).Returns(true);
+            MockPersistentState.Verify(s => s.SetBool(nameof(RegistrationIsClosed), true));
+            MockPersistentState.Setup(s => s.GetBool(nameof(RegistrationIsClosed))).Returns(true);
 
             var registrationIsClosed = airdrop.RegistrationIsClosed;
             Assert.True(registrationIsClosed);
@@ -527,7 +513,7 @@ namespace Tests
         public void AmountToDistribute_ReturnsCorrectAmount()
         {
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            MockPersistentState.Setup(s => s.GetBool("RegistrationIsClosed")).Returns(true);
+            MockPersistentState.Setup(s => s.GetBool(nameof(RegistrationIsClosed))).Returns(true);
             MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(10);
 
             var amountToDistribute = airdrop.AmountToDistribute;
@@ -567,7 +553,7 @@ namespace Tests
         public void AmountToDistribute_DoesNotSetAmountIfRegistrationOpen()
         {
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            MockPersistentState.Setup(s => s.GetBool("RegistrationIsClosed")).Returns(false);
+            MockPersistentState.Setup(s => s.GetBool(nameof(RegistrationIsClosed))).Returns(false);
             MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(10);
 
             // Call to initially calc the amount
@@ -577,7 +563,7 @@ namespace Tests
             MockPersistentState.Verify(s => s.GetUInt64("AmountToDistribute"));
 
             // verify that RegistrationIsClosed was called from persistant state
-            MockPersistentState.Verify(s => s.GetBool("RegistrationIsClosed"));
+            MockPersistentState.Verify(s => s.GetBool(nameof(RegistrationIsClosed)));
 
             // Starting with 100_000 tokens / 10 registrants = 10_000 each
             Assert.Equal((ulong)0, amountToDistribute);
@@ -588,7 +574,7 @@ namespace Tests
         {
             ulong expectedAmount = 10_000;
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            MockPersistentState.Setup(s => s.GetBool("RegistrationIsClosed")).Returns(true);
+            MockPersistentState.Setup(s => s.GetBool(nameof(RegistrationIsClosed))).Returns(true);
             MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(10);
 
             // Call to initially calc the amount
@@ -633,18 +619,42 @@ namespace Tests
             public Airdrop Airdrop;
             public Status Status;
             public ulong ExpectedAmountToDistribute;
-            public TransferResult transferResult;
+            public TransferResult TransferResult;
         }
 
-        private Airdrop InitializeTest(Address sender, Address owner, ulong currentBlock, ulong _endBlock, ulong _totalSupply)
+        private Airdrop InitializeTest(Address sender, Address owner, ulong currentBlock, ulong endBlock, ulong totalSupply)
         {
             MockContractState.Setup(m => m.Message).Returns(new Message(AirdropContractAddress, sender, 0));
             MockContractState.Setup(b => b.Block.Number).Returns(currentBlock);
-            MockPersistentState.Setup(e => e.GetUInt64(nameof(EndBlock))).Returns(_endBlock);
+            MockPersistentState.Setup(e => e.GetUInt64(nameof(EndBlock))).Returns(endBlock);
+            MockPersistentState.Setup(e => e.GetUInt64(nameof(TotalSupply))).Returns(totalSupply);
             MockPersistentState.Setup(e => e.GetAddress(nameof(Owner))).Returns(owner);
-            MockPersistentState.Setup(e => e.GetUInt64(nameof(TotalSupply))).Returns(_totalSupply);
+            MockPersistentState.Setup(e => e.GetAddress(nameof(TokenContractAddress))).Returns(TokenContractAddress);
 
-            return new Airdrop(MockContractState.Object, TokenContractAddress, _totalSupply, EndBlock);
+            // Get Set NumberOfRegistrants with Callbacks
+            MockPersistentState.Setup(e => e.GetUInt64(nameof(NumberOfRegistrants))).Returns(NumberOfRegistrants);
+            MockPersistentState.Setup(e => e.SetUInt64(nameof(NumberOfRegistrants), It.IsAny<ulong>()))
+                .Callback<string, ulong>((key, value) => { NumberOfRegistrants = value; });
+
+            // Get Set Status with Callbacks
+            MockPersistentState.Setup(e => e.GetStruct<Status>($"Status:{Registrant}"))
+                .Returns<string>(key => Registrations.ContainsKey(key) ? Registrations[key] : Status.NOT_ENROLLED);
+
+            MockPersistentState.Setup(e => e.SetStruct($"Status:{Registrant}", It.IsAny<Status>()))
+                .Callback<string, Status>((key, value) =>
+                {
+                    if (Registrations.ContainsKey(key))
+                    {
+                        Registrations[key] = value;
+                    }
+                    else
+                    {
+                        Registrations.Add(key, value);
+                    }
+                });
+
+
+            return new Airdrop(MockContractState.Object, TokenContractAddress, totalSupply, endBlock);
         }
     }
 }
