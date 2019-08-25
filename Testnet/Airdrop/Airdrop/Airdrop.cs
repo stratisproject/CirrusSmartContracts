@@ -176,7 +176,7 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        NumberOfRegistrants++;
+        NumberOfRegistrants += 1;
 
         SetAccountStatus(registrant, Status.ENROLLED);
 
