@@ -23,7 +23,8 @@ public class Airdrop : SmartContract
         Owner = Message.Sender;
     }
 
-    /// <summary>The contract address of the token that will be distributed. This smart contracts address must hold the TotalSupply at this address.</summary>
+    /// <summary>The contract address of the token that will be distributed. This smart contracts
+    /// address must be approved to send at least the TotalSupply at this address.</summary>
     public Address TokenContractAddress
     {
         get => PersistentState.GetAddress(nameof(TokenContractAddress));
@@ -61,14 +62,14 @@ public class Airdrop : SmartContract
         private set => PersistentState.SetUInt64(nameof(NumberOfRegistrants), value);
     }
 
-    /// <summary>Calculates and sets the amount to distribute to each registrant.</summary>
+    /// <summary>Gets the AmountToDistribute for each registrant if it has been previously calculated.</summary>
     private ulong AmountToDistribute
     {
         get => PersistentState.GetUInt64(nameof(AmountToDistribute));
         set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
     }
 
-    /// <summary>Returns whether or not the registration period is closed.</summary>
+    /// <summary>Returns whether or not the registration period as been calculated and set to closed.</summary>
     private bool RegistrationIsClosed
     {
         get => PersistentState.GetBool(nameof(RegistrationIsClosed));
@@ -99,6 +100,7 @@ public class Airdrop : SmartContract
         return Message.Sender == Owner && AddRegistrantExecute(registrant);
     }
 
+    /// <summary>Calculate and set the amount to distribute.</summary>
     public ulong GetAmountToDistribute()
     {
         ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
@@ -111,6 +113,7 @@ public class Airdrop : SmartContract
         return amount;
     }
 
+    /// <summary>Calculate if the registration period is closed or not.</summary>
     public bool IsRegistrationClosed()
     {
         bool isClosed = PersistentState.GetBool(nameof(RegistrationIsClosed));
@@ -139,6 +142,7 @@ public class Airdrop : SmartContract
     /// <summary>
     /// Withdraw funds after registration period has closed. Validates account status and calls the tokens contract
     /// address that is being airdropped to transfer amount to sender. On success, set senders new status and log it.
+    /// The contract address must be approved at the TokenContractAddress to send at least the TotalSupply from the Owners wallet.
     /// </summary>
     public bool Withdraw()
     {
