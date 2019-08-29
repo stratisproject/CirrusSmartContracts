@@ -155,9 +155,9 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        var transferParams = new object[] { Message.Sender, amountToDistribute };
+        var transferParams = new object[] { Owner, Message.Sender, amountToDistribute };
 
-        ITransferResult result = Call(TokenContractAddress, amountToDistribute, "TransferTo", transferParams);
+        ITransferResult result = Call(TokenContractAddress, amountToDistribute, "TransferFrom", transferParams);
 
         if (result == null || !result.Success)
         {

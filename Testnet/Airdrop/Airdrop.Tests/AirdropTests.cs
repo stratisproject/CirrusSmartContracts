@@ -557,16 +557,16 @@ namespace Tests
             // Assert the amount to distibute is whats expected
             Assert.True(amountToDistribute == withdrawParams.ExpectedAmountToDistribute);
             // Create transfer params to use in mock call
-            var transferParams = new object[] { withdrawParams.Sender, amountToDistribute };
+            var transferParams = new object[] { Owner, withdrawParams.Sender, amountToDistribute };
 
             // Mock the calls expected result
             MockInternalExecutor.Setup(x => x
-                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferTo", transferParams, 10_000))
+                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferFrom", transferParams, 10_000))
                 .Returns(withdrawParams.TransferResult);
 
             // Make call and retrieve the result
             var result = MockContractState.Object.InternalTransactionExecutor
-                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferTo", transferParams, 10_000);
+                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferFrom", transferParams, 10_000);
             // Fail if result was not successful
             if (result.Success == false)
             {
