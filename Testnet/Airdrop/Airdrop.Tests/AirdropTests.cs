@@ -207,8 +207,7 @@ namespace Tests
             MockPersistentState.Verify(x => x.GetUInt64(nameof(NumberOfRegistrants)));
 
             // Verify registration is not closed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            Assert.False(registrationIsClosed);
+            Assert.True(airdrop.CanRegister);
 
             // Verify the status remains Not Enrolled
             var accountStatus = airdrop.GetAccountStatus(Registrant);
@@ -397,8 +396,7 @@ namespace Tests
             };
 
             // Verify registration is not closed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            Assert.False(registrationIsClosed);
+            Assert.True(airdrop.CanRegister);
 
             // Verify the withdrawal fails
             var result = MockWithdrawExecute(withdrawParams);
@@ -540,13 +538,11 @@ namespace Tests
                 return false;
             }
 
-            // Check if the airdrops registration is closed.
-            var registrationIsClosed = withdrawParams.Airdrop.IsRegistrationClosed();
-            // Ensure persistent state is checked
-            MockPersistentState.Verify(x => x.GetBool(nameof(RegistrationIsClosed)));
-            // If registration is closed, fail
-            if (registrationIsClosed == false)
+            // If registration is not closed, fail
+            if (withdrawParams.Airdrop.CanRegister == true)
             {
+                // Ensure persistent state is checked
+                MockPersistentState.Verify(x => x.GetBool(nameof(RegistrationIsClosed)));
                 return false;
             }
 
@@ -591,10 +587,9 @@ namespace Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Set RegistrationIsClosed to true
             MockPersistentState.Setup(x => x.GetBool(nameof(RegistrationIsClosed))).Returns(true);
-            // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert true
-            Assert.True(registrationIsClosed);
+
+            Assert.True(airdrop.RegistrationIsClosed);
+            Assert.False(airdrop.CanRegister);
         }
 
         [Fact]
@@ -603,10 +598,8 @@ namespace Tests
             CurrentBlock = EndBlock + 1;
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Owner, Owner, CurrentBlock, EndBlock, TotalSupply);
-            // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert true
-            Assert.True(registrationIsClosed);
+            // Assert false
+            Assert.False(airdrop.CanRegister);
         }
 
         [Fact]
@@ -614,16 +607,12 @@ namespace Tests
         {
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert False
-            Assert.False(registrationIsClosed);
+            // Assert True
+            Assert.True(airdrop.CanRegister);
             // Set CurrentBlock equal to Endblock
             MockContractState.Setup(b => b.Block.Number).Returns(EndBlock);
-            // Get RegistrationIsClosed
-            registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert False
-            Assert.False(registrationIsClosed);
+            // Assert True
+            Assert.True(airdrop.CanRegister);
         }
 
         [Fact]
@@ -632,7 +621,7 @@ namespace Tests
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Owner, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Assert False
-            Assert.False(airdrop.IsRegistrationClosed());
+            Assert.True(airdrop.CanRegister);
             // Close Registration
             var result = airdrop.CloseRegistration();
             // Assert True
@@ -641,10 +630,8 @@ namespace Tests
             MockPersistentState.Verify(x => x.SetBool(nameof(RegistrationIsClosed), true));
             // Set RegistrationIsClosed to true
             MockPersistentState.Setup(x => x.GetBool(nameof(RegistrationIsClosed))).Returns(true);
-            // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert True
-            Assert.True(registrationIsClosed);
+            // Assert False
+            Assert.False(airdrop.CanRegister);
         }
 
         [Fact]
@@ -652,16 +639,14 @@ namespace Tests
         {
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
-            // Assert False
-            Assert.False(airdrop.IsRegistrationClosed());
+            // Assert True
+            Assert.True(airdrop.CanRegister);
             // Close Registration
             var result = airdrop.CloseRegistration();
             // Assert False
             Assert.False(result);
-            // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.IsRegistrationClosed();
-            // Assert False
-            Assert.False(registrationIsClosed);
+            // Assert True
+            Assert.True(airdrop.CanRegister);
         }
         #endregion
 

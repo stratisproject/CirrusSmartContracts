@@ -48,82 +48,68 @@ public class Airdrop : SmartContract
         private set => PersistentState.SetUInt64(nameof(EndBlock), value);
     }
 
-    /// <summary>Address of the owner of this contract, used to authenticate some methods.</summary>
+    /// <summary>Address of the owner of this contract, used to authenticate some methods. This address must
+    /// authorize this smart contracts address, after deployed, to spend the <see cref="TotalSupply"/></summary>
     public Address Owner
     {
         get => PersistentState.GetAddress(nameof(Owner));
         private set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
-    /// <summary>The total number of registrants for this airdrop.</summary>
     public ulong NumberOfRegistrants
     {
         get => PersistentState.GetUInt64(nameof(NumberOfRegistrants));
         private set => PersistentState.SetUInt64(nameof(NumberOfRegistrants), value);
     }
 
-    /// <summary>Gets the AmountToDistribute for each registrant if it has been previously calculated.</summary>
     private ulong AmountToDistribute
     {
         get => PersistentState.GetUInt64(nameof(AmountToDistribute));
         set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
     }
 
-    /// <summary>Returns whether or not the registration period as been calculated and set to closed.</summary>
-    private bool RegistrationIsClosed
+    public bool RegistrationIsClosed
     {
         get => PersistentState.GetBool(nameof(RegistrationIsClosed));
-        set => PersistentState.SetBool(nameof(RegistrationIsClosed), value);
+        private set => PersistentState.SetBool(nameof(RegistrationIsClosed), value);
     }
 
-    /// <summary>Returns the status of any given address.</summary>
     public uint GetAccountStatus(Address address)
     {
         return PersistentState.GetUInt32($"Status:{address}");
     }
 
-    /// <summary>Sets the status for a given address.</summary>
     private void SetAccountStatus(Address address, uint status)
     {
         PersistentState.SetUInt32($"Status:{address}", status);
     }
 
-    /// <summary>Validates and registers accounts. See <see cref="AddRegistrantExecute(Address)"/></summary>
+    public bool CanRegister => !RegistrationIsClosed && (EndBlock == 0 || Block.Number <= EndBlock);
+
+    /// <summary>See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool Register()
     {
         return AddRegistrantExecute(Message.Sender);
     }
 
-    /// <summary>Allows owner of the contract to manually add a new registrant. See <see cref="AddRegistrantExecute(Address)"/></summary>
+    /// <summary>Allows owner of the contract to manually add a new registrant.
+    /// See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool AddRegistrant(Address registrant)
     {
         return Message.Sender == Owner && AddRegistrantExecute(registrant);
     }
 
-    /// <summary>Calculate and set the amount to distribute.</summary>
+    /// <summary>Calculate and set the <see cref="AmountToDistribute"/></summary>
     public ulong GetAmountToDistribute()
     {
         ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
-        if (amount == 0 && IsRegistrationClosed())
+        if (amount == 0 && !CanRegister)
         {
             amount = TotalSupply / NumberOfRegistrants;
             AmountToDistribute = amount;
         }
 
         return amount;
-    }
-
-    /// <summary>Calculate if the registration period is closed or not.</summary>
-    public bool IsRegistrationClosed()
-    {
-        bool isClosed = PersistentState.GetBool(nameof(RegistrationIsClosed));
-        if (!isClosed && EndBlock > 0)
-        {
-            isClosed = Block.Number > EndBlock;
-            RegistrationIsClosed = isClosed;
-        }
-
-        return isClosed;
     }
 
     /// <summary>Allows owner to close registration for the airdrop at any time.</summary>
@@ -147,10 +133,9 @@ public class Airdrop : SmartContract
     public bool Withdraw()
     {
         bool invalidAccountStatus = GetAccountStatus(Message.Sender) != (uint)Status.ENROLLED;
-        bool registrationIsClosed = IsRegistrationClosed();
         ulong amountToDistribute = GetAmountToDistribute();
 
-        if (invalidAccountStatus || !registrationIsClosed || amountToDistribute == 0)
+        if (invalidAccountStatus || CanRegister || amountToDistribute == 0)
         {
             return false;
         }
@@ -171,7 +156,8 @@ public class Airdrop : SmartContract
         return true;
     }
 
-    /// <summary>Validates and adds a new registrant. Updates the NumberOfRegistrants, account status, and logs result.</summary>
+    /// <summary>Validates and adds a new registrant. Updates the <see cref="NumberOfRegistrants"/>,
+    /// account status, and logs result.</summary>
     private bool AddRegistrantExecute(Address registrant)
     {
         if (registrant == Owner)
@@ -180,9 +166,7 @@ public class Airdrop : SmartContract
         }
 
         bool invalidAddressStatus = GetAccountStatus(registrant) != (uint)Status.NOT_ENROLLED;
-        bool registrationIsClosed = IsRegistrationClosed();
-
-        if (invalidAddressStatus || registrationIsClosed || NumberOfRegistrants >= this.TotalSupply)
+        if (invalidAddressStatus || !CanRegister || NumberOfRegistrants >= this.TotalSupply)
         {
             return false;
         }
@@ -200,7 +184,6 @@ public class Airdrop : SmartContract
     {
         [Index]
         public Address Registrant;
-
         public uint Status;
     }
 
