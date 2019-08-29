@@ -207,7 +207,7 @@ namespace Tests
             MockPersistentState.Verify(x => x.GetUInt64(nameof(NumberOfRegistrants)));
 
             // Verify registration is not closed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             Assert.False(registrationIsClosed);
 
             // Verify the status remains Not Enrolled
@@ -397,7 +397,7 @@ namespace Tests
             };
 
             // Verify registration is not closed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             Assert.False(registrationIsClosed);
 
             // Verify the withdrawal fails
@@ -489,7 +489,7 @@ namespace Tests
 
             // Verify the amountToDistribute was checked and remains 0
             MockPersistentState.Verify(x => x.GetUInt64("AmountToDistribute"));
-            Assert.Equal((ulong)0, airdrop.AmountToDistribute);
+            Assert.Equal((ulong)0, airdrop.GetAmountToDistribute());
         }
 
         [Fact]
@@ -541,7 +541,7 @@ namespace Tests
             }
 
             // Check if the airdrops registration is closed.
-            var registrationIsClosed = withdrawParams.Airdrop.RegistrationIsClosed;
+            var registrationIsClosed = withdrawParams.Airdrop.IsRegistrationClosed();
             // Ensure persistent state is checked
             MockPersistentState.Verify(x => x.GetBool(nameof(RegistrationIsClosed)));
             // If registration is closed, fail
@@ -551,7 +551,7 @@ namespace Tests
             }
 
             // Get the amount to distribute from the contract method
-            var amountToDistribute = withdrawParams.Airdrop.AmountToDistribute;
+            var amountToDistribute = withdrawParams.Airdrop.GetAmountToDistribute();
             // Ensure the amount to distribute was retrieved from persistant state
             MockPersistentState.Verify(x => x.GetUInt64("AmountToDistribute"));
             // Assert the amount to distibute is whats expected
@@ -592,7 +592,7 @@ namespace Tests
             // Set RegistrationIsClosed to true
             MockPersistentState.Setup(x => x.GetBool(nameof(RegistrationIsClosed))).Returns(true);
             // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert true
             Assert.True(registrationIsClosed);
         }
@@ -604,7 +604,7 @@ namespace Tests
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Owner, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert true
             Assert.True(registrationIsClosed);
         }
@@ -615,13 +615,13 @@ namespace Tests
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert False
             Assert.False(registrationIsClosed);
             // Set CurrentBlock equal to Endblock
             MockContractState.Setup(b => b.Block.Number).Returns(EndBlock);
             // Get RegistrationIsClosed
-            registrationIsClosed = airdrop.RegistrationIsClosed;
+            registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert False
             Assert.False(registrationIsClosed);
         }
@@ -632,7 +632,7 @@ namespace Tests
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Owner, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Assert False
-            Assert.False(airdrop.RegistrationIsClosed);
+            Assert.False(airdrop.IsRegistrationClosed());
             // Close Registration
             var result = airdrop.CloseRegistration();
             // Assert True
@@ -642,7 +642,7 @@ namespace Tests
             // Set RegistrationIsClosed to true
             MockPersistentState.Setup(x => x.GetBool(nameof(RegistrationIsClosed))).Returns(true);
             // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert True
             Assert.True(registrationIsClosed);
         }
@@ -653,13 +653,13 @@ namespace Tests
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
             // Assert False
-            Assert.False(airdrop.RegistrationIsClosed);
+            Assert.False(airdrop.IsRegistrationClosed());
             // Close Registration
             var result = airdrop.CloseRegistration();
             // Assert False
             Assert.False(result);
             // Get RegistrationIsClosed
-            var registrationIsClosed = airdrop.RegistrationIsClosed;
+            var registrationIsClosed = airdrop.IsRegistrationClosed();
             // Assert False
             Assert.False(registrationIsClosed);
         }
@@ -710,14 +710,14 @@ namespace Tests
             MockPersistentState.Setup(x => x.GetUInt64("AmountToDistribute")).Returns(expectedAmount);
 
             // Get the AmountToDistribute
-            ulong amountToDistribute = airdrop.AmountToDistribute;
+            ulong amountToDistribute = airdrop.GetAmountToDistribute();
             // Starting with 100_000 tokens / 10 registrants = 10_000 each
             Assert.Equal(expectedAmount, amountToDistribute);
 
             // Calc totalSupply = 100_000, numberOfRegistrants = 1, expectedAmountToDistribute = 10_000
             CalculateAmountToDistribute(airdrop, 100_000, 1, expectedAmount);
             // Get the amountToDistribute again
-            amountToDistribute = airdrop.AmountToDistribute;
+            amountToDistribute = airdrop.GetAmountToDistribute();
             // Should equal the amount before, ignoring any new changes
             Assert.Equal(expectedAmount, amountToDistribute);
         }
@@ -736,7 +736,7 @@ namespace Tests
             // Set NumberOfRegistrants from parameters in persistent state
             MockPersistentState.Setup(x => x.GetUInt64(nameof(NumberOfRegistrants))).Returns(numberOfRegistrants);
             // Get amountToDistribute
-            var amountToDistribute = airdrop.AmountToDistribute;
+            var amountToDistribute = airdrop.GetAmountToDistribute();
             // Assert the expected amount equals the actual
             Assert.Equal(expectedAmountToDistribute, amountToDistribute);
         }
