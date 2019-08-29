@@ -98,15 +98,15 @@ public class Airdrop : SmartContract
     }
 
     /// <summary>Returns the status of any given address.</summary>
-    public Status GetAccountStatus(Address address)
+    public uint GetAccountStatus(Address address)
     {
-        return PersistentState.GetStruct<Status>($"Status:{address}");
+        return PersistentState.GetUInt32($"Status:{address}");
     }
 
     /// <summary>Sets the status for a given address.</summary>
-    private void SetAccountStatus(Address address, Status status)
+    private void SetAccountStatus(Address address, uint status)
     {
-        PersistentState.SetStruct($"Status:{address}", status);
+        PersistentState.SetUInt32($"Status:{address}", status);
     }
 
     /// <summary>Validates and registers accounts. See <see cref="AddRegistrantExecute(Address)"/></summary>
@@ -140,7 +140,7 @@ public class Airdrop : SmartContract
     /// </summary>
     public bool Withdraw()
     {
-        bool invalidAccountStatus = GetAccountStatus(Message.Sender) != Status.ENROLLED;
+        bool invalidAccountStatus = GetAccountStatus(Message.Sender) != (uint)Status.ENROLLED;
         if (invalidAccountStatus || !RegistrationIsClosed || AmountToDistribute == 0)
         {
             return false;
@@ -155,9 +155,9 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        SetAccountStatus(Message.Sender, Status.FUNDED);
+        SetAccountStatus(Message.Sender, (uint)Status.FUNDED);
 
-        Log(new StatusLog { Registrant = Message.Sender, Status = Status.FUNDED });
+        Log(new StatusLog { Registrant = Message.Sender, Status = (uint)Status.FUNDED });
 
         return true;
     }
@@ -170,7 +170,7 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        bool invalidAddressStatus = GetAccountStatus(registrant) != Status.NOT_ENROLLED;
+        bool invalidAddressStatus = GetAccountStatus(registrant) != (uint)Status.NOT_ENROLLED;
         if (invalidAddressStatus || RegistrationIsClosed || NumberOfRegistrants >= this.TotalSupply)
         {
             return false;
@@ -178,9 +178,9 @@ public class Airdrop : SmartContract
 
         NumberOfRegistrants += 1;
 
-        SetAccountStatus(registrant, Status.ENROLLED);
+        SetAccountStatus(registrant, (uint)Status.ENROLLED);
 
-        Log(new StatusLog { Registrant = registrant, Status = Status.ENROLLED });
+        Log(new StatusLog { Registrant = registrant, Status = (uint)Status.ENROLLED });
 
         return true;
     }
@@ -190,10 +190,10 @@ public class Airdrop : SmartContract
         [Index]
         public Address Registrant;
 
-        public Status Status;
+        public uint Status;
     }
 
-    public enum Status
+    public enum Status : uint
     {
         NOT_ENROLLED = 0,
         ENROLLED = 1,

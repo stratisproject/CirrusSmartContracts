@@ -23,7 +23,7 @@ namespace Tests
         private readonly ulong EndBlock;
         private ulong NumberOfRegistrants;
         private ulong CurrentBlock;
-        private Dictionary<string, Status> Registrations;
+        private Dictionary<string, uint> Registrations;
         private bool RegistrationIsClosed;
 
         public AirdropTests()
@@ -45,7 +45,7 @@ namespace Tests
             EndBlock = 1_000_000;
             NumberOfRegistrants = 0;
             CurrentBlock = 1;
-            Registrations = new Dictionary<string, Status>();
+            Registrations = new Dictionary<string, uint>();
             RegistrationIsClosed = false;
         }
 
@@ -80,18 +80,18 @@ namespace Tests
 
             // Not Enrolled registrant
             var status = airdrop.GetAccountStatus(Registrant);
-            MockPersistentState.Verify(x => x.GetStruct<Status>($"Status:{Registrant}"));
-            Assert.Equal(Status.NOT_ENROLLED, status);
+            MockPersistentState.Verify(x => x.GetUInt32($"Status:{Registrant}"));
+            Assert.Equal((uint)Status.NOT_ENROLLED, status);
 
             // Set and check for Enrolled registrants
-            MockPersistentState.Setup(x => x.GetStruct<Status>($"Status:{Registrant}")).Returns(Status.ENROLLED);
+            MockPersistentState.Setup(x => x.GetUInt32($"Status:{Registrant}")).Returns((uint)Status.ENROLLED);
             status = airdrop.GetAccountStatus(Registrant);
-            Assert.Equal(Status.ENROLLED, status);
+            Assert.Equal((uint)Status.ENROLLED, status);
 
             // Set and check for Funded registrants
-            MockPersistentState.Setup(x => x.GetStruct<Status>($"Status:{Registrant}")).Returns(Status.FUNDED);
+            MockPersistentState.Setup(x => x.GetUInt32($"Status:{Registrant}")).Returns((uint)Status.FUNDED);
             status = airdrop.GetAccountStatus(Registrant);
-            Assert.Equal(Status.FUNDED, status);
+            Assert.Equal((uint)Status.FUNDED, status);
         }
 
         #region Register Tests
@@ -99,7 +99,7 @@ namespace Tests
         [Fact]
         public void Register_Success()
         {
-            var expectedStatus = Status.ENROLLED;
+            var expectedStatus = (uint)Status.ENROLLED;
             ulong expectedNumberOfRegistrants = 1;
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
@@ -109,7 +109,7 @@ namespace Tests
             Assert.True(result);
 
             // Verfies the new status was set to Enrolled
-            MockPersistentState.Verify(x => x.SetStruct($"Status:{Registrant}", expectedStatus));
+            MockPersistentState.Verify(x => x.SetUInt32($"Status:{Registrant}", expectedStatus));
             var status = airdrop.GetAccountStatus(Registrant);
             Assert.Equal(expectedStatus, status);
 
@@ -163,7 +163,7 @@ namespace Tests
 
             // Verify the registration succeeds and the new status is set
             var result = airdrop.Register();
-            MockPersistentState.Verify(x => x.SetStruct($"Status:{Registrant}", Status.ENROLLED));
+            MockPersistentState.Verify(x => x.SetUInt32($"Status:{Registrant}", (uint)Status.ENROLLED));
             Assert.True(result);
 
             // Attempt Registration again with the same address
@@ -172,7 +172,7 @@ namespace Tests
 
             // Check that the useres status remains Enrolled
             var status = airdrop.GetAccountStatus(Registrant);
-            Assert.Equal(Status.ENROLLED, status);
+            Assert.Equal((uint)Status.ENROLLED, status);
         }
 
         [Fact]
@@ -201,7 +201,7 @@ namespace Tests
             Assert.False(result);
 
             // Verify that status, registrationIsClosed, totalSupply and numberOfRegistrations were fetched
-            MockPersistentState.Verify(x => x.GetStruct<Status>($"Status:{Registrant}"));
+            MockPersistentState.Verify(x => x.GetUInt32($"Status:{Registrant}"));
             MockPersistentState.Verify(x => x.GetBool(nameof(RegistrationIsClosed)));
             MockPersistentState.Verify(x => x.GetUInt64(nameof(TotalSupply)));
             MockPersistentState.Verify(x => x.GetUInt64(nameof(NumberOfRegistrants)));
@@ -212,7 +212,7 @@ namespace Tests
 
             // Verify the status remains Not Enrolled
             var accountStatus = airdrop.GetAccountStatus(Registrant);
-            Assert.Equal(Status.NOT_ENROLLED, accountStatus);
+            Assert.Equal((uint)Status.NOT_ENROLLED, accountStatus);
 
             // Verify the total supply is 1
             totalSupply = airdrop.TotalSupply;
@@ -311,7 +311,7 @@ namespace Tests
             Assert.True(result);
 
             // Verify the status of the registrant was set successfully
-            MockPersistentState.Verify(x => x.SetStruct($"Status:{Registrant}", Status.ENROLLED));
+            MockPersistentState.Verify(x => x.SetUInt32($"Status:{Registrant}", (uint)Status.ENROLLED));
             // Verify the number of registrants was incremented by 1
             MockPersistentState.Verify(x => x.SetUInt64(nameof(NumberOfRegistrants), 1));
         }
@@ -328,7 +328,7 @@ namespace Tests
 
             // Verify that RegistrantTwo's status is still Not_Enrolled
             var status = airdrop.GetAccountStatus(RegistrantTwo);
-            Assert.Equal(Status.NOT_ENROLLED, status);
+            Assert.Equal((uint)Status.NOT_ENROLLED, status);
         }
 
         [Fact]
@@ -351,7 +351,7 @@ namespace Tests
         {
             CurrentBlock = EndBlock + 1;
             Address sender = Registrant;
-            var expectedStatus = Status.FUNDED;
+            var expectedStatus = (uint)Status.FUNDED;
 
             // Initialize Airdrop Tests
             var airdrop = InitializeTest(sender, Owner, CurrentBlock, EndBlock, TotalSupply);
@@ -363,7 +363,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.ENROLLED,
+                Status = (uint)Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
                 TransferResult = new TransferResult(success: true)
             };
@@ -391,7 +391,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.ENROLLED,
+                Status = (uint)Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
                 TransferResult = new TransferResult(success: true)
             };
@@ -420,7 +420,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.FUNDED,
+                Status = (uint)Status.FUNDED,
                 ExpectedAmountToDistribute = TotalSupply,
                 TransferResult = new TransferResult(success: true)
             };
@@ -430,7 +430,7 @@ namespace Tests
             Assert.False(result);
 
             // Update the status of the params to Not Enrolled
-            withdrawParams.Status = Status.NOT_ENROLLED;
+            withdrawParams.Status = (uint)Status.NOT_ENROLLED;
             result = MockWithdrawExecute(withdrawParams);
 
             // Verify the withdrawal fails with Not Enrolled Status
@@ -452,7 +452,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.ENROLLED,
+                Status = (uint)Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
                 TransferResult = new TransferResult(success: false)
             };
@@ -478,7 +478,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.ENROLLED,
+                Status = (uint)Status.ENROLLED,
                 ExpectedAmountToDistribute = 0,
                 TransferResult = new TransferResult(success: false)
             };
@@ -507,7 +507,7 @@ namespace Tests
             {
                 Sender = sender,
                 Airdrop = airdrop,
-                Status = Status.ENROLLED,
+                Status = (uint)Status.ENROLLED,
                 ExpectedAmountToDistribute = TotalSupply,
                 TransferResult = new TransferResult(success: false)
             };
@@ -518,7 +518,7 @@ namespace Tests
 
             // Verify the account status is still Enrolled
             var accountStatus = airdrop.GetAccountStatus(Registrant);
-            Assert.Equal(Status.ENROLLED, accountStatus);
+            Assert.Equal((uint)Status.ENROLLED, accountStatus);
         }
 
         /// <summary>
@@ -529,13 +529,13 @@ namespace Tests
         private bool MockWithdrawExecute(MockWithdrawExecuteParams withdrawParams)
         {
             // Set status for sender specified by params
-            MockPersistentState.Setup(x => x.GetStruct<Status>($"Status:{withdrawParams.Sender}")).Returns(withdrawParams.Status);
+            MockPersistentState.Setup(x => x.GetUInt32($"Status:{withdrawParams.Sender}")).Returns(withdrawParams.Status);
             // Get the acount status from the contract method
             var accountStatus = withdrawParams.Airdrop.GetAccountStatus(withdrawParams.Sender);
             // Ensure the status was retrieved from persistant state
-            MockPersistentState.Verify(x => x.GetStruct<Status>($"Status:{withdrawParams.Sender}"));
+            MockPersistentState.Verify(x => x.GetUInt32($"Status:{withdrawParams.Sender}"));
             // Fail if account status is not enrolled
-            if (accountStatus != Status.ENROLLED)
+            if (accountStatus != (uint)Status.ENROLLED)
             {
                 return false;
             }
@@ -574,9 +574,9 @@ namespace Tests
             }
 
             // Act as normal method would, set FUNDED account status
-            MockPersistentState.Setup(x => x.GetStruct<Status>($"Status:{withdrawParams.Sender}")).Returns(Status.FUNDED);
+            MockPersistentState.Setup(x => x.GetUInt32($"Status:{withdrawParams.Sender}")).Returns((uint)Status.FUNDED);
             // Act as normal method would, log the new status
-            MockContractLogger.Setup(x => x.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = withdrawParams.Sender, Status = Status.FUNDED })).Verifiable();
+            MockContractLogger.Setup(x => x.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = withdrawParams.Sender, Status = (uint)Status.FUNDED })).Verifiable();
 
             return true;
         }
@@ -759,7 +759,7 @@ namespace Tests
         {
             public Address Sender;
             public Airdrop Airdrop;
-            public Status Status;
+            public uint Status;
             public ulong ExpectedAmountToDistribute;
             public TransferResult TransferResult;
         }
@@ -795,11 +795,11 @@ namespace Tests
                 .Callback<string, ulong>((key, value) => { NumberOfRegistrants += value; });
 
             // Status returns Status from the registrations dictionary or default Not Enrolled
-            MockPersistentState.Setup(x => x.GetStruct<Status>($"Status:{Registrant}"))
-                .Returns<string>(key => Registrations.ContainsKey(key) ? Registrations[key] : Status.NOT_ENROLLED);
+            MockPersistentState.Setup(x => x.GetUInt32($"Status:{Registrant}"))
+                .Returns<string>(key => Registrations.ContainsKey(key) ? Registrations[key] : (uint)Status.NOT_ENROLLED);
             // Status, when set, updates the registrations dictionary or adds a new key/value pair
-            MockPersistentState.Setup(x => x.SetStruct($"Status:{Registrant}", It.IsAny<Status>()))
-                .Callback<string, Status>((key, value) =>
+            MockPersistentState.Setup(x => x.SetUInt32($"Status:{Registrant}", It.IsAny<uint>()))
+                .Callback<string, uint>((key, value) =>
                 {
                     if (Registrations.ContainsKey(key)) Registrations[key] = value;
                     else Registrations.Add(key, value);
