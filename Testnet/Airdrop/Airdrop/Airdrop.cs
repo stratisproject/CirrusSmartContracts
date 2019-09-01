@@ -68,12 +68,6 @@ public class Airdrop : SmartContract
         set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
     }
 
-    public bool RegistrationIsClosed
-    {
-        get => PersistentState.GetBool(nameof(RegistrationIsClosed));
-        private set => PersistentState.SetBool(nameof(RegistrationIsClosed), value);
-    }
-
     public uint GetAccountStatus(Address address)
     {
         return PersistentState.GetUInt32($"Status:{address}");
@@ -84,7 +78,7 @@ public class Airdrop : SmartContract
         PersistentState.SetUInt32($"Status:{address}", status);
     }
 
-    public bool CanRegister => !RegistrationIsClosed && (EndBlock == 0 || Block.Number <= EndBlock);
+    public bool CanRegister => EndBlock == 0 || Block.Number <= EndBlock;
 
     /// <summary>See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool Register()
@@ -102,6 +96,8 @@ public class Airdrop : SmartContract
     /// <summary>Calculate and set the <see cref="AmountToDistribute"/></summary>
     public ulong GetAmountToDistribute()
     {
+        if (TotalSupply == 0 || NumberOfRegistrants == 0) return 0;
+
         ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
         if (amount == 0 && !CanRegister)
         {
@@ -120,7 +116,7 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        RegistrationIsClosed = true;
+        EndBlock = Block.Number - 1;
 
         return true;
     }
@@ -142,12 +138,9 @@ public class Airdrop : SmartContract
 
         var transferParams = new object[] { Owner, Message.Sender, amountToDistribute };
 
-        ITransferResult result = Call(TokenContractAddress, amountToDistribute, "TransferFrom", transferParams);
+        var result = Call(TokenContractAddress, amountToDistribute, "TransferFrom", transferParams);
 
-        if (result == null || !result.Success)
-        {
-            return false;
-        }
+        Assert(result.Success);
 
         SetAccountStatus(Message.Sender, (uint)Status.FUNDED);
 
@@ -166,7 +159,7 @@ public class Airdrop : SmartContract
         }
 
         bool invalidAddressStatus = GetAccountStatus(registrant) != (uint)Status.NOT_ENROLLED;
-        if (invalidAddressStatus || !CanRegister || NumberOfRegistrants >= this.TotalSupply)
+        if (invalidAddressStatus || !CanRegister || NumberOfRegistrants >= TotalSupply)
         {
             return false;
         }
