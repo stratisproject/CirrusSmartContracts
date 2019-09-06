@@ -22,13 +22,13 @@ Parameters required:
 - `ulong TotalSupply` - The total supply that will be given out, must be greater than 0
 - `ulong EndBlock` - The endblock for the registration period to close on. Set to 0 to close registration manually
 
-Upon deployment, the owners address will be set to the address used to deploy this contract. The owner will have special privaledges and also will be used upon distribution in the withdraw method.
+Upon deployment, the owners address will be set to the address used to deploy this contract. The owner will have special privileges and also will be used upon distribution in the withdraw method.
 
 ## Registrations
 
 ### Public User Registration
 
-Users will can register for the airdrop by calling the `Register` method as long as the registration period is open and there are not more registrants that total supply. Upon successfull registration, a status of `Enrolled` will be set for the address and the new status will be logged.
+Users will can register for the airdrop by calling the `Register` method as long as the registration period is open and there are not more registrants that total supply. Upon successful registration, a status of `Enrolled` will be set for the address and the new status will be logged.
 
 ### Owner Adding Registrants
 
