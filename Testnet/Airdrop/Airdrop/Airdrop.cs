@@ -23,6 +23,9 @@ public class Airdrop : SmartContract
         Owner = Message.Sender;
     }
 
+    private const string EnrolledStatus = "ENROLLED";
+    private const string FundedStatus = "FUNDED";
+
     /// <summary>The contract address of the token that will be distributed. This smart contracts
     /// address must be approved to send at least the TotalSupply at this address.</summary>
     public Address TokenContractAddress
@@ -68,14 +71,14 @@ public class Airdrop : SmartContract
         set => PersistentState.SetUInt64(nameof(AmountToDistribute), value);
     }
 
-    public uint GetAccountStatus(Address address)
+    public string GetAccountStatus(Address address)
     {
-        return PersistentState.GetUInt32($"Status:{address}");
+        return PersistentState.GetString($"Status:{address}");
     }
 
-    private void SetAccountStatus(Address address, uint status)
+    private void SetAccountStatus(Address address, string status)
     {
-        PersistentState.SetUInt32($"Status:{address}", status);
+        PersistentState.SetString($"Status:{address}", status);
     }
 
     public bool CanRegister => EndBlock == 0 || Block.Number <= EndBlock;
@@ -128,7 +131,7 @@ public class Airdrop : SmartContract
     /// </summary>
     public bool Withdraw()
     {
-        bool invalidAccountStatus = GetAccountStatus(Message.Sender) != (uint)Status.ENROLLED;
+        bool invalidAccountStatus = GetAccountStatus(Message.Sender) != EnrolledStatus;
         ulong amountToDistribute = GetAmountToDistribute();
 
         if (invalidAccountStatus || CanRegister || amountToDistribute == 0)
@@ -142,9 +145,9 @@ public class Airdrop : SmartContract
 
         Assert(result.Success);
 
-        SetAccountStatus(Message.Sender, (uint)Status.FUNDED);
+        SetAccountStatus(Message.Sender, FundedStatus);
 
-        Log(new StatusLog { Registrant = Message.Sender, Status = (uint)Status.FUNDED });
+        Log(new StatusLog { Registrant = Message.Sender, Status = FundedStatus });
 
         return true;
     }
@@ -158,17 +161,17 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        bool invalidAddressStatus = GetAccountStatus(registrant) != (uint)Status.NOT_ENROLLED;
-        if (invalidAddressStatus || !CanRegister || NumberOfRegistrants >= TotalSupply)
+        bool validAccountStatus = string.IsNullOrWhiteSpace(GetAccountStatus(registrant));
+        if (!validAccountStatus || !CanRegister || NumberOfRegistrants >= TotalSupply)
         {
             return false;
         }
 
         NumberOfRegistrants += 1;
 
-        SetAccountStatus(registrant, (uint)Status.ENROLLED);
+        SetAccountStatus(registrant, EnrolledStatus);
 
-        Log(new StatusLog { Registrant = registrant, Status = (uint)Status.ENROLLED });
+        Log(new StatusLog { Registrant = registrant, Status = EnrolledStatus });
 
         return true;
     }
@@ -177,13 +180,6 @@ public class Airdrop : SmartContract
     {
         [Index]
         public Address Registrant;
-        public uint Status;
-    }
-
-    public enum Status : uint
-    {
-        NOT_ENROLLED = 0,
-        ENROLLED = 1,
-        FUNDED = 2
+        public string Status;
     }
 }
