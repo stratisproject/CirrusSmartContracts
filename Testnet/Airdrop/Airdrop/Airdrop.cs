@@ -17,6 +17,8 @@ public class Airdrop : SmartContract
         ulong endBlock
     ) : base(smartContractState)
     {
+        Assert(totalSupply > 0);
+
         TotalSupply = totalSupply;
         TokenContractAddress = tokenContractAddress;
         EndBlock = endBlock;
@@ -27,7 +29,7 @@ public class Airdrop : SmartContract
     private const string FundedStatus = "FUNDED";
 
     /// <summary>The contract address of the token that will be distributed. This smart contracts
-    /// address must be approved to send at least the TotalSupply at this address.</summary>
+    /// address must be approved to send at least the TotalSupply set.</summary>
     public Address TokenContractAddress
     {
         get => PersistentState.GetAddress(nameof(TokenContractAddress));
@@ -81,7 +83,8 @@ public class Airdrop : SmartContract
         PersistentState.SetString($"Status:{address}", status);
     }
 
-    public bool CanRegister => EndBlock == 0 || Block.Number <= EndBlock;
+    /// <summary>Decides whether or not new users can register.</summary>
+    public bool CanRegister => EndBlock == 0 || Block.Number < EndBlock;
 
     /// <summary>See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool Register()
@@ -99,10 +102,8 @@ public class Airdrop : SmartContract
     /// <summary>Calculate and set the <see cref="AmountToDistribute"/></summary>
     public ulong GetAmountToDistribute()
     {
-        if (TotalSupply == 0 || NumberOfRegistrants == 0) return 0;
-
         ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
-        if (amount == 0 && !CanRegister)
+        if (amount == 0 && !CanRegister && NumberOfRegistrants > 0)
         {
             amount = TotalSupply / NumberOfRegistrants;
             AmountToDistribute = amount;
@@ -119,7 +120,7 @@ public class Airdrop : SmartContract
             return false;
         }
 
-        EndBlock = Block.Number - 1;
+        EndBlock = Block.Number;
 
         return true;
     }
@@ -132,15 +133,14 @@ public class Airdrop : SmartContract
     public bool Withdraw()
     {
         bool invalidAccountStatus = GetAccountStatus(Message.Sender) != EnrolledStatus;
-        ulong amountToDistribute = GetAmountToDistribute();
 
-        if (invalidAccountStatus || CanRegister || amountToDistribute == 0)
+        if (invalidAccountStatus || CanRegister)
         {
             return false;
         }
 
+        var amountToDistribute = GetAmountToDistribute();
         var transferParams = new object[] { Owner, Message.Sender, amountToDistribute };
-
         var result = Call(TokenContractAddress, amountToDistribute, "TransferFrom", transferParams);
 
         Assert(result.Success);
