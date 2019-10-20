@@ -84,7 +84,7 @@ public class Airdrop : SmartContract
     }
 
     /// <summary>Decides whether or not new users can register.</summary>
-    public bool CanRegister => EndBlock == 0 || Block.Number < EndBlock;
+    public bool CanRegister() => EndBlock == 0 || Block.Number < EndBlock;
 
     /// <summary>See <see cref="AddRegistrantExecute(Address)"/></summary>
     public bool Register()
@@ -103,7 +103,7 @@ public class Airdrop : SmartContract
     public ulong GetAmountToDistribute()
     {
         ulong amount = PersistentState.GetUInt64(nameof(AmountToDistribute));
-        if (amount == 0 && !CanRegister && NumberOfRegistrants > 0)
+        if (amount == 0 && !CanRegister() && NumberOfRegistrants > 0)
         {
             amount = TotalSupply / NumberOfRegistrants;
             AmountToDistribute = amount;
@@ -134,7 +134,7 @@ public class Airdrop : SmartContract
     {
         bool invalidAccountStatus = GetAccountStatus(Message.Sender) != EnrolledStatus;
 
-        if (invalidAccountStatus || CanRegister)
+        if (invalidAccountStatus || CanRegister())
         {
             return false;
         }
@@ -162,7 +162,7 @@ public class Airdrop : SmartContract
         }
 
         bool validAccountStatus = string.IsNullOrWhiteSpace(GetAccountStatus(registrant));
-        if (!validAccountStatus || !CanRegister || NumberOfRegistrants >= TotalSupply)
+        if (!validAccountStatus || !CanRegister() || NumberOfRegistrants >= TotalSupply)
         {
             return false;
         }

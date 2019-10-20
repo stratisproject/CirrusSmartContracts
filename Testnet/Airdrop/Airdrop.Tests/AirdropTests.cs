@@ -134,7 +134,7 @@ namespace Tests
 
             // Second Registrant should succeed
             MockContractState.Setup(x => x.Message).Returns(new Message(AirdropContractAddress, RegistrantTwo, 0));
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             Assert.True(airdrop.Register());
 
             // Set registration to closed by setting endblock
@@ -142,7 +142,7 @@ namespace Tests
 
             // Register with a new registrant
             MockContractState.Setup(x => x.Message).Returns(new Message(AirdropContractAddress, RegistrantThree, 0));
-            Assert.False(airdrop.CanRegister);
+            Assert.False(airdrop.CanRegister());
             Assert.False(airdrop.Register());
 
             // Make sure things were only ran twice for successes
@@ -159,7 +159,7 @@ namespace Tests
 
             // Verify the registration fails
             Assert.False(airdrop.Register());
-            Assert.False(airdrop.CanRegister);
+            Assert.False(airdrop.CanRegister());
 
             MockPersistentState.Verify(x => x.SetString($"Status:{Registrant}", EnrolledStatus), Times.Never);
             MockPersistentState.Verify(x => x.SetUInt64(nameof(NumberOfRegistrants), It.IsAny<ulong>()), Times.Never);
@@ -176,7 +176,7 @@ namespace Tests
             MockPersistentState.Setup(x => x.GetString($"Status:{Registrant}")).Returns(EnrolledStatus);
 
             // Make sure registration is open but registration fails
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             Assert.False(airdrop.Register());
 
             MockPersistentState.Verify(x => x.SetString($"Status:{Registrant}", EnrolledStatus), Times.Once);
@@ -211,7 +211,7 @@ namespace Tests
             Assert.True(string.IsNullOrWhiteSpace(accountStatus));
 
             // Verify the registrant can register
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
 
             // Verify the totalSupply was set
             Assert.Equal(totalSupply, airdrop.TotalSupply);
@@ -383,7 +383,7 @@ namespace Tests
             MockPersistentState.Setup(x => x.GetString($"Status:{sender}")).Returns(EnrolledStatus);
 
             // Verify registration is open
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
 
             // Verify the withdrawal fails
             Assert.False(airdrop.Withdraw());
@@ -478,7 +478,7 @@ namespace Tests
         {
             var airdrop = NewAirdrop(Owner, Owner, currentBlock, endBlock, TotalSupply);
 
-            Assert.False(airdrop.CanRegister);
+            Assert.False(airdrop.CanRegister());
             Assert.False(airdrop.Register());
         }
 
@@ -487,7 +487,7 @@ namespace Tests
         {
             var airdrop = NewAirdrop(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             Assert.True(airdrop.Register());
         }
 
@@ -498,14 +498,14 @@ namespace Tests
 
             // Verify owner is sender, canRegister is true initially, and close registration succeeds
             Assert.Equal(Owner, airdrop.Message.Sender);
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             Assert.True(airdrop.CloseRegistration());
 
             MockPersistentState.Verify(x => x.SetUInt64(nameof(EndBlock), CurrentBlock), Times.Once);
             MockPersistentState.Setup(x => x.GetUInt64(nameof(EndBlock))).Returns(CurrentBlock);
 
             // Verify canRegiter is now false and registration fails
-            Assert.False(airdrop.CanRegister);
+            Assert.False(airdrop.CanRegister());
             Assert.False(airdrop.AddRegistrant(Registrant));
         }
 
@@ -515,13 +515,13 @@ namespace Tests
             var airdrop = NewAirdrop(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
             // Users can register
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             // Sender is not owner
             Assert.NotEqual(Owner, airdrop.Message.Sender);
             // Close registration fails
             Assert.False(airdrop.CloseRegistration());
             // Users can still register
-            Assert.True(airdrop.CanRegister);
+            Assert.True(airdrop.CanRegister());
             // Endblock still equal to original endblock
             Assert.Equal(EndBlock, airdrop.EndBlock);
             // Verify endblock was never changed
@@ -574,7 +574,7 @@ namespace Tests
             ulong expectedAmountToDistribute = 0;
             var airdrop = NewAirdrop(Registrant, Owner, CurrentBlock, EndBlock, TotalSupply);
 
-            Assert.False(airdrop.CanRegister);
+            Assert.False(airdrop.CanRegister());
 
             // Set NumberOfRegistrants to 0
             MockPersistentState.Setup(x => x.GetUInt64(nameof(NumberOfRegistrants))).Returns(0);
