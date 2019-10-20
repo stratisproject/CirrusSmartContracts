@@ -141,7 +141,7 @@ public class Airdrop : SmartContract
 
         var amountToDistribute = GetAmountToDistribute();
         var transferParams = new object[] { Owner, Message.Sender, amountToDistribute };
-        var result = Call(TokenContractAddress, amountToDistribute, "TransferFrom", transferParams);
+        var result = Call(TokenContractAddress, 0, "TransferFrom", transferParams);
 
         Assert(result.Success);
 

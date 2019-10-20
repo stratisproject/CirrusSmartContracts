@@ -367,7 +367,7 @@ namespace Tests
             var amountToDistribute = airdrop.GetAmountToDistribute();
             var transferFromParams = new object[] { Owner, Registrant, amountToDistribute };
             MockInternalExecutor.Verify(s => s
-                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferFrom", transferFromParams, 0), Times.Once);
+                .Call(MockContractState.Object, TokenContractAddress, 0, "TransferFrom", transferFromParams, 0), Times.Once);
             MockPersistentState.Verify(x => x.SetString($"Status:{sender}", expectedStatus));
             MockContractLogger.Verify(x => x.Log(It.IsAny<ISmartContractState>(), new StatusLog { Registrant = sender, Status = expectedStatus }), Times.Once);
         }
@@ -458,7 +458,7 @@ namespace Tests
             var amountToDistribute = airdrop.GetAmountToDistribute();
             var transferFromParams = new object[] { Owner, Registrant, amountToDistribute };
             MockInternalExecutor.Verify(s => s
-                .Call(MockContractState.Object, TokenContractAddress, amountToDistribute, "TransferFrom", transferFromParams, 0), Times.Once);
+                .Call(MockContractState.Object, TokenContractAddress, 0, "TransferFrom", transferFromParams, 0), Times.Once);
 
             // Make sure the status was never changed
             MockPersistentState.Verify(x => x.SetString($"Status:{Registrant}", FundedStatus), Times.Never);
