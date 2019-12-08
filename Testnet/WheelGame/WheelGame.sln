@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2000
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelGame", "WheelGame\WheelGame\WheelGame.csproj", "{17037C56-D43A-43F8-924E-11AA9807AB54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelGame.Tests", "WheelGame.Tests\WheelGame.Tests.csproj", "{AE6240FC-E50C-43A7-A27B-400126CAB628}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{17037C56-D43A-43F8-924E-11AA9807AB54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17037C56-D43A-43F8-924E-11AA9807AB54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17037C56-D43A-43F8-924E-11AA9807AB54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17037C56-D43A-43F8-924E-11AA9807AB54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE6240FC-E50C-43A7-A27B-400126CAB628}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE6240FC-E50C-43A7-A27B-400126CAB628}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE6240FC-E50C-43A7-A27B-400126CAB628}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE6240FC-E50C-43A7-A27B-400126CAB628}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {44C50B56-A9EC-4BC6-A1E1-EEC8BE89717C}
+	EndGlobalSection
+EndGlobal
