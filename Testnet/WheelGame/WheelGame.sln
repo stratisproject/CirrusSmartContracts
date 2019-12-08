@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2000
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelGame", "WheelGame\WheelGame\WheelGame.csproj", "{17037C56-D43A-43F8-924E-11AA9807AB54}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelGame", "WheelGame\WheelGame.csproj", "{17037C56-D43A-43F8-924E-11AA9807AB54}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelGame.Tests", "WheelGame.Tests\WheelGame.Tests.csproj", "{AE6240FC-E50C-43A7-A27B-400126CAB628}"
 EndProject
