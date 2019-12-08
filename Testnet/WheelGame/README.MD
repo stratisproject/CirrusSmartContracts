@@ -12,7 +12,7 @@ the whole game pool which consists of the bids, that was made by previous partic
 ![](https://i.ibb.co/41K1Lrz/232d27c0-d41d-4153-ad08-a03aa2b1c81c.jpg)
 
 #### An example of interface
-![](https://i.ibb.co/Kx6fTgD/Screenshot-14.png)
+![](https://i.ibb.co/J5rm4qx/Screenshot-15.png)
 
 
 #### Caveats
