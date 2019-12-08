@@ -8,6 +8,9 @@ If timeout has been reached (so no one has made a bid in a next `timeoutBlock` b
 is able to withdraw [withdraw](https://github.com/SergeyAnkarenko/CirrusSmartContracts/blob/c171549c9fad1226d8aed8738f4ac7edf1f6e5e2/Testnet/WheelGame/WheelGame/Wheel.cs#L140-L183) 
 the whole game pool which consists of the bids, that was made by previous participants. Every new bid starts this cicle over and over again.
 
+#### Graph
+![](https://i.ibb.co/41K1Lrz/232d27c0-d41d-4153-ad08-a03aa2b1c81c.jpg)
+
 #### An example of interface
 ![](https://i.ibb.co/Kx6fTgD/Screenshot-14.png)
 
