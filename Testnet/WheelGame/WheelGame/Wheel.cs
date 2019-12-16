@@ -12,12 +12,7 @@ public class Wheel : SmartContract
     private set => this.PersistentState.SetBool(nameof(this.IsGameStarted), value);
   }
 
-  public byte State
-  {
-    get => (byte)this.PersistentState.GetChar(nameof(this.State));
-    private set => this.PersistentState.SetChar(nameof(this.State), (char)value);
-  }
-
+  //every new bid starts new round, this variable counts them
   public uint RoundCounter
   {
     get => this.PersistentState.GetUInt32(nameof(this.RoundCounter));
@@ -31,24 +26,28 @@ public class Wheel : SmartContract
     private set => this.PersistentState.SetUInt64(nameof(this.TimeoutBlock), value);
   }
 
+  //game pool
   public ulong Staked
   {
     get => this.PersistentState.GetUInt64(nameof(this.Staked));
     private set => this.PersistentState.SetUInt64(nameof(this.Staked), value);
   }
 
+  //a bid required to participate in a game
   public ulong Bid
   {
     get => this.PersistentState.GetUInt64(nameof(this.Bid));
     private set => this.PersistentState.SetUInt64(nameof(this.Bid), value);
   }
 
+  //how much blocks one needs to wait to take the game pool
   public byte BlockDelay
   {
     get => (byte)this.PersistentState.GetChar(nameof(this.BlockDelay));
     private set => this.PersistentState.SetChar(nameof(this.BlockDelay), (char)value);
   }
 
+  //an address of the last participant commited a bid
   public Address LastBidOwner
   {
     get => this.PersistentState.GetAddress(nameof(this.LastBidOwner));
@@ -94,7 +93,7 @@ public class Wheel : SmartContract
       ulong amount = GetBalance(this.Message.Sender);
       ulong newAmount = amount + Staked;
       SetBalance(LastBidOwner, newAmount);
-      Log(new WinnerLog { Winner = this.Message.Sender, Amount = Staked });
+      Log(new WinnerLog { Winner = LastBidOwner, Amount = Staked });
 
       StartRound();
     }
@@ -139,8 +138,6 @@ public class Wheel : SmartContract
 
   public bool Withdraw()
   {
-    Assert(this.Message.Sender == LastBidOwner);
-
     //withdraw money and move game to Start state
     if (IsTimeout())
     {
@@ -182,6 +179,7 @@ public class Wheel : SmartContract
     }
   }
 
+  //is used to display history of winners
   public struct WinnerLog
   {
     [Index]
@@ -189,6 +187,7 @@ public class Wheel : SmartContract
     public ulong Amount;
   }
 
+  //is ised to diplay history of participants
   public struct NewBidLog
   {
     [Index]
