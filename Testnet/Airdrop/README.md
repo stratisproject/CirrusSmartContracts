@@ -24,11 +24,12 @@ Parameters required:
 
 Upon deployment, the owners address will be set to the address used to deploy this contract. The owner will have special privileges and also will be used upon distribution in the withdraw method.
 
-### Approve Owners Address at Token Contract Address
-When users withdraw their airdrop tokens, the contract uses the `TransferFrom` method to transfer the tokens. Even if the owner of this airdrop contract is the same owner of the token that is being distributed, the address still needs to be approved to send the amount specified in the `TotalSupply` parameter. 
-* Get the token to be distributed contract address.
-* Call the `Approve` method on the token contract.
-* Approve the aidrop owners address to send equal to the amount of the `TotalSupply` in the this aidrop contract.
+### Approve Aidrop Contract Address at Token Contract Address
+When users withdraw their airdrop tokens, the contract uses the `TransferFrom` method to transfer the tokens. This means that this aidrop contract address needs to be approved to send the amount specified in the `TotalSupply` parameter.
+
+* Call the `Approve` method on the token contract address.
+	* Supply the owners contact address to be approved.
+	* The new approved amount should be greater than or equal to the amount of the `TotalSupply` in the the aidrop contract.
 
 ## Registrations
 
