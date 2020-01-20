@@ -29,34 +29,19 @@ public class TicketContract_1_0_0 : SmartContract
     /// </summary>
     public Ticket[] Tickets
     {
-        get
-        {
-            return PersistentState.GetArray<Ticket>(nameof(Tickets));
-        }
-        private set
-        {
-            PersistentState.SetArray(nameof(Tickets), value);
-        }
+        get => PersistentState.GetArray<Ticket>(nameof(Tickets));
+        private set => PersistentState.SetArray(nameof(Tickets), value);
     }
 
     private ulong EndOfSale
     {
-        get
-        {
-            return PersistentState.GetUInt64(nameof(EndOfSale));
-        }
-        set
-        {
-            PersistentState.SetUInt64(nameof(EndOfSale), value);
-        }
+        get => PersistentState.GetUInt64(nameof(EndOfSale));
+        set => PersistentState.SetUInt64(nameof(EndOfSale), value);
     }
 
     private ulong ReleaseFee
     {
-        get
-        {
-            return PersistentState.GetUInt64(nameof(ReleaseFee));
-        }
+        get => PersistentState.GetUInt64(nameof(ReleaseFee));
         set
         {
             PersistentState.SetUInt64(nameof(ReleaseFee), value);
@@ -66,10 +51,7 @@ public class TicketContract_1_0_0 : SmartContract
 
     private ulong NoRefundBlockCount
     {
-        get
-        {
-            return PersistentState.GetUInt64(nameof(NoRefundBlockCount));
-        }
+        get => PersistentState.GetUInt64(nameof(NoRefundBlockCount));
         set
         {
             PersistentState.SetUInt64(nameof(NoRefundBlockCount), value);
@@ -79,10 +61,7 @@ public class TicketContract_1_0_0 : SmartContract
 
     private bool RequireIdentityVerification
     {
-        get
-        {
-            return PersistentState.GetBool(nameof(RequireIdentityVerification));
-        }
+        get => PersistentState.GetBool(nameof(RequireIdentityVerification));
         set
         {
             PersistentState.SetBool(nameof(RequireIdentityVerification), value);
@@ -92,14 +71,8 @@ public class TicketContract_1_0_0 : SmartContract
 
     private Address Owner
     {
-        get
-        {
-            return PersistentState.GetAddress(nameof(Owner));
-        }
-        set
-        {
-            PersistentState.SetAddress(nameof(Owner), value);
-        }
+        get => PersistentState.GetAddress(nameof(Owner));
+        set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
     private bool SaleOpen
