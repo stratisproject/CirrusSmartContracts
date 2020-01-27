@@ -75,7 +75,26 @@ namespace Ticketbooth.Contract.Tests
         }
 
         [Test]
-        public void OnConstructed_Logs_Venue()
+        public void OnConstruction_SuppliedSeatsExceedsMaxTickets_ThrowsAssertException()
+        {
+            // Arrange
+            var tooManySeats = new Seat[MAX_SEATS + 1];
+            for (int i = 0; i < tooManySeats.Length; i++)
+            {
+                tooManySeats[i] = new Seat { Number = i + 1, Letter = 'A' };
+            };
+
+            var seats = _serializer.Serialize(tooManySeats);
+
+            // Act
+            var constructionCall = new Action(() => new TicketContract_1_0_0(_smartContractState.Object, seats, _venueName));
+
+            // Assert
+            Assert.That(constructionCall, Throws.Exception.TypeOf<SmartContractAssertException>());
+        }
+
+        [Test]
+        public void OnConstruction_Logs_Venue()
         {
             // Arrange
             _message.Setup(callTo => callTo.Sender).Returns(_ownerAddress);
@@ -90,7 +109,7 @@ namespace Ticketbooth.Contract.Tests
         }
 
         [Test]
-        public void OnConstructed_Owner_IsSet()
+        public void OnConstruction_Owner_IsSet()
         {
             // Arrange
             _message.Setup(callTo => callTo.Sender).Returns(_ownerAddress);
@@ -105,7 +124,7 @@ namespace Ticketbooth.Contract.Tests
         }
 
         [Test]
-        public void OnConstructed_Tickets_IsSet()
+        public void OnConstruction_Tickets_IsSet()
         {
             // Arrange
             _message.Setup(callTo => callTo.Sender).Returns(_ownerAddress);

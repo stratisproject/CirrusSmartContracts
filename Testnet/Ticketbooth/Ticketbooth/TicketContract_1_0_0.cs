@@ -1,7 +1,15 @@
 ﻿using Stratis.SmartContracts;
 
+/// <summary>
+/// A Stratis smart contract for running ticket sales (Ticketbooth v1.0.0)
+/// </summary>
 public class TicketContract_1_0_0 : SmartContract
 {
+    /// <summary>
+    /// Maximum number of seats, necessary while construction cost is lower than cost to begin a sale
+    /// </summary>
+    public const int MAX_SEATS = 65;
+
     /// <summary>
     /// Creates a new ticketing contract
     /// </summary>
@@ -12,6 +20,7 @@ public class TicketContract_1_0_0 : SmartContract
         : base(smartContractState)
     {
         var seats = Serializer.ToArray<Seat>(seatsBytes);
+        Assert(seats.Length <= MAX_SEATS, $"Cannot handle more than {MAX_SEATS} seats");
         var tickets = new Ticket[seats.Length];
 
         for (int i = 0; i < seats.Length; i++)
