@@ -21,9 +21,10 @@ public class TicketContract_1_0_0 : SmartContract
     {
         var seats = Serializer.ToArray<Seat>(seatsBytes);
         Assert(seats.Length <= MAX_SEATS, $"Cannot handle more than {MAX_SEATS} seats");
-        var tickets = new Ticket[seats.Length];
 
-        for (int i = 0; i < seats.Length; i++)
+        // create tickets
+        var tickets = new Ticket[seats.Length];
+        for (var i = 0; i < seats.Length; i++)
         {
             tickets[i] = new Ticket { Seat = seats[i] };
         }
@@ -89,7 +90,7 @@ public class TicketContract_1_0_0 : SmartContract
         get
         {
             var endOfSale = EndOfSale;
-            return endOfSale != 0 && Block.Number < endOfSale;
+            return endOfSale != default(ulong) && Block.Number < endOfSale;
         }
     }
 
@@ -107,26 +108,31 @@ public class TicketContract_1_0_0 : SmartContract
         Assert(EndOfSale == default(ulong), "Sale currently in progress");
         Assert(Block.Number < endOfSale, "Sale must finish in the future");
 
-        var tickets = Serializer.ToArray<Ticket>(ticketsBytes);
-        var copyOfTickets = Tickets;
+        var pricedTickets = Serializer.ToArray<Ticket>(ticketsBytes);
+        var tickets = Tickets;
 
-        Assert(copyOfTickets.Length == tickets.Length, "Seat elements must be equal");
-        for (int i = 0; i < copyOfTickets.Length; i++)
+        Assert(tickets.Length == pricedTickets.Length, "Seat elements must be equal");
+
+        // set ticket prices
+        for (var i = 0; i < tickets.Length; i++)
         {
             Ticket ticket = default(Ticket);
-            for (int y = 0; y < tickets.Length; y++)
+
+            // find matching ticket
+            for (var y = 0; y < pricedTickets.Length; y++)
             {
-                if (SeatsAreEqual(copyOfTickets[i].Seat, tickets[y].Seat))
+                if (SeatsAreEqual(tickets[i].Seat, pricedTickets[y].Seat))
                 {
-                    ticket = tickets[y];
+                    ticket = pricedTickets[y];
                     break;
                 }
             }
+
             Assert(!IsDefaultSeat(ticket.Seat), "Invalid seat provided");
-            copyOfTickets[i].Price = tickets[i].Price;
+            tickets[i].Price = pricedTickets[i].Price;
         }
 
-        Tickets = copyOfTickets;
+        Tickets = tickets;
         EndOfSale = endOfSale;
 
         var show = new Show
@@ -193,34 +199,35 @@ public class TicketContract_1_0_0 : SmartContract
         Assert(SaleOpen, "Sale not open");
 
         var seat = Serializer.ToStruct<Seat>(seatIdentifierBytes);
-        var copyOfTickets = Tickets;
-        Ticket ticket = default(Ticket);
-        int ticketIndex = 0;
-        for (var i = 0; i < copyOfTickets.Length; i++)
+        var tickets = Tickets;
+        var reserveIndex = -1;
+
+        // find index of ticket in array
+        for (var i = 0; i < tickets.Length; i++)
         {
-            if (SeatsAreEqual(copyOfTickets[i].Seat, seat))
+            if (SeatsAreEqual(tickets[i].Seat, seat))
             {
-                ticketIndex = i;
-                ticket = copyOfTickets[i];
+                reserveIndex = i;
                 break;
             }
         }
 
-        Assert(!IsDefaultSeat(ticket.Seat), "Seat not found");
-        Assert(IsAvailable(ticket), "Ticket not available");
-        Assert(Message.Value >= ticket.Price, "Not enough funds");
+        Assert(reserveIndex >= 0, "Seat not found");
+        Assert(IsAvailable(tickets[reserveIndex]), "Ticket not available");
+        Assert(Message.Value >= tickets[reserveIndex].Price, "Not enough funds");
 
-        if (Message.Value > ticket.Price)
+        // refund accidental over-payment
+        if (Message.Value > tickets[reserveIndex].Price)
         {
-            Transfer(Message.Sender, Message.Value - ticket.Price);
+            Transfer(Message.Sender, Message.Value - tickets[reserveIndex].Price);
         }
 
-        copyOfTickets[ticketIndex].Address = Message.Sender;
-        copyOfTickets[ticketIndex].Secret = secret;
-        copyOfTickets[ticketIndex].CustomerIdentifier = customerIdentifier;
-        Tickets = copyOfTickets;
+        tickets[reserveIndex].Address = Message.Sender;
+        tickets[reserveIndex].Secret = secret;
+        tickets[reserveIndex].CustomerIdentifier = customerIdentifier;
+        Tickets = tickets;
 
-        Log(copyOfTickets[ticketIndex]);
+        Log(tickets[reserveIndex]);
     }
 
     /// <summary>
@@ -266,33 +273,33 @@ public class TicketContract_1_0_0 : SmartContract
         Assert(Block.Number + NoRefundBlockCount < EndOfSale, "Surpassed no refund block limit");
 
         var seat = Serializer.ToStruct<Seat>(seatIdentifierBytes);
-        var copyOfTickets = Tickets;
-        Ticket ticket = default(Ticket);
-        int ticketIndex = 0;
-        for (var i = 0; i < copyOfTickets.Length; i++)
+        var tickets = Tickets;
+        var releaseIndex = -1;
+
+        // find index of ticket in array
+        for (var i = 0; i < tickets.Length; i++)
         {
-            if (SeatsAreEqual(copyOfTickets[i].Seat, seat))
+            if (SeatsAreEqual(tickets[i].Seat, seat))
             {
-                ticketIndex = i;
-                ticket = copyOfTickets[i];
+                releaseIndex = i;
                 break;
             }
         }
 
-        Assert(!IsDefaultSeat(ticket.Seat), "Seat not found");
-        Assert(Message.Sender == ticket.Address, "You do not own this ticket");
+        Assert(releaseIndex >= 0, "Seat not found");
+        Assert(Message.Sender == tickets[releaseIndex].Address, "You do not own this ticket");
 
-        if (ticket.Price > ReleaseFee)
+        if (tickets[releaseIndex].Price > ReleaseFee)
         {
-            Transfer(Message.Sender, ticket.Price - ReleaseFee);
+            Transfer(Message.Sender, tickets[releaseIndex].Price - ReleaseFee);
         }
 
-        copyOfTickets[ticketIndex].Address = Address.Zero;
-        copyOfTickets[ticketIndex].Secret = null;
-        copyOfTickets[ticketIndex].CustomerIdentifier = null;
-        Tickets = copyOfTickets;
+        tickets[releaseIndex].Address = Address.Zero;
+        tickets[releaseIndex].Secret = null;
+        tickets[releaseIndex].CustomerIdentifier = null;
+        Tickets = tickets;
 
-        Log(copyOfTickets[ticketIndex]);
+        Log(tickets[releaseIndex]);
     }
 
     private Ticket SelectTicket(byte[] seatIdentifierBytes)
@@ -326,7 +333,7 @@ public class TicketContract_1_0_0 : SmartContract
 
     private Ticket[] ResetTickets(Ticket[] tickets)
     {
-        for (int i = 0; i < tickets.Length; i++)
+        for (var i = 0; i < tickets.Length; i++)
         {
             tickets[i].Price = 0;
             tickets[i].Address = Address.Zero;
@@ -411,12 +418,12 @@ public class TicketContract_1_0_0 : SmartContract
         public string Organiser;
 
         /// <summary>
-        /// Unix time of the show
+        /// Unix time (seconds) of the show
         /// </summary>
         public ulong Time;
 
         /// <summary>
-        /// Block at which the sale ends
+        /// Block height at which the sale ends
         /// </summary>
         public ulong EndOfSale;
     }
