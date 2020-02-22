@@ -9,9 +9,6 @@
   </ItemGroup>
     
   <ItemGroup>
-    <Compile Remove="ContractConfig.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <Folder Include="SimpleBuyOrder\" />
     <Folder Include="SimpleSellOrder\" />
     <Folder Include="JsonConfig\" />

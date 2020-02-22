@@ -17,10 +17,4 @@
   <ItemGroup>
     <ProjectReference Include="..\StratisSwap\StratisSwap.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="SwapWalletTests.cs" />
-    <Compile Remove="OrderBooksTests.cs" />
-    <Compile Remove="OrderBookTests.cs" />
-  </ItemGroup>
 </Project>
