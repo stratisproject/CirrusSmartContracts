@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stratis.SmartContracts" Version="1.2.1" />
+  </ItemGroup>
+    
+  <ItemGroup>
+    <Compile Remove="ContractConfig.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SimpleBuyOrder\" />
+    <Folder Include="SimpleSellOrder\" />
+    <Folder Include="JsonConfig\" />
+    <Folder Include="OrdersHistory\" />
+  </ItemGroup>
+</Project>
