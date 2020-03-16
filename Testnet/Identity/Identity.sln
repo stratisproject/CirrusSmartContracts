@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29403.142
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdentityContracts", "IdentityContracts\IdentityContracts.csproj", "{14109C3C-BA9A-40FF-9FCE-4145CFEB7E50}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Tests", "IdentityProvider.Tests\IdentityProvider.Tests.csproj", "{E3B06A8A-A6B4-48C9-8AB6-0F87234BC712}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdentityContracts.Tests", "IdentityProvider.Tests\IdentityContracts.Tests.csproj", "{E3B06A8A-A6B4-48C9-8AB6-0F87234BC712}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

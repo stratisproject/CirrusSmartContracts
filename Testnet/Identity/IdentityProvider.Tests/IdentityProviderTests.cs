@@ -1,47 +1,66 @@
 using Moq;
 using Stratis.SmartContracts;
+using Stratis.SmartContracts.CLR;
 using Xunit;
 
-namespace IdentityProvider.Tests
+namespace IdentityContracts.Tests
 {
     public class IdentityProviderTests
     {
-        private readonly Mock<ISmartContractState> MockContractState;
-        private readonly Mock<IPersistentState> MockPersistentState;
-        private readonly Mock<IContractLogger> MockContractLogger;
-        private readonly Mock<IInternalTransactionExecutor> MockInternalExecutor;
-        private readonly Address Buyer;
-        private readonly Address SellerOne;
-        private readonly Address SellerTwo;
-        private readonly Address Token;
-        private readonly Address ContractAddress;
-        private readonly ulong Amount;
-        private readonly ulong Price;
-        private readonly bool IsActive;
-        private const ulong DefaultAmount = 10;
-        private const ulong DefaultPrice = 10_000_000;
-        private const ulong DefaultValue = 100_000_000;
+        private readonly Mock<ISmartContractState> mockContractState;
+        private readonly Mock<IPersistentState> mockPersistentState;
+        private readonly Mock<IContractLogger> mockContractLogger;
+        private readonly Mock<IMessage> mockMessage;
+        private readonly Mock<IInternalTransactionExecutor> mockInternalExecutor;
+        private readonly Address owner;
+        private readonly Address claimReceiver;
+        private readonly Address attacker;
+        private readonly Address token;
+        private readonly Address contractAddress;
+        private const uint Topic1 = 1;
+        private static readonly byte[] ClaimData = new byte[]{ 0, 1, 3, 4 };
 
         public IdentityProviderTests()
         {
-            MockContractLogger = new Mock<IContractLogger>();
-            MockPersistentState = new Mock<IPersistentState>();
-            MockContractState = new Mock<ISmartContractState>();
-            MockInternalExecutor = new Mock<IInternalTransactionExecutor>();
-            MockContractState.Setup(x => x.PersistentState).Returns(MockPersistentState.Object);
-            MockContractState.Setup(x => x.ContractLogger).Returns(MockContractLogger.Object);
-            MockContractState.Setup(x => x.InternalTransactionExecutor).Returns(MockInternalExecutor.Object);
-            Buyer = "0x0000000000000000000000000000000000000001".HexToAddress();
-            SellerOne = "0x0000000000000000000000000000000000000002".HexToAddress();
-            SellerTwo = "0x0000000000000000000000000000000000000003".HexToAddress();
-            Token = "0x0000000000000000000000000000000000000004".HexToAddress();
-            ContractAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
+            this.mockContractLogger = new Mock<IContractLogger>();
+            this.mockPersistentState = new Mock<IPersistentState>();
+            this.mockContractState = new Mock<ISmartContractState>();
+            this.mockMessage = new Mock<IMessage>();
+            this.mockInternalExecutor = new Mock<IInternalTransactionExecutor>();
+            this.mockContractState.Setup(x => x.PersistentState).Returns(this.mockPersistentState.Object);
+            this.mockContractState.Setup(x => x.ContractLogger).Returns(this.mockContractLogger.Object);
+            this.mockContractState.Setup(x => x.Message).Returns(this.mockMessage.Object);
+            this.mockContractState.Setup(x => x.InternalTransactionExecutor).Returns(this.mockInternalExecutor.Object);
+            this.owner = "0x0000000000000000000000000000000000000001".HexToAddress();
+            this.claimReceiver = "0x0000000000000000000000000000000000000002".HexToAddress();
+            this.attacker = "0x0000000000000000000000000000000000000003".HexToAddress();
+            this.token = "0x0000000000000000000000000000000000000004".HexToAddress();
+            this.contractAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
         }
 
         [Fact]
-        public void OnlyOwnerCanCallPublicMethods()
+        public void OwnerGetsSet()
         {
+            this.mockMessage.Setup(x => x.Sender).Returns(this.owner);
 
+            var contract = new IdentityProvider(this.mockContractState.Object);
+
+            this.mockPersistentState.Verify(x => x.SetAddress("Owner", this.owner));
         }
+
+        [Fact]
+        public void NonOwnerCantCallStateUpdateMethods()
+        {
+            var contract = new IdentityProvider(this.mockContractState.Object);
+            this.mockPersistentState.Setup(x => x.GetAddress("Owner")).Returns(this.owner);
+
+            this.mockMessage.Setup(x => x.Sender).Returns(this.attacker);
+
+            Assert.Throws<SmartContractAssertException>(() => contract.AddClaim(this.claimReceiver, Topic1, ClaimData));
+            Assert.Throws<SmartContractAssertException>(() => contract.RemoveClaim(this.claimReceiver, Topic1));
+            Assert.Throws<SmartContractAssertException>(() => contract.ChangeOwner(this.attacker));
+        }
+
+
     }
 }
