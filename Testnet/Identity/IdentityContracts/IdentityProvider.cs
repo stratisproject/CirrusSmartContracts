@@ -23,10 +23,10 @@ public class IdentityProvider : SmartContract
         this.Owner = Message.Sender;
     }
 
-    public void ChangeOwner()
+    public void ChangeOwner(Address newOwner)
     {
         Assert(this.Owner == Message.Sender);
-        this.Owner = Message.Sender;
+        this.Owner = newOwner;
     }
 
     public void AddClaim(Address issuedTo, uint topic, byte[] data)
