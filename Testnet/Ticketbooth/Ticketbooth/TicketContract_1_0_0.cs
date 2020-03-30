@@ -214,7 +214,7 @@ public class TicketContract_1_0_0 : SmartContract
 
         Assert(reserveIndex >= 0, "Seat not found");
         Assert(IsAvailable(tickets[reserveIndex]), "Ticket not available");
-        Assert(Message.Value >= tickets[reserveIndex].Price, "Not enough funds");
+        Assert(Message.Value < tickets[reserveIndex].Price, "Not enough funds");
 
         // refund accidental over-payment
         if (Message.Value > tickets[reserveIndex].Price)
