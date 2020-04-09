@@ -1,5 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
+using System;
 
 [Deploy]
 public class ICOContract : SmartContract
@@ -58,18 +59,18 @@ public class ICOContract : SmartContract
     {
         Assert(OnSale, "ICO is completed.");
 
-        var (refundAmount, soldTokenAmount) = GetOverSale();
+        var overSaleInfo = GetOverSale();
 
-        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, soldTokenAmount });
+        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, overSaleInfo.SoldTokenAmount });
 
         var transferSuccess = result.Success && (bool)result.ReturnValue;
 
-        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = soldTokenAmount });
+        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = overSaleInfo.SoldTokenAmount });
 
         if (transferSuccess)
         {
-            if (refundAmount > 0) // refund over sale
-                Transfer(Message.Sender, refundAmount);
+            if (overSaleInfo.RefundAmount > 0) // refund over sale
+                Transfer(Message.Sender, overSaleInfo.RefundAmount);
         }
         else
         {
@@ -82,7 +83,7 @@ public class ICOContract : SmartContract
         return true;
     }
 
-    private (ulong refundAmount, ulong soldTokenAmount) GetOverSale()
+    private OverSaleInfo GetOverSale()
     {
         var tokenAmount = GetTokenAmount(Message.Value);
 
@@ -92,10 +93,16 @@ public class ICOContract : SmartContract
 
             var refund = (overSale * Satoshis) / Rate;
 
-            return (refundAmount: refund, soldTokenAmount: TokenBalance);
+            return new OverSaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
         }
 
-        return (refundAmount: 0, soldTokenAmount: tokenAmount);
+        return new OverSaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
+    }
+
+    public struct OverSaleInfo
+    {
+        public ulong RefundAmount;
+        public ulong SoldTokenAmount;
     }
 
     public struct StandardTokenCreationLog
