@@ -22,39 +22,59 @@ public class ICOContract : SmartContract
         set => this.PersistentState.SetAddress(nameof(StandardTokenAddress), value);
     }
 
-    public ICOContract(ISmartContractState smartContractState,
-        ulong totalSupply, string name, string symbol, ulong endBlockDuration, ulong rate) : base(smartContractState)
+    private ulong TokenBalance
     {
-        EndBlock = Block.Number + endBlockDuration;
-        Rate = rate;
+        get => this.PersistentState.GetUInt64(nameof(TokenBalance));
+        set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
+    }
+
+    private const ulong Satoshis = 100_000_000;
+    public bool OnSale => EndBlock >= this.Block.Number && TokenBalance > 0;
+    private ulong GetTokenAmount(ulong amount) => checked(amount * Rate) / Satoshis;
+
+    public ICOContract(ISmartContractState smartContractState,
+                        ulong totalSupply,
+                        string name,
+                        string symbol,
+                        ulong endBlockDuration,
+                        ulong rate
+                        ) : base(smartContractState)
+    {
 
         var result = Create<StandardToken>(0, new object[] { totalSupply, name, symbol });
 
-        Log(new ICOLog { Result = result.Success, StandardTokenAddress = result.NewContractAddress });
+        Log(new StandardTokenCreationLog { Result = result.Success, StandardTokenAddress = result.NewContractAddress });
 
         Assert(result.Success, "Creating token contract failed.");
 
+        EndBlock = Block.Number + endBlockDuration;
+        Rate = rate;
         StandardTokenAddress = result.NewContractAddress;
+        TokenBalance = totalSupply;
 
     }
 
-
-    public bool InSale => EndBlock >= this.Block.Number;
     public bool Invest()
     {
-        Assert(InSale, "ICO is completed.");
+        Assert(OnSale, "ICO is completed.");
 
-        var tokenAmount = checked(Message.Value * Rate) / 100_000_000;
+        var (refundAmount, soldTokenAmount) = GetOverSale();
 
-        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, tokenAmount });
-
-        Log(new InvestLog { Address = Message.Sender, CallSuccess = result.Success, TransferSuccess = (bool)result.ReturnValue, TokenAmount = tokenAmount });
+        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, soldTokenAmount });
 
         var transferSuccess = result.Success && (bool)result.ReturnValue;
 
-        if (!transferSuccess)
+        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = soldTokenAmount });
+
+        if (transferSuccess)
         {
-            var refundResult = Transfer(Message.Sender, Message.Value);
+            if (refundAmount > 0) // refund over sale
+                Transfer(Message.Sender, refundAmount);
+        }
+        else
+        {
+            //refund
+            _ = Transfer(Message.Sender, Message.Value);
 
             return false;
         }
@@ -62,13 +82,29 @@ public class ICOContract : SmartContract
         return true;
     }
 
-    public struct ICOLog
+    private (ulong refundAmount, ulong soldTokenAmount) GetOverSale()
+    {
+        var tokenAmount = GetTokenAmount(Message.Value);
+
+        if (tokenAmount > TokenBalance) // refund over sale
+        {
+            var overSale = tokenAmount - TokenBalance;
+
+            var refund = (overSale * Satoshis) / Rate;
+
+            return (refundAmount: refund, soldTokenAmount: TokenBalance);
+        }
+
+        return (refundAmount: 0, soldTokenAmount: tokenAmount);
+    }
+
+    public struct StandardTokenCreationLog
     {
         public bool Result;
         public Address StandardTokenAddress;
     }
 
-    public struct InvestLog
+    public struct TransferLog
     {
         public Address Address;
         public bool CallSuccess;
