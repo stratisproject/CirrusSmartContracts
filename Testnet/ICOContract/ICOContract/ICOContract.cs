@@ -23,7 +23,7 @@ public class ICOContract : SmartContract
         set => this.PersistentState.SetAddress(nameof(StandardTokenAddress), value);
     }
 
-    private ulong TokenBalance
+    public ulong TokenBalance
     {
         get => this.PersistentState.GetUInt64(nameof(TokenBalance));
         set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
@@ -32,6 +32,13 @@ public class ICOContract : SmartContract
     private const ulong Satoshis = 100_000_000;
     public bool OnSale => EndBlock >= this.Block.Number && TokenBalance > 0;
     private ulong GetTokenAmount(ulong amount) => checked(amount * Rate) / Satoshis;
+
+    public Address Owner
+    {
+        get => this.PersistentState.GetAddress(nameof(Owner));
+        set => this.PersistentState.SetAddress(nameof(Owner), value);
+    }
+
 
     public ICOContract(ISmartContractState smartContractState,
                         ulong totalSupply,
@@ -52,38 +59,46 @@ public class ICOContract : SmartContract
         Rate = rate;
         StandardTokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
-
+        Owner = Message.Sender;
     }
 
     public bool Invest()
     {
         Assert(OnSale, "ICO is completed.");
 
-        var overSaleInfo = GetOverSale();
+        var saleInfo = GetSaleInfo();
 
-        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, overSaleInfo.SoldTokenAmount });
+        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, saleInfo.SoldTokenAmount });
 
         var transferSuccess = result.Success && (bool)result.ReturnValue;
 
-        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = overSaleInfo.SoldTokenAmount });
+        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = saleInfo.SoldTokenAmount });
 
-        if (transferSuccess)
+        if (!transferSuccess)
         {
-            if (overSaleInfo.RefundAmount > 0) // refund over sale
-                Transfer(Message.Sender, overSaleInfo.RefundAmount);
-        }
-        else
-        {
-            //refund
-            _ = Transfer(Message.Sender, Message.Value);
-
+            Transfer(Message.Sender, Message.Value);//refund
             return false;
         }
+
+        TokenBalance -= saleInfo.SoldTokenAmount;
+
+        if (saleInfo.RefundAmount > 0) // refund over sale amount
+            Transfer(Message.Sender, saleInfo.RefundAmount);
 
         return true;
     }
 
-    private OverSaleInfo GetOverSale()
+    public bool TransferFunds(Address address)
+    {
+        Assert(!OnSale, "ICO is not ended yet.");
+        Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
+
+        var result = Transfer(address, Balance);
+
+        return result.Success;
+    }
+
+    private SaleInfo GetSaleInfo()
     {
         var tokenAmount = GetTokenAmount(Message.Value);
 
@@ -93,13 +108,13 @@ public class ICOContract : SmartContract
 
             var refund = (overSale * Satoshis) / Rate;
 
-            return new OverSaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
+            return new SaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
         }
 
-        return new OverSaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
+        return new SaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
     }
 
-    public struct OverSaleInfo
+    public struct SaleInfo
     {
         public ulong RefundAmount;
         public ulong SoldTokenAmount;
