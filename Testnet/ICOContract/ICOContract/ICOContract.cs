@@ -44,7 +44,7 @@ public class ICOContract : SmartContract
                         ulong totalSupply,
                         string name,
                         string symbol,
-                        ulong endBlockDuration,
+                        ulong durationBlocks,
                         ulong rate
                         ) : base(smartContractState)
     {
@@ -55,7 +55,7 @@ public class ICOContract : SmartContract
 
         Assert(result.Success, "Creating token contract failed.");
 
-        EndBlock = Block.Number + endBlockDuration;
+        EndBlock = Block.Number + durationBlocks;
         Rate = rate;
         StandardTokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
@@ -129,7 +129,6 @@ public class ICOContract : SmartContract
     public struct TransferLog
     {
         public Address Address;
-        public bool CallSuccess;
         public bool TransferSuccess;
         public ulong TokenAmount;
     }

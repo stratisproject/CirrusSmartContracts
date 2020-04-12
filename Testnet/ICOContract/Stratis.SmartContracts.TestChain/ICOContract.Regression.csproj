@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stratis.Bitcoin.Features.SmartContracts" Version="0.0.6-beta" />
+    <PackageReference Include="Stratis.SmartContracts.CLR.Validation" Version="0.0.3-beta" />
+    <PackageReference Include="Stratis.SmartContracts.Networks" Version="0.0.1-beta" />
+    <PackageReference Include="Stratis.SmartContracts.RuntimeObserver" Version="0.0.1-beta" />
+    <PackageReference Include="Stratis.SmartContracts.Tests.Common" Version="0.0.1-beta" />
+  </ItemGroup>
+
+</Project>
