@@ -1,4 +1,7 @@
-﻿using Stratis.SmartContracts.CLR.Compilation;
+﻿using NBitcoin;
+using Stratis.SmartContracts;
+using Stratis.SmartContracts.CLR.Compilation;
+using Stratis.SmartContracts.CLR.Local;
 using Xunit;
 
 namespace ICOContract.Regression.Tests
@@ -46,6 +49,52 @@ namespace ICOContract.Regression.Tests
                 // Call a method locally to check the state is as expected
                 var localCallResult = chain.CallContractMethodLocally(investorAddress, "TokenBalance", createResult.NewContractAddress, 0);
                 Assert.Equal(90ul, (ulong)localCallResult.Return);
+            }
+        }
+
+        [Fact]
+        public void OverSold_Investment_Test()
+        {
+            // Compile the contract we want to deploy
+            ContractCompilationResult compilationResult = ContractCompiler.CompileFile("ICOContract.cs");
+            Assert.True(compilationResult.Success);
+            using (var chain = new TestChain().Initialize())
+            {
+                // Get an address we can use for deploying
+                var owner = chain.PreloadedAddresses[0];
+                var totalSupply = 100ul;
+                var rate = 2ul;
+
+                var parameters = new object[] { totalSupply, "Gluon", "Glu", 1000ul /*duration*/, rate };
+
+                var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+
+                chain.MineBlocks(1);
+
+                var investor = chain.PreloadedAddresses[1];
+
+                var currentBalance = chain.GetBalance(investor);
+                var callResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, 60ul);
+                chain.MineBlocks(1);
+
+                var receipt = chain.GetReceipt(callResult.TransactionId);
+
+                var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
+
+                Assert.Equal(0ul, (ulong)localCallResult.Return); // All tokens are sold
+
+                var contractBalance = chain.GetBalance(createResult.NewContractAddress);
+
+                Assert.Equal(Money.Coins(50), contractBalance); // 50 allowed and 10 refunded
+
+                var tokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
+
+                // Verify investor's token balance
+                Assert.Equal(totalSupply, tokenBalance);
+
+                var refundAmount = currentBalance - chain.GetBalance(investor);
+
+                Assert.Equal(Money.Coins(50), Money.Satoshis(refundAmount)); // 60 invested, 50 spend and 10 refunded
             }
         }
     }

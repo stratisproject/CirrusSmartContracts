@@ -17,10 +17,10 @@ public class ICOContract : SmartContract
         set => this.PersistentState.SetUInt64(nameof(EndBlock), value);
     }
 
-    private Address StandardTokenAddress
+    public Address TokenAddress
     {
-        get => this.PersistentState.GetAddress(nameof(StandardTokenAddress));
-        set => this.PersistentState.SetAddress(nameof(StandardTokenAddress), value);
+        get => this.PersistentState.GetAddress(nameof(TokenAddress));
+        set => this.PersistentState.SetAddress(nameof(TokenAddress), value);
     }
 
     public ulong TokenBalance
@@ -57,7 +57,7 @@ public class ICOContract : SmartContract
 
         EndBlock = Block.Number + durationBlocks;
         Rate = rate;
-        StandardTokenAddress = result.NewContractAddress;
+        TokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
         Owner = Message.Sender;
     }
@@ -68,7 +68,7 @@ public class ICOContract : SmartContract
 
         var saleInfo = GetSaleInfo();
 
-        var result = Call(StandardTokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, saleInfo.SoldTokenAmount });
+        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, saleInfo.SoldTokenAmount });
 
         var transferSuccess = result.Success && (bool)result.ReturnValue;
 
@@ -96,6 +96,13 @@ public class ICOContract : SmartContract
         var result = Transfer(address, Balance);
 
         return result.Success;
+    }
+
+    public ulong GetBalance(Address address)
+    {
+        var result = Call(TokenAddress, 0, nameof(StandardToken.GetBalance), new object[] { address });
+
+        return (ulong)result.ReturnValue;
     }
 
     private SaleInfo GetSaleInfo()

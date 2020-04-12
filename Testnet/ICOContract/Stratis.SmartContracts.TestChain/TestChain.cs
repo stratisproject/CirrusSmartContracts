@@ -55,16 +55,16 @@ namespace ICOContract.Regression
             return this;
         }
 
-        public ulong GetBalanceInStratoshis(Base58Address address)
+        public Money GetBalance(Base58Address address)
         {
             // In case it's a contract address
             ulong contractBalance = this.FirstNode.GetContractBalance(address);
             if (contractBalance > 0)
             {
-                return contractBalance;
+                return Money.Satoshis(contractBalance);
             }
 
-            return this.FirstNode.GetWalletAddressBalance(address);
+            return Money.Satoshis(this.FirstNode.GetWalletAddressBalance(address));
         }
 
         public void MineBlocks(int num)
