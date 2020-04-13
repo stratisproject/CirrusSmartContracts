@@ -5,9 +5,9 @@ VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract", "ICOContract\ICOContract.csproj", "{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Regression", "Stratis.SmartContracts.TestChain\ICOContract.Regression.csproj", "{D4648FAE-8081-415E-98F3-6E893A7046CB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Integration", "Stratis.SmartContracts.TestChain\ICOContract.Integration.csproj", "{D4648FAE-8081-415E-98F3-6E893A7046CB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Regression.Tests", "ICOContract.TestChain.Tests\ICOContract.Regression.Tests.csproj", "{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Integration.Tests", "ICOContract.TestChain.Tests\ICOContract.Integration.Tests.csproj", "{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

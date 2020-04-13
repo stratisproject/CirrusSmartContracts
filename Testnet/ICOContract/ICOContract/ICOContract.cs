@@ -5,12 +5,7 @@ using System;
 [Deploy]
 public class ICOContract : SmartContract
 {
-    private ulong Rate
-    {
-        get => this.PersistentState.GetUInt64(nameof(Rate));
-        set => this.PersistentState.SetUInt64(nameof(Rate), value);
-    }
-
+    private const ulong Satoshis = 100_000_000;
     private ulong EndBlock
     {
         get => this.PersistentState.GetUInt64(nameof(EndBlock));
@@ -20,34 +15,40 @@ public class ICOContract : SmartContract
     public Address TokenAddress
     {
         get => this.PersistentState.GetAddress(nameof(TokenAddress));
-        set => this.PersistentState.SetAddress(nameof(TokenAddress), value);
+        private set => this.PersistentState.SetAddress(nameof(TokenAddress), value);
     }
 
     public ulong TokenBalance
     {
         get => this.PersistentState.GetUInt64(nameof(TokenBalance));
-        set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
+        private set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
     }
 
-    private const ulong Satoshis = 100_000_000;
     public bool OnSale => EndBlock >= this.Block.Number && TokenBalance > 0;
-    private ulong GetTokenAmount(ulong amount) => checked(amount * Rate) / Satoshis;
 
-    public Address Owner
+    private Address Owner
     {
         get => this.PersistentState.GetAddress(nameof(Owner));
         set => this.PersistentState.SetAddress(nameof(Owner), value);
     }
 
+    public SalePeriod[] SalePeriods
+    {
+        get => PersistentState.GetArray<SalePeriod>(nameof(SalePeriods));
+        private set => PersistentState.SetArray(nameof(SalePeriods), value);
+    }
 
     public ICOContract(ISmartContractState smartContractState,
                         ulong totalSupply,
                         string name,
                         string symbol,
-                        ulong durationBlocks,
-                        ulong rate
+                        byte[] salePeriods
                         ) : base(smartContractState)
     {
+        var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
+        
+
+        ValidatePeriods(periods);
 
         var result = Create<StandardToken>(0, new object[] { totalSupply, name, symbol });
 
@@ -55,12 +56,12 @@ public class ICOContract : SmartContract
 
         Assert(result.Success, "Creating token contract failed.");
 
-        EndBlock = Block.Number + durationBlocks;
-        Rate = rate;
         TokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
         Owner = Message.Sender;
+        SetPeriods(periods);
     }
+
 
     public bool Invest()
     {
@@ -105,20 +106,79 @@ public class ICOContract : SmartContract
         return (ulong)result.ReturnValue;
     }
 
+    private SalePeriod GetCurrentPeriod()
+    {
+        foreach (var period in SalePeriods)
+        {
+            if (period.EndBlock < Block.Number)
+                return period;
+        }
+
+        return default(SalePeriod);
+    }
+    private void SetPeriods(SalePeriodInput[] periods)
+    {
+        var salePeriods = ConvertSalePeriodInputs(periods);
+
+        SalePeriods = salePeriods;
+        EndBlock = salePeriods[salePeriods.Length - 1].EndBlock;
+    }
+
+    private SalePeriod[] ConvertSalePeriodInputs(SalePeriodInput[] periods)
+    {
+        var result = new SalePeriod[periods.Length];
+        var blockNumber = Block.Number;
+        for (int i = 0; i < periods.Length; i++)
+        {
+            var input = periods[i];
+            blockNumber += input.DurationBlocks;
+            result[i] = new SalePeriod
+            {
+                EndBlock = blockNumber,
+                Multiplier = input.Multiplier
+            };
+        }
+
+        return result;
+    }
+
+    private void ValidatePeriods(SalePeriodInput[] periods)
+    {
+        Assert(periods.Length > 0, "Please provide at least 1 sale period");
+        
+        foreach (var period in periods)
+        {
+            Assert(period.DurationBlocks > 0, "DurationBlocks should higher than zero");
+        }
+    }
+
     private SaleInfo GetSaleInfo()
     {
-        var tokenAmount = GetTokenAmount(Message.Value);
-
+        var period = GetCurrentPeriod();
+        var tokenAmount = checked(Message.Value * period.Multiplier) / Satoshis;
+        
         if (tokenAmount > TokenBalance) // refund over sale
         {
             var overSale = tokenAmount - TokenBalance;
 
-            var refund = (overSale * Satoshis) / Rate;
+            var refund = (overSale * Satoshis) / period.Multiplier;
 
             return new SaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
         }
 
         return new SaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
+    }
+
+    public struct SalePeriodInput
+    {
+        public ulong DurationBlocks;
+        public ulong Multiplier;
+    }
+
+    public struct SalePeriod
+    {
+        public ulong EndBlock;
+        public ulong Multiplier;
     }
 
     public struct SaleInfo

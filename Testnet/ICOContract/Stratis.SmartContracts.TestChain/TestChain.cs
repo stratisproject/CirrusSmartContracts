@@ -11,7 +11,7 @@ using Stratis.SmartContracts.CLR.Serialization;
 using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.Tests.Common.MockChain;
 
-namespace ICOContract.Regression
+namespace ICOContract.Integration
 {
     public class TestChain : IDisposable
     {

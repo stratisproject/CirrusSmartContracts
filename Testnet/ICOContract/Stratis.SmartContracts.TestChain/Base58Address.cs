@@ -1,4 +1,4 @@
-﻿namespace ICOContract.Regression
+﻿namespace ICOContract.Integration
 {
     /// <summary>
     /// Wrapper for addresses when interacting with <see cref="TestChain"/>.

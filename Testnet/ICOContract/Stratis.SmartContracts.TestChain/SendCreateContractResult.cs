@@ -1,6 +1,6 @@
 ﻿using NBitcoin;
 
-namespace ICOContract.Regression
+namespace ICOContract.Integration
 {
     public class SendCreateContractResult
     {
