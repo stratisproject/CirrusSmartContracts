@@ -151,7 +151,7 @@ public class ICOContractTests
     }
 
     [Fact]
-    public void Invest_When_TokenBalance_Is_Zero_ThowsAssertException()
+    public void Invest_Fails_If_TokenBalance_Is_Zero()
     {
         ulong totalSupply = 100;
         var amount = 1ul;
