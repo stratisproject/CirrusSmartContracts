@@ -8,7 +8,7 @@ using Xunit;
 
 namespace ICOContract.Integration.Tests
 {
-    public partial class ICOContractTests
+    public class ICOContractTests
     {
         [Fact]
         public void Deployment_Test()

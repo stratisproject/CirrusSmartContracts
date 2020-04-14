@@ -6,10 +6,10 @@ using System;
 public class ICOContract : SmartContract
 {
     private const ulong Satoshis = 100_000_000;
-    private ulong EndBlock
+    public ulong EndBlock
     {
         get => this.PersistentState.GetUInt64(nameof(EndBlock));
-        set => this.PersistentState.SetUInt64(nameof(EndBlock), value);
+        private set => this.PersistentState.SetUInt64(nameof(EndBlock), value);
     }
 
     public Address TokenAddress
@@ -24,12 +24,12 @@ public class ICOContract : SmartContract
         private set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
     }
 
-    public bool OnSale => EndBlock >= this.Block.Number && TokenBalance > 0;
+    public bool SaleOpen => EndBlock >= this.Block.Number && TokenBalance > 0;
 
-    private Address Owner
+    public Address Owner
     {
         get => this.PersistentState.GetAddress(nameof(Owner));
-        set => this.PersistentState.SetAddress(nameof(Owner), value);
+        private set => this.PersistentState.SetAddress(nameof(Owner), value);
     }
 
     public SalePeriod[] SalePeriods
@@ -50,7 +50,7 @@ public class ICOContract : SmartContract
 
         ValidatePeriods(periods);
 
-        var result = Create<StandardToken>(0, new object[] { totalSupply, name, symbol });
+        var result = Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol });
 
         Log(new StandardTokenCreationLog { Result = result.Success, StandardTokenAddress = result.NewContractAddress });
 
@@ -65,7 +65,8 @@ public class ICOContract : SmartContract
 
     public bool Invest()
     {
-        Assert(OnSale, "ICO is completed.");
+        Assert(SaleOpen, "ICO is completed.");
+        Assert(Message.Value > 0, "The amount should be higher than zero");
 
         var saleInfo = GetSaleInfo();
 
@@ -91,7 +92,7 @@ public class ICOContract : SmartContract
 
     public bool TransferFunds(Address address)
     {
-        Assert(!OnSale, "ICO is not ended yet.");
+        Assert(!SaleOpen, "ICO is not ended yet.");
         Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
 
         var result = Transfer(address, Balance);
@@ -110,7 +111,7 @@ public class ICOContract : SmartContract
     {
         foreach (var period in SalePeriods)
         {
-            if (period.EndBlock < Block.Number)
+            if (period.EndBlock >= Block.Number)
                 return period;
         }
 
@@ -157,11 +158,11 @@ public class ICOContract : SmartContract
         var period = GetCurrentPeriod();
         var tokenAmount = checked(Message.Value * period.Multiplier) / Satoshis;
         
-        if (tokenAmount > TokenBalance) // refund over sale
+        if (tokenAmount > TokenBalance) // refund over sold amount
         {
-            var overSale = tokenAmount - TokenBalance;
+            var overSold = tokenAmount - TokenBalance;
 
-            var refund = (overSale * Satoshis) / period.Multiplier;
+            var refund = (overSold * Satoshis) / period.Multiplier;
 
             return new SaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
         }
