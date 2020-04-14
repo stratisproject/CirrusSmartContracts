@@ -1,7 +1,5 @@
 ﻿using NBitcoin;
-using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR.Compilation;
-using Stratis.SmartContracts.CLR.Local;
 using Stratis.SmartContracts.CLR.Serialization;
 using Stratis.SmartContracts.Networks;
 using Xunit;
@@ -95,6 +93,9 @@ namespace ICOContract.Integration.Tests
                 // Get an address we can use for deploying
                 var owner = chain.PreloadedAddresses[0];
                 var totalSupply = 100ul;
+                var amount = 60ul;
+                var gasPrice = 100ul;
+                var fee = 0.01d;
                 var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
                 var periods = new SalePeriodInput[] { new SalePeriodInput { Multiplier = 2, DurationBlocks = 1 } };
@@ -107,8 +108,10 @@ namespace ICOContract.Integration.Tests
                 var investor = chain.PreloadedAddresses[1];
 
                 var currentBalance = chain.GetBalance(investor);
-                chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, 60ul);
+                var investResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, amount, gasPrice: gasPrice, feeAmount: fee);
                 chain.MineBlocks(1);
+
+                var receipt = chain.GetReceipt(investResult.TransactionId);
 
                 var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
 
@@ -123,9 +126,10 @@ namespace ICOContract.Integration.Tests
                 // Verify investor's token balance
                 Assert.Equal(totalSupply, investorTokenBalance);
 
-                var refundAmount = currentBalance - chain.GetBalance(investor);
+                var cost = Money.Satoshis(receipt.GasUsed * gasPrice) + Money.Coins((decimal)fee);
+                var spendAmount = currentBalance - chain.GetBalance(investor);
 
-                Assert.Equal(Money.Coins(50), Money.Satoshis(refundAmount)); // 60 invested, 50 spend and 10 refunded
+                Assert.Equal(Money.Coins(50) + cost, spendAmount); // 60 invested, 50 spend(allowed) + trx cost
             }
         }
     }

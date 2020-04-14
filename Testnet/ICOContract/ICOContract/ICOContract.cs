@@ -6,6 +6,7 @@ using System;
 public class ICOContract : SmartContract
 {
     private const ulong Satoshis = 100_000_000;
+
     public ulong EndBlock
     {
         get => this.PersistentState.GetUInt64(nameof(EndBlock));
@@ -61,7 +62,6 @@ public class ICOContract : SmartContract
         Owner = Message.Sender;
         SetPeriods(periods);
     }
-
 
     public bool Invest()
     {

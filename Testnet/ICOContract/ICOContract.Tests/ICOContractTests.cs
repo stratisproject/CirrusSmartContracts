@@ -7,6 +7,7 @@ using Stratis.SmartContracts.CLR.Serialization;
 using Xunit;
 using SalePeriod = ICOContract.SalePeriod;
 using SalePeriodInput = ICOContract.SalePeriodInput;
+
 public class ICOContractTests
 {
     private readonly Mock<ISmartContractState> mContractState;
@@ -118,7 +119,7 @@ public class ICOContractTests
     }
 
     [Fact]
-    public void Verify_OverSold_Investment()
+    public void Oversold_Tokens_Refunds_Oversold_Amount()
     {
         ulong totalSupply = 100;
         var amount = (ulong)Money.Coins(120).Satoshi;
@@ -147,5 +148,89 @@ public class ICOContractTests
 
         this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), 0)); // All tokens are sold
         this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.investor, (ulong)Money.Coins(20).Satoshi), Times.Once);
+    }
+
+    [Fact]
+    public void Invest_When_TokenBalance_Is_Zero_ThowsAssertException()
+    {
+        ulong totalSupply = 100;
+        var amount = 1ul;
+        var periodInputs = new[]
+        {
+            new SalePeriodInput { Multiplier = 1, DurationBlocks = 4 }
+        };
+
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+        this.mBlock.Setup(s => s.Number).Returns(1);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(0);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(5);
+        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+
+        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+
+        Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+    }
+
+    [Fact]
+    public void Invest_Fails_If_EndBlock_Reached()
+    {
+        ulong totalSupply = 100;
+        var amount = 1ul;
+        var periodInputs = new[]
+        {
+            new SalePeriodInput { Multiplier = 1, DurationBlocks = 4 }
+        };
+
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+        this.mBlock.Setup(s => s.Number).Returns(6);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(5);
+        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+
+        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+        var mContract = new Mock<ICOContract>();
+        Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+    }
+
+    [Fact]
+    public void Invest_Fails_If_Investment_Amount_Is_Zero()
+    {
+        ulong totalSupply = 100;
+        var amount = 0ul;
+        var periodInputs = new[]
+        {
+            new SalePeriodInput { Multiplier = 1, DurationBlocks = 2 }
+        };
+
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+        this.mBlock.Setup(s => s.Number).Returns(3);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(3);
+        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+
+        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+
+        Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+    }
+
+    [Fact]
+    public void Invest_Fails_If_Investment_TokenBalance_Is_Zero()
+    {
+        ulong totalSupply = 100;
+        var amount = 1ul;
+        var periodInputs = new[]
+        {
+            new SalePeriodInput { Multiplier = 1, DurationBlocks = 2 }
+        };
+
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+        this.mBlock.Setup(s => s.Number).Returns(3);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(0);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(3);
+        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+
+        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+
+        Assert.Throws<SmartContractAssertException>(() => contract.Invest());
     }
 }
