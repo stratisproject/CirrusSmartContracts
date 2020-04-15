@@ -15,12 +15,14 @@ public class ICOContractTests
     private readonly Mock<IContractLogger> mContractLogger;
     private readonly Mock<IInternalTransactionExecutor> mTransactionExecutor;
     private readonly Mock<IBlock> mBlock;
+    private readonly ICreateResult createSuccess;
     private Address owner;
     private Address investor;
     private Address contract;
     private Address tokenContract;
     private string name;
     private string symbol;
+    private ulong totalSupply;
     private Mock<Network> network;
     private Serializer serializer;
 
@@ -42,131 +44,98 @@ public class ICOContractTests
         this.investor = "0x0000000000000000000000000000000000000002".HexToAddress();
         this.contract = "0x0000000000000000000000000000000000000003".HexToAddress();
         this.tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
+        this.createSuccess = CreateResult.Succeeded(this.tokenContract);
         this.name = "Test Token";
         this.symbol = "TST";
+        this.totalSupply = 100;
     }
 
     [Fact]
     public void Constructor_Sets_Parameters()
     {
-        ulong totalSupply = 100_000;
-        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
-        this.mBlock.Setup(s => s.Number).Returns(1);
+        var (contract, periods) = this.Setup(contractCreation: this.createSuccess);
 
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 3, DurationBlocks = 1 },
-            new SalePeriodInput { Multiplier = 5, DurationBlocks = 2 }
-        };
-
-        var periods = new[]
-        {
-            new SalePeriod { Multiplier = 3, EndBlock = 2 },
-            new SalePeriod { Multiplier = 5, EndBlock = 4 }
-        };
-
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
-
-        // Verify that PersistentState was called with the total supply
-        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), totalSupply));
+        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), this.totalSupply));
         this.mPersistentState.Verify(s => s.SetAddress(nameof(ICOContract.Owner), this.owner));
         this.mPersistentState.Verify(s => s.SetAddress(nameof(ICOContract.TokenAddress), this.tokenContract));
         this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.EndBlock), 4));
         this.mPersistentState.Verify(s => s.SetArray(nameof(ICOContract.SalePeriods), periods));
     }
 
+    private (ICOContract contract, SalePeriod[] periods) Setup(ICreateResult contractCreation)
+    {
+        var periodInputs = new[]
+{
+            new SalePeriodInput { Multiplier = 3, DurationBlocks = 1 },
+            new SalePeriodInput { Multiplier = 5, DurationBlocks = 2 }
+        };
+        var periods = new[]
+        {
+            new SalePeriod { Multiplier = 3, EndBlock = 2 },
+            new SalePeriod { Multiplier = 5, EndBlock = 4 }
+        };
+
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+        this.mBlock.Setup(s => s.Number).Returns(1);
+        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(this.totalSupply);
+        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.Owner))).Returns(this.owner);
+        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.TokenAddress))).Returns(this.tokenContract);
+        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(periods[1].EndBlock);
+        this.mPersistentState.Setup(s => s.GetArray<SalePeriod>(nameof(ICOContract.SalePeriods))).Returns(periods);
+        var contract = new ICOContract(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+        return (contract, periods);
+    }
+
     [Fact]
     public void Verify_Investment()
     {
-        ulong totalSupply = 100;
         var amount = (ulong)Money.Coins(3).Satoshi;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 2, DurationBlocks = 1 },
-            new SalePeriodInput { Multiplier = 3, DurationBlocks = 2 }
-        };
 
-        var periods = new[]
-        {
-            new SalePeriod { Multiplier = 2, EndBlock = 2 },
-            new SalePeriod { Multiplier = 3, EndBlock = 4 }
-        };
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(1);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
-        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.Owner))).Returns(this.owner);
-        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.TokenAddress))).Returns(this.tokenContract);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(4);
-        this.mPersistentState.Setup(s => s.GetArray<SalePeriod>(nameof(ICOContract.SalePeriods))).Returns(periods);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
-        this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 6ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
 
-        Assert.True(contract.Invest());
-
-        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), totalSupply - 6));
-        this.mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
-
-        this.mBlock.Setup(s => s.Number).Returns(4);
         this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 9ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
         Assert.True(contract.Invest());
 
-        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), totalSupply - 9));
+        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), this.totalSupply - 9));
+        this.mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
+
+        this.mBlock.Setup(s => s.Number).Returns(4);
+        this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 15ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+
+        Assert.True(contract.Invest());
+
+        this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), this.totalSupply - 15));
         this.mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
     }
 
     [Fact]
-    public void Oversold_Tokens_Refunds_Oversold_Amount()
+    public void Invest_Refunds_Oversold_Tokens()
     {
-        ulong totalSupply = 100;
-        var amount = (ulong)Money.Coins(120).Satoshi;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 1, DurationBlocks = 1 }
-        };
-
-        var periods = new[]
-        {
-            new SalePeriod { Multiplier = 1, EndBlock = 2 },
-        };
+        this.totalSupply = 60;
+        var amount = (ulong)Money.Coins(30).Satoshi;
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(1);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
-        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.Owner))).Returns(this.owner);
-        this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.TokenAddress))).Returns(this.tokenContract);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(2);
-        this.mPersistentState.Setup(s => s.GetArray<SalePeriod>(nameof(ICOContract.SalePeriods))).Returns(periods);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
-        this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 100ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+        this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, this.totalSupply }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
         Assert.True(contract.Invest());
 
         this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), 0)); // All tokens are sold
-        this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.investor, (ulong)Money.Coins(20).Satoshi), Times.Once);
+        this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.investor, (ulong)Money.Coins(10).Satoshi), Times.Once);
     }
 
     [Fact]
     public void Invest_Fails_If_TokenBalance_Is_Zero()
     {
-        ulong totalSupply = 100;
         var amount = 1ul;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 1, DurationBlocks = 4 }
-        };
 
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(1);
         this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(0);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(5);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
-
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
 
         Assert.Throws<SmartContractAssertException>(() => contract.Invest());
     }
@@ -174,63 +143,48 @@ public class ICOContractTests
     [Fact]
     public void Invest_Fails_If_EndBlock_Reached()
     {
-        ulong totalSupply = 100;
         var amount = 1ul;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 1, DurationBlocks = 4 }
-        };
+
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(6);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(5);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+        this.mBlock.Setup(s => s.Number).Returns(5);
 
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
-        var mContract = new Mock<ICOContract>();
         Assert.Throws<SmartContractAssertException>(() => contract.Invest());
     }
 
     [Fact]
     public void Invest_Fails_If_Investment_Amount_Is_Zero()
     {
-        ulong totalSupply = 100;
         var amount = 0ul;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 1, DurationBlocks = 2 }
-        };
 
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(3);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(totalSupply);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(3);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
-
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
 
         Assert.Throws<SmartContractAssertException>(() => contract.Invest());
     }
 
     [Fact]
-    public void Invest_Fails_If_Investment_TokenBalance_Is_Zero()
+    public void WithdrawFunds_Fails_If_Caller_Is_Not_Owner()
     {
-        ulong totalSupply = 100;
-        var amount = 1ul;
-        var periodInputs = new[]
-        {
-            new SalePeriodInput { Multiplier = 1, DurationBlocks = 2 }
-        };
+        var amount = 0ul;
 
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
         this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-        this.mBlock.Setup(s => s.Number).Returns(3);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(0);
-        this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(3);
-        this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+        this.mBlock.Setup(m => m.Number).Returns(5);
 
-        var contract = new ICOContract(this.mContractState.Object, totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+        Assert.Throws<SmartContractAssertException>(() => contract.WithdrawFunds());
+    }
 
-        Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+    [Fact]
+    public void WithdrawFunds_Fails_If_Sale_Is_Open()
+    {
+        var amount = 0ul;
+
+        var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+        this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, amount));
+        this.mBlock.Setup(m => m.Number).Returns(4);
+
+        Assert.Throws<SmartContractAssertException>(() => contract.WithdrawFunds());
     }
 }

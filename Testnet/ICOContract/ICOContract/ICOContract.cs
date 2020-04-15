@@ -90,12 +90,12 @@ public class ICOContract : SmartContract
         return true;
     }
 
-    public bool TransferFunds(Address address)
+    public bool WithdrawFunds()
     {
-        Assert(!SaleOpen, "ICO is not ended yet.");
         Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
+        Assert(!SaleOpen, "ICO is not ended yet.");
 
-        var result = Transfer(address, Balance);
+        var result = Transfer(this.Owner, Balance);
 
         return result.Success;
     }
