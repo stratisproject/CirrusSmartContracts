@@ -157,14 +157,15 @@ public class ICOContract : SmartContract
     {
         var period = GetCurrentPeriod();
         var tokenAmount = checked(Message.Value * period.Multiplier) / Satoshis;
-        
-        if (tokenAmount > TokenBalance) // refund over sold amount
+
+        var tokenBalance = TokenBalance;
+        if (tokenAmount > tokenBalance) // refund over sold amount
         {
-            var overSold = tokenAmount - TokenBalance;
+            var overSold = tokenAmount - tokenBalance;
 
             var refund = (overSold * Satoshis) / period.Multiplier;
 
-            return new SaleInfo { RefundAmount = refund, SoldTokenAmount = TokenBalance };
+            return new SaleInfo { RefundAmount = refund, SoldTokenAmount = tokenBalance };
         }
 
         return new SaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
