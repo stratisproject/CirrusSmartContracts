@@ -3,6 +3,6 @@
     public struct SalePeriodInput
     {
         public ulong DurationBlocks;
-        public ulong Multiplier;
+        public ulong PricePerToken;
     }
 }

@@ -5,8 +5,6 @@ using System;
 [Deploy]
 public class ICOContract : SmartContract
 {
-    private const ulong Satoshis = 100_000_000;
-
     public ulong EndBlock
     {
         get => this.PersistentState.GetUInt64(nameof(EndBlock));
@@ -38,6 +36,8 @@ public class ICOContract : SmartContract
         get => PersistentState.GetArray<SalePeriod>(nameof(SalePeriods));
         private set => PersistentState.SetArray(nameof(SalePeriods), value);
     }
+    
+    private const ulong Satoshis = 100_000_000;
 
     public ICOContract(ISmartContractState smartContractState,
                         ulong totalSupply,
@@ -53,9 +53,10 @@ public class ICOContract : SmartContract
 
         var result = Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol });
 
-        Log(new StandardTokenCreationLog { Result = result.Success, StandardTokenAddress = result.NewContractAddress });
-
         Assert(result.Success, "Creating token contract failed.");
+
+        Log(new ICOSetupLog { StandardTokenAddress = result.NewContractAddress });
+
 
         TokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
@@ -70,21 +71,15 @@ public class ICOContract : SmartContract
 
         var saleInfo = GetSaleInfo();
 
-        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, saleInfo.SoldTokenAmount });
+        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, saleInfo.TokenAmount });
 
-        var transferSuccess = result.Success && (bool)result.ReturnValue;
+        Assert(result.Success && (bool)result.ReturnValue, "Token transfer failed.");
 
-        Log(new TransferLog { Address = Message.Sender, TransferSuccess = transferSuccess, TokenAmount = saleInfo.SoldTokenAmount });
+        Log(new InvestLog { Sender = Message.Sender, Invested = saleInfo.Invested, TokenAmount = saleInfo.TokenAmount, Refunded = saleInfo.RefundAmount });
 
-        if (!transferSuccess)
-        {
-            Transfer(Message.Sender, Message.Value);//refund
-            return false;
-        }
+        TokenBalance -= saleInfo.TokenAmount;
 
-        TokenBalance -= saleInfo.SoldTokenAmount;
-
-        if (saleInfo.RefundAmount > 0) // refund over sale amount
+        if (saleInfo.RefundAmount > 0) // refund over sold amount
             Transfer(Message.Sender, saleInfo.RefundAmount);
 
         return true;
@@ -136,7 +131,7 @@ public class ICOContract : SmartContract
             result[i] = new SalePeriod
             {
                 EndBlock = blockNumber,
-                Multiplier = input.Multiplier
+                PricePerToken = input.PricePerToken
             };
         }
 
@@ -156,50 +151,53 @@ public class ICOContract : SmartContract
     private SaleInfo GetSaleInfo()
     {
         var period = GetCurrentPeriod();
-        var tokenAmount = checked(Message.Value * period.Multiplier) / Satoshis;
+
+        var tokenAmount = Message.Value / period.PricePerToken;
 
         var tokenBalance = TokenBalance;
         if (tokenAmount > tokenBalance) // refund over sold amount
         {
-            var overSold = tokenAmount - tokenBalance;
-
-            var refund = (overSold * Satoshis) / period.Multiplier;
-
-            return new SaleInfo { RefundAmount = refund, SoldTokenAmount = tokenBalance };
+            var spend = checked(tokenBalance * period.PricePerToken);
+            var refund = Message.Value - spend;
+                        
+            return new SaleInfo { Invested = spend, RefundAmount = refund, TokenAmount = tokenBalance };
         }
 
-        return new SaleInfo { RefundAmount = 0, SoldTokenAmount = tokenAmount };
+        return new SaleInfo { Invested = Message.Value, TokenAmount = tokenAmount };
     }
 
     public struct SalePeriodInput
     {
         public ulong DurationBlocks;
-        public ulong Multiplier;
+        public ulong PricePerToken;
     }
 
     public struct SalePeriod
     {
         public ulong EndBlock;
-        public ulong Multiplier;
+        public ulong PricePerToken;
     }
 
     public struct SaleInfo
     {
+        public ulong Invested;
         public ulong RefundAmount;
-        public ulong SoldTokenAmount;
+        public ulong TokenAmount;
+
     }
 
-    public struct StandardTokenCreationLog
+    public struct ICOSetupLog
     {
-        public bool Result;
         public Address StandardTokenAddress;
     }
 
-    public struct TransferLog
+    public struct InvestLog
     {
-        public Address Address;
-        public bool TransferSuccess;
+        [Index]
+        public Address Sender;
+        public ulong Invested;
         public ulong TokenAmount;
+        public ulong Refunded;
     }
 }
 

@@ -8,6 +8,8 @@ namespace ICOContract.Integration.Tests
 {
     public class ICOContractTests
     {
+        private const ulong Satoshis = 100_000_000;
+
         [Fact]
         public void Deployment_Test()
         {
@@ -20,7 +22,7 @@ namespace ICOContract.Integration.Tests
                 var totalSupply = 100ul;
                 var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
-                var periods = new SalePeriodInput[] { new SalePeriodInput { Multiplier = 2, DurationBlocks = 1 } };
+                var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = 2, DurationBlocks = 1 } };
                 var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
                 var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
@@ -44,49 +46,49 @@ namespace ICOContract.Integration.Tests
             // Compile the contract we want to deploy
             ContractCompilationResult compilationResult = ContractCompiler.CompileFile("ICOContract.cs");
             Assert.True(compilationResult.Success);
-            using (var chain = new TestChain().Initialize())
-            {
-                // Get an address we can use for deploying
-                var owner = chain.PreloadedAddresses[0];
-                var totalSupply = 100ul;
-                var amount = 20ul;
-                var gasPrice = 100ul;
-                var fee = 0.01d;
-                var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
-                var periods = new SalePeriodInput[] { new SalePeriodInput { Multiplier = 2, DurationBlocks = 1 } };
-                var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
+            using var chain = new TestChain().Initialize();
 
-                var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+            // Get an address we can use for deploying
+            var owner = chain.PreloadedAddresses[0];
+            var totalSupply = 100ul;
+            var amount = 10.00;
+            var gasPrice = 100ul;
+            var fee = 0.01d;
+            var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
-                chain.MineBlocks(1);
+            var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = (ulong)(0.4 * Satoshis), DurationBlocks = 1 } };
+            var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
-                var investor = chain.PreloadedAddresses[1];
+            var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
 
-                var currentBalance = chain.GetBalance(investor);
-                var investResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, amount, gasPrice: gasPrice, feeAmount: fee);
-                chain.MineBlocks(1);
+            chain.MineBlocks(1);
 
-                var receipt = chain.GetReceipt(investResult.TransactionId);
+            var investor = chain.PreloadedAddresses[1];
 
-                var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
+            var currentBalance = chain.GetBalance(investor);
+            var investResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, amount, gasPrice: gasPrice, feeAmount: fee);
+            chain.MineBlocks(1);
 
-                Assert.Equal(60ul, (ulong)localCallResult.Return); // All tokens are sold
+            var receipt = chain.GetReceipt(investResult.TransactionId);
 
-                var contractBalance = chain.GetBalance(createResult.NewContractAddress);
+            var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
 
-                Assert.Equal(Money.Coins(20), contractBalance);
+            Assert.Equal(75ul, (ulong)localCallResult.Return);
 
-                var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
+            var contractBalance = chain.GetBalance(createResult.NewContractAddress);
 
-                // Verify investor's token balance
-                Assert.Equal(40ul, investorTokenBalance);
+            Assert.Equal(Money.Coins((ulong)amount), contractBalance);
 
-                var transactionCost = Money.Satoshis(receipt.GasUsed * gasPrice) + Money.Coins((decimal)fee);
-                var spendAmount = currentBalance - chain.GetBalance(investor);
+            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
 
-                Assert.Equal(Money.Coins(20) + transactionCost, spendAmount);
-            }
+            // Verify investor's token balance
+            Assert.Equal(25ul, investorTokenBalance);
+
+            var transactionCost = Money.Satoshis(receipt.GasUsed * gasPrice) + Money.Coins((decimal)fee);
+            var spendAmount = currentBalance - chain.GetBalance(investor);
+
+            Assert.Equal(Money.Coins((decimal)amount) + transactionCost, spendAmount);
         }
 
         [Fact]
@@ -95,49 +97,47 @@ namespace ICOContract.Integration.Tests
             // Compile the contract we want to deploy
             ContractCompilationResult compilationResult = ContractCompiler.CompileFile("ICOContract.cs");
             Assert.True(compilationResult.Success);
-            using (var chain = new TestChain().Initialize())
-            {
-                // Get an address we can use for deploying
-                var owner = chain.PreloadedAddresses[0];
-                var totalSupply = 100ul;
-                var amount = 60ul;
-                var gasPrice = 100ul;
-                var fee = 0.01d;
-                var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
+            using var chain = new TestChain().Initialize();
+            // Get an address we can use for deploying
+            var owner = chain.PreloadedAddresses[0];
+            var totalSupply = 50ul;
+            var amount = 20;
+            var gasPrice = 100ul;
+            var fee = 0.01d;
+            var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
-                var periods = new SalePeriodInput[] { new SalePeriodInput { Multiplier = 2, DurationBlocks = 1 } };
-                var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
+            var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = (ulong)Money.Coins(0.2m).Satoshi, DurationBlocks = 1 } };
+            var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
-                var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+            var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
 
-                chain.MineBlocks(1);
+            chain.MineBlocks(1);
 
-                var investor = chain.PreloadedAddresses[1];
+            var investor = chain.PreloadedAddresses[1];
 
-                var currentBalance = chain.GetBalance(investor);
-                var investResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, amount, gasPrice: gasPrice, feeAmount: fee);
-                chain.MineBlocks(1);
+            var currentBalance = chain.GetBalance(investor);
+            var investResult = chain.SendCallContractTransaction(investor, "Invest", createResult.NewContractAddress, amount, gasPrice: gasPrice, feeAmount: fee);
+            chain.MineBlocks(1);
 
-                var receipt = chain.GetReceipt(investResult.TransactionId);
+            var receipt = chain.GetReceipt(investResult.TransactionId);
 
-                var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
+            var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
 
-                Assert.Equal(0ul, (ulong)localCallResult.Return); // All tokens are sold
+            Assert.Equal(0ul, (ulong)localCallResult.Return); // All tokens are sold
 
-                var contractBalance = chain.GetBalance(createResult.NewContractAddress);
+            var contractBalance = chain.GetBalance(createResult.NewContractAddress);
 
-                Assert.Equal(Money.Coins(50), contractBalance); // 50 allowed and 10 refunded
+            Assert.Equal(Money.Coins(10), contractBalance); // 10 allowed and 10 refunded
 
-                var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
+            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
 
-                // Verify investor's token balance
-                Assert.Equal(totalSupply, investorTokenBalance);
+            // Verify investor's token balance
+            Assert.Equal(totalSupply, investorTokenBalance);
 
-                var cost = Money.Satoshis(receipt.GasUsed * gasPrice) + Money.Coins((decimal)fee);
-                var spendAmount = currentBalance - chain.GetBalance(investor);
+            var cost = Money.Satoshis(receipt.GasUsed * gasPrice) + Money.Coins((decimal)fee);
+            var spendAmount = currentBalance - chain.GetBalance(investor);
 
-                Assert.Equal(Money.Coins(50) + cost, spendAmount); // 60 invested, 50 spend(allowed) + trx cost
-            }
+            Assert.Equal(Money.Coins(10) + cost, spendAmount); // 20 invested, 10 spend(allowed) + trx cost
         }
     }
 }
