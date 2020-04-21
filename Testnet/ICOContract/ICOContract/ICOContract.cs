@@ -159,7 +159,7 @@ public class ICOContract : SmartContract
         {
             var spend = checked(tokenBalance * period.PricePerToken);
             var refund = Message.Value - spend;
-                        
+
             return new SaleInfo { Invested = spend, RefundAmount = refund, TokenAmount = tokenBalance };
         }
 
