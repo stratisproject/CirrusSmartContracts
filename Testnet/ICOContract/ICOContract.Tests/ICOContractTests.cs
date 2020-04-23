@@ -11,6 +11,8 @@
 
     public class ICOContractTests
     {
+        private const ulong Satoshis = 100_000_000;
+
         private readonly Mock<ISmartContractState> mContractState;
         private readonly Mock<IPersistentState> mPersistentState;
         private readonly Mock<IContractLogger> mContractLogger;
@@ -26,7 +28,6 @@
         private ulong totalSupply;
         private Mock<Network> network;
         private Serializer serializer;
-        private const ulong satoshis = 100_000_000;
 
         public ICOContractTests()
         {
@@ -49,7 +50,7 @@
             this.createSuccess = CreateResult.Succeeded(this.tokenContract);
             this.name = "Test Token";
             this.symbol = "TST";
-            this.totalSupply = 100 * satoshis;
+            this.totalSupply = 100 * Satoshis;
         }
 
         [Fact]
@@ -68,13 +69,13 @@
         {
             var periodInputs = new[]
             {
-                new SalePeriodInput { PricePerToken = 3 * satoshis, DurationBlocks = 1 },
-                new SalePeriodInput { PricePerToken = 5 * satoshis, DurationBlocks = 2 }
+                new SalePeriodInput { PricePerToken = 3 * Satoshis, DurationBlocks = 1 },
+                new SalePeriodInput { PricePerToken = 5 * Satoshis, DurationBlocks = 2 }
             };
             var periods = new[]
             {
-                new SalePeriod { PricePerToken = 3 * satoshis, EndBlock = 2 },
-                new SalePeriod { PricePerToken = 5 * satoshis, EndBlock = 4 }
+                new SalePeriod { PricePerToken = 3 * Satoshis, EndBlock = 2 },
+                new SalePeriod { PricePerToken = 5 * Satoshis, EndBlock = 4 }
             };
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
@@ -92,7 +93,7 @@
         [Fact]
         public void Verify_Investment()
         {
-            var amount = 15 * satoshis;
+            var amount = 15 * Satoshis;
 
             var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
@@ -118,7 +119,7 @@
         public void Invest_Refunds_Oversold_Tokens()
         {
             this.totalSupply = 60;
-            var amount = 190 * satoshis;
+            var amount = 190 * Satoshis;
             var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
@@ -127,13 +128,13 @@
             Assert.True(contract.Invest());
 
             this.mPersistentState.Verify(s => s.SetUInt64(nameof(ICOContract.TokenBalance), 0)); // All tokens are sold
-            this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.investor, 10 * satoshis), Times.Once);
+            this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.investor, 10 * Satoshis), Times.Once);
         }
 
         [Fact]
         public void Invest_Fails_If_TokenBalance_Is_Zero()
         {
-            var amount = 1 * satoshis;
+            var amount = 1 * Satoshis;
 
             var (contract, _) = this.Setup(contractCreation: this.createSuccess);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
@@ -145,7 +146,7 @@
         [Fact]
         public void Invest_Fails_If_EndBlock_Reached()
         {
-            var amount = 1 * satoshis;
+            var amount = 1 * Satoshis;
 
             var (contract, _) = this.Setup(contractCreation: this.createSuccess);
 
