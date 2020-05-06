@@ -40,14 +40,13 @@ public class ICOContract : SmartContract
     private const ulong Satoshis = 100_000_000;
 
     public ICOContract(ISmartContractState smartContractState,
-                        ulong totalSupply,
-                        string name,
-                        string symbol,
-                        byte[] salePeriods
-                        ) : base(smartContractState)
+                       Address owner,
+                       ulong totalSupply,
+                       string name,
+                       string symbol,
+                       byte[] salePeriods) : base(smartContractState)
     {
         var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
-        
 
         ValidatePeriods(periods);
 
@@ -60,7 +59,7 @@ public class ICOContract : SmartContract
 
         TokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
-        Owner = Message.Sender;
+        Owner = this.Owner;
         SetPeriods(periods);
     }
 

@@ -18,21 +18,22 @@ namespace ICOContract.Integration.Tests
             Assert.True(compilationResult.Success);
             using (var chain = new TestChain().Initialize())
             {
-                var owner = chain.PreloadedAddresses[0];
+                var sender = chain.PreloadedAddresses[0];
+                var owner = chain.PreloadedAddresses[1];
                 var totalSupply = 100ul;
                 var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
                 var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = 2, DurationBlocks = 1 } };
-                var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
+                var parameters = new object[] { owner, totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
-                var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+                var createResult = chain.SendCreateContractTransaction(sender, compilationResult.Compilation, 0, parameters);
 
                 // Mine a block which will contain our sent transaction
                 chain.MineBlocks(1);
 
                 // Check the receipt to see that contract deployment was successful
                 var receipt = chain.GetReceipt(createResult.TransactionId);
-                Assert.Equal(owner, receipt.From);
+                Assert.Equal(sender, receipt.From);
 
                 // Check that the code is indeed saved on-chain
                 var savedCode = chain.GetCode(createResult.NewContractAddress);
@@ -50,7 +51,8 @@ namespace ICOContract.Integration.Tests
             using var chain = new TestChain().Initialize();
 
             // Get an address we can use for deploying
-            var owner = chain.PreloadedAddresses[0];
+            var sender = chain.PreloadedAddresses[0];
+            var owner = chain.PreloadedAddresses[1];
             var totalSupply = 100ul;
             var amount = 10.00;
             var gasPrice = 100ul;
@@ -58,9 +60,9 @@ namespace ICOContract.Integration.Tests
             var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
             var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = (ulong)(0.4 * Satoshis), DurationBlocks = 1 } };
-            var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
+            var parameters = new object[] { owner, totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
-            var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+            var createResult = chain.SendCreateContractTransaction(sender, compilationResult.Compilation, 0, parameters);
 
             chain.MineBlocks(1);
 
@@ -72,7 +74,7 @@ namespace ICOContract.Integration.Tests
 
             var receipt = chain.GetReceipt(investResult.TransactionId);
 
-            var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
+            var localCallResult = chain.CallContractMethodLocally(sender, "TokenBalance", createResult.NewContractAddress, 0);
 
             Assert.Equal(75ul, (ulong)localCallResult.Return);
 
@@ -80,7 +82,7 @@ namespace ICOContract.Integration.Tests
 
             Assert.Equal(Money.Coins((ulong)amount), contractBalance);
 
-            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
+            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(sender, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
 
             // Verify investor's token balance
             Assert.Equal(25ul, investorTokenBalance);
@@ -99,7 +101,8 @@ namespace ICOContract.Integration.Tests
             Assert.True(compilationResult.Success);
             using var chain = new TestChain().Initialize();
             // Get an address we can use for deploying
-            var owner = chain.PreloadedAddresses[0];
+            var sender = chain.PreloadedAddresses[0];
+            var owner = chain.PreloadedAddresses[1];
             var totalSupply = 50ul;
             var amount = 20;
             var gasPrice = 100ul;
@@ -107,9 +110,9 @@ namespace ICOContract.Integration.Tests
             var serializer = new Serializer(new ContractPrimitiveSerializer(new SmartContractsPoARegTest()));
 
             var periods = new SalePeriodInput[] { new SalePeriodInput { PricePerToken = (ulong)Money.Coins(0.2m).Satoshi, DurationBlocks = 1 } };
-            var parameters = new object[] { totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
+            var parameters = new object[] { owner, totalSupply, "Gluon", "Glu", serializer.Serialize(periods) };
 
-            var createResult = chain.SendCreateContractTransaction(owner, compilationResult.Compilation, 0, parameters);
+            var createResult = chain.SendCreateContractTransaction(sender, compilationResult.Compilation, 0, parameters);
 
             chain.MineBlocks(1);
 
@@ -121,7 +124,7 @@ namespace ICOContract.Integration.Tests
 
             var receipt = chain.GetReceipt(investResult.TransactionId);
 
-            var localCallResult = chain.CallContractMethodLocally(owner, "TokenBalance", createResult.NewContractAddress, 0);
+            var localCallResult = chain.CallContractMethodLocally(sender, "TokenBalance", createResult.NewContractAddress, 0);
 
             Assert.Equal(0ul, (ulong)localCallResult.Return); // All tokens are sold
 
@@ -129,7 +132,7 @@ namespace ICOContract.Integration.Tests
 
             Assert.Equal(Money.Coins(10), contractBalance); // 10 allowed and 10 refunded
 
-            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(owner, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
+            var investorTokenBalance = (ulong)chain.CallContractMethodLocally(sender, "GetBalance", createResult.NewContractAddress, 0, new object[] { investor }).Return;
 
             // Verify investor's token balance
             Assert.Equal(totalSupply, investorTokenBalance);

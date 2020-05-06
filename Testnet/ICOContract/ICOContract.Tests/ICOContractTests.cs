@@ -19,6 +19,7 @@
         private readonly Mock<IInternalTransactionExecutor> mTransactionExecutor;
         private readonly Mock<IBlock> mBlock;
         private readonly ICreateResult createSuccess;
+        private Address sender;
         private Address owner;
         private Address investor;
         private Address contract;
@@ -43,10 +44,11 @@
             this.mContractState.Setup(s => s.InternalTransactionExecutor).Returns(this.mTransactionExecutor.Object);
             this.serializer = new Serializer(new ContractPrimitiveSerializer(this.network.Object));
             this.mContractState.Setup(s => s.Serializer).Returns(this.serializer);
-            this.owner = "0x0000000000000000000000000000000000000001".HexToAddress();
-            this.investor = "0x0000000000000000000000000000000000000002".HexToAddress();
-            this.contract = "0x0000000000000000000000000000000000000003".HexToAddress();
-            this.tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
+            this.sender = "0x0000000000000000000000000000000000000001".HexToAddress();
+            this.owner = "0x0000000000000000000000000000000000000002".HexToAddress();
+            this.investor = "0x0000000000000000000000000000000000000003".HexToAddress();
+            this.contract = "0x0000000000000000000000000000000000000004".HexToAddress();
+            this.tokenContract = "0x0000000000000000000000000000000000000005".HexToAddress();
             this.createSuccess = CreateResult.Succeeded(this.tokenContract);
             this.name = "Test Token";
             this.symbol = "TST";
@@ -86,7 +88,7 @@
             this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.TokenAddress))).Returns(this.tokenContract);
             this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.EndBlock))).Returns(periods[1].EndBlock);
             this.mPersistentState.Setup(s => s.GetArray<SalePeriod>(nameof(ICOContract.SalePeriods))).Returns(periods);
-            var contract = new ICOContract(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
+            var contract = new ICOContract(this.mContractState.Object, this.owner, this.totalSupply, this.name, this.symbol, this.serializer.Serialize(periodInputs));
             return (contract, periods);
         }
 
