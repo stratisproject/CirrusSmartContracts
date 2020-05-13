@@ -1,4 +1,4 @@
-﻿﻿# ICO Smart Contract
+# ICO Smart Contract
 
 **Contract Hash**
 ```
