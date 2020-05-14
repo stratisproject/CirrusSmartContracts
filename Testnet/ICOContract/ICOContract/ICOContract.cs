@@ -94,6 +94,18 @@ public class ICOContract : SmartContract
         return result.Success;
     }
 
+    public bool WithdrawTokens(Address address)
+    {
+        Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
+        Assert(!SaleOpen, "ICO is not ended yet.");
+
+        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { address, TokenBalance });
+
+        Assert(result.Success && (bool)result.ReturnValue, "Token transfer failed.");
+
+        return true;
+    }
+
     public ulong GetBalance(Address address)
     {
         var result = Call(TokenAddress, 0, nameof(StandardToken.GetBalance), new object[] { address });
