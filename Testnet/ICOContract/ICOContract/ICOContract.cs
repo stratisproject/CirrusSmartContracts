@@ -36,7 +36,7 @@ public class ICOContract : SmartContract
         get => PersistentState.GetArray<SalePeriod>(nameof(SalePeriods));
         private set => PersistentState.SetArray(nameof(SalePeriods), value);
     }
-    
+
     private const ulong Satoshis = 100_000_000;
 
     public ICOContract(ISmartContractState smartContractState,
@@ -94,12 +94,12 @@ public class ICOContract : SmartContract
         return result.Success;
     }
 
-    public bool WithdrawTokens(Address address)
+    public bool WithdrawTokens()
     {
-        Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
+        Assert(Message.Sender == Owner, "Only contract owner can transfer tokens.");
         Assert(!SaleOpen, "ICO is not ended yet.");
 
-        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { address, TokenBalance });
+        var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, TokenBalance });
 
         Assert(result.Success && (bool)result.ReturnValue, "Token transfer failed.");
 
@@ -152,7 +152,7 @@ public class ICOContract : SmartContract
     private void ValidatePeriods(SalePeriodInput[] periods)
     {
         Assert(periods.Length > 0, "Please provide at least 1 sale period");
-        
+
         foreach (var period in periods)
         {
             Assert(period.DurationBlocks > 0, "DurationBlocks should higher than zero");
