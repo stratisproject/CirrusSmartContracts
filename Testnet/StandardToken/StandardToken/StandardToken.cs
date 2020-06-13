@@ -13,13 +13,21 @@ public class StandardToken : SmartContract, IStandardToken
     /// <param name="totalSupply">The total token supply.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
-    public StandardToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol)
+    /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
+    public StandardToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol, uint decimals)
         : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
+        this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
+    }
+
+    public uint Decimals
+    {
+        get => PersistentState.GetUInt32(nameof(this.Decimals));
+        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
     }
 
     public string Symbol
