@@ -3,7 +3,6 @@ using Moq;
 using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.CLR;
 using Xunit;
-using System.Reactive.Concurrency;
 
 namespace Stratis.SmartContracts.Samples.Tests
 {
