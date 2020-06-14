@@ -63,6 +63,8 @@ public class ICOContract : SmartContract
         SetPeriods(periods);
     }
 
+    public override void Receive() => Invest();
+    
     public bool Invest()
     {
         Assert(SaleOpen, "ICO is completed.");
