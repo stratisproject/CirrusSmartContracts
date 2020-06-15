@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Data;
-using System.Diagnostics;
-using System.Security;
-using System.Xml.Schema;
-using Stratis.SmartContracts;
+﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
 
 [Deploy]
@@ -74,6 +68,13 @@ public class DividendToken : StandardToken
         return account;
     }
 
+    public ulong GetDividends() => GetDividends(Message.Sender);
+
+    public ulong GetDividends(Address address)
+    {
+        var account = GetAccount(address);
+        return account.Balance;
+    }
 
     /// <summary>
     /// Withdraws all dividends
