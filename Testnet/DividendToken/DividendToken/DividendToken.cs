@@ -8,53 +8,47 @@ using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
 
 [Deploy]
-public class DividendToken : SmartContract
+public class DividendToken : StandardToken
 {
     public ulong Dividends
     {
         get => PersistentState.GetUInt64(nameof(this.Dividends));
         private set => PersistentState.SetUInt64(nameof(this.Dividends), value);
     }
-    private IStandardToken token;
 
     public Account GetAccount(Address address) => PersistentState.GetStruct<Account>($"Account:{address}");
-    private void SetAccount(Address address, Account account) => PersistentState.SetStruct<Account>($"Account:{address}", account);
+    private void SetAccount(Address address, Account account) => PersistentState.SetStruct($"Account:{address}", account);
 
-    public DividendToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol) : base(smartContractState)
+    public DividendToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol)
+        : base(smartContractState, totalSupply, name, symbol)
     {
-        token = new StandardToken(smartContractState, totalSupply, name, symbol);
-    }
-
-    public void TransferTo(Address to, ulong amount)
-    {
-        var account = GetUpdatedAccount(Message.Sender);
-
-        var transferred = token.TransferTo(to, amount);
-
-        Assert(transferred);
-
-        account.Balance = 0;
-    }
-
-    public void TransferFrom(Address from, Address to, ulong amount)
-    {
-        _ = GetUpdatedAccount(from);
-        _ = GetUpdatedAccount(to);
-
-        var transferred = token.TransferFrom(from, to, amount);
-
-        Assert(transferred);
     }
 
     /// <summary>
     /// It is advised that deposit amount should to be evenly divided by total supply, 
-    /// otherwise small amount of satoshi will be lost
+    /// otherwise small amount of satoshi may lost
     /// </summary>
     public override void Receive()
     {
         Dividends += Message.Value;
     }
 
+    new public bool TransferTo(Address to, ulong amount)
+    {
+        UpdateAccount(Message.Sender);
+
+        return base.TransferTo(to, amount);
+    }
+
+    new public bool TransferFrom(Address from, Address to, ulong amount)
+    {
+        UpdateAccount(from);
+        UpdateAccount(to);
+
+        return base.TransferFrom(from, to, amount);
+    }
+
+    void UpdateAccount(Address address) => GetUpdatedAccount(address);
     private Account GetUpdatedAccount(Address address)
     {
         var account = GetAccount(address);
@@ -63,20 +57,27 @@ public class DividendToken : SmartContract
 
         checked
         {
-            var owing = (token.GetBalance(Message.Sender) * newDividends) / token.TotalSupply;
+            var owing = (GetBalance(address) * newDividends) / TotalSupply;
 
-            if (owing > 0)
+            var hasUpdate = owing != 0 || account.CreditedDividends != Dividends;
+
+            account.Balance += owing;
+            account.CreditedDividends = Dividends;
+
+
+            if (hasUpdate)
             {
-                account.Balance += owing;
                 SetAccount(address, account);
             }
         }
-        
-        account.CreditedDividends = Dividends;
 
         return account;
     }
 
+
+    /// <summary>
+    /// Withdraws all dividends
+    /// </summary>
     public void Withdraw()
     {
         var account = GetUpdatedAccount(Message.Sender);
@@ -89,16 +90,16 @@ public class DividendToken : SmartContract
 
         SetAccount(Message.Sender, account);
     }
-}
 
-public struct Account
-{
-    /// <summary>
-    /// Balance for Cirrus dividends
-    /// </summary>
-    public ulong Balance;
+    public struct Account
+    {
+        /// <summary>
+        /// Balance for Cirrus dividends
+        /// </summary>
+        public ulong Balance;
 
-    public ulong CreditedDividends;
+        public ulong CreditedDividends;
+    }
 }
 
 /// <summary>
@@ -179,7 +180,7 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public virtual bool TransferFrom(Address from, Address to, ulong amount)
+    public bool TransferFrom(Address from, Address to, ulong amount)
     {
         if (amount == 0)
         {
