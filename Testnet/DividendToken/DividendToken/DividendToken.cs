@@ -37,6 +37,7 @@ public class DividendToken : SmartContract, IStandardToken
     public bool TransferTo(Address to, ulong amount)
     {
         UpdateAccount(Message.Sender);
+        UpdateAccount(to);
 
         return TransferTokensTo(to, amount);
     }
@@ -49,38 +50,62 @@ public class DividendToken : SmartContract, IStandardToken
         return TransferTokensFrom(from, to, amount);
     }
 
-    void UpdateAccount(Address address) => GetUpdatedAccount(address);
-    private Account GetUpdatedAccount(Address address)
+    Account UpdateAccount(Address address)
     {
         var account = GetAccount(address);
+        var balance = GetWithdrawableDividends(address, account);
 
-        var newDividends = Dividends - account.CreditedDividends;
-
-        checked
+        if (balance != account.Balance)
         {
-            var owing = (GetBalance(address) * newDividends) / TotalSupply;
-
-            var hasUpdate = owing != 0 || account.CreditedDividends != Dividends;
-
-            account.Balance += owing;
+            account.Balance = balance;
             account.CreditedDividends = Dividends;
-
-
-            if (hasUpdate)
-            {
-                SetAccount(address, account);
-            }
+            SetAccount(address, account);
         }
 
         return account;
     }
 
+    private ulong GetWithdrawableDividends(Address address, Account account)
+    {
+        var newDividends = Dividends - account.CreditedDividends;
+        var notCreditedDividends = checked(GetBalance(address) * newDividends) / TotalSupply;
+
+        return checked(account.Balance + notCreditedDividends);
+    }
+
+    /// <summary>
+    /// Get Withdrawable dividends
+    /// </summary>
+    /// <returns></returns>
     public ulong GetDividends() => GetDividends(Message.Sender);
 
+    /// <summary>
+    /// Get Withdrawable dividends
+    /// </summary>
+    /// <param name="address"></param>
+    /// <returns></returns>
     public ulong GetDividends(Address address)
     {
         var account = GetAccount(address);
-        return account.Balance;
+
+        return GetWithdrawableDividends(address, account);
+    }
+
+    /// <summary>
+    /// Get the all divididends since beginning (Withdrawable Dividends + Withdrawn Dividends)
+    /// </summary>
+    /// <returns></returns>
+    public ulong GetTotalDividends() => GetTotalDividends(Message.Sender);
+
+    /// <summary>
+    /// Get the all divididends since beginning (Withdrawable Dividends + Withdrawn Dividends)
+    /// </summary>
+    /// <param name="address"></param>
+    /// <returns></returns>
+    public ulong GetTotalDividends(Address address)
+    {
+        var account = GetAccount(address);
+        return GetWithdrawableDividends(address, account) + account.WithdrawnDividends;
     }
 
     /// <summary>
@@ -88,12 +113,14 @@ public class DividendToken : SmartContract, IStandardToken
     /// </summary>
     public void Withdraw()
     {
-        var account = GetUpdatedAccount(Message.Sender);
+        var account = UpdateAccount(Message.Sender);
         Assert(account.Balance > 0, "The account has no dividends.");
 
         var transfer = Transfer(Message.Sender, account.Balance);
 
         Assert(transfer.Success, "Transfer failed.");
+
+        account.WithdrawnDividends = account.Balance;
         account.Balance = 0;
 
         SetAccount(Message.Sender, account);
@@ -102,9 +129,15 @@ public class DividendToken : SmartContract, IStandardToken
     public struct Account
     {
         /// <summary>
-        /// Balance for Cirrus dividends
+        /// Withdrawable Dividend Balance
         /// </summary>
         public ulong Balance;
+
+        /// <summary>
+        /// Withdrawn dividends + Balance
+        /// </summary>
+
+        public ulong WithdrawnDividends;
 
         public ulong CreditedDividends;
     }
