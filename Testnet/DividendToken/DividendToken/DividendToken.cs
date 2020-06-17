@@ -39,7 +39,10 @@ public class DividendToken : SmartContract, IStandardToken
         UpdateAccount(Message.Sender);
         UpdateAccount(to);
 
-        return TransferTokensTo(to, amount);
+        var transferred = TransferTokensTo(to, amount);
+        Assert(transferred, "Token transfer failed."); // Reverts changes on accounts
+
+        return true;
     }
 
     public bool TransferFrom(Address from, Address to, ulong amount)
@@ -47,7 +50,10 @@ public class DividendToken : SmartContract, IStandardToken
         UpdateAccount(from);
         UpdateAccount(to);
 
-        return TransferTokensFrom(from, to, amount);
+        var transferred = TransferTokensFrom(from, to, amount);
+        Assert(transferred, "Token transfer failed."); // Reverts changes on accounts
+
+        return true;
     }
 
     Account UpdateAccount(Address address)
@@ -55,7 +61,7 @@ public class DividendToken : SmartContract, IStandardToken
         var account = GetAccount(address);
         var balance = GetWithdrawableDividends(address, account);
 
-        if (balance != account.Balance)
+        if (balance != account.Balance || account.CreditedDividends != Dividends)
         {
             account.Balance = balance;
             account.CreditedDividends = Dividends;
@@ -120,7 +126,7 @@ public class DividendToken : SmartContract, IStandardToken
 
         Assert(transfer.Success, "Transfer failed.");
 
-        account.WithdrawnDividends = account.Balance;
+        checked { account.WithdrawnDividends += account.Balance; }
         account.Balance = 0;
 
         SetAccount(Message.Sender, account);
@@ -132,10 +138,6 @@ public class DividendToken : SmartContract, IStandardToken
         /// Withdrawable Dividend Balance
         /// </summary>
         public ulong Balance;
-
-        /// <summary>
-        /// Withdrawn dividends + Balance
-        /// </summary>
 
         public ulong WithdrawnDividends;
 
