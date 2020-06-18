@@ -27,7 +27,7 @@ public class DividendToken : SmartContract, IStandardToken
 
     /// <summary>
     /// It is advised that deposit amount should to be evenly divided by total supply, 
-    /// otherwise small amount of satoshi may lost
+    /// otherwise small amount of satoshi may lost(burn)
     /// </summary>
     public override void Receive()
     {
@@ -39,10 +39,7 @@ public class DividendToken : SmartContract, IStandardToken
         UpdateAccount(Message.Sender);
         UpdateAccount(to);
 
-        var transferred = TransferTokensTo(to, amount);
-        Assert(transferred, "Token transfer failed."); // Reverts changes on accounts
-
-        return true;
+        return TransferTokensTo(to, amount);
     }
 
     public bool TransferFrom(Address from, Address to, ulong amount)
@@ -50,20 +47,17 @@ public class DividendToken : SmartContract, IStandardToken
         UpdateAccount(from);
         UpdateAccount(to);
 
-        var transferred = TransferTokensFrom(from, to, amount);
-        Assert(transferred, "Token transfer failed."); // Reverts changes on accounts
-
-        return true;
+        return TransferTokensFrom(from, to, amount);
     }
 
     Account UpdateAccount(Address address)
     {
         var account = GetAccount(address);
-        var balance = GetWithdrawableDividends(address, account);
+        var newDividends = GetWithdrawableDividends(address, account);
 
-        if (balance != account.Balance || account.CreditedDividends != Dividends)
+        if (newDividends > 0)
         {
-            account.Balance = balance;
+            account.DividendBalance = checked(account.DividendBalance + newDividends);
             account.CreditedDividends = Dividends;
             SetAccount(address, account);
         }
@@ -74,9 +68,9 @@ public class DividendToken : SmartContract, IStandardToken
     private ulong GetWithdrawableDividends(Address address, Account account)
     {
         var newDividends = Dividends - account.CreditedDividends;
-        var notCreditedDividends = checked(GetBalance(address) * newDividends) / TotalSupply;
+        var notCreditedDividends = checked(GetBalance(address) * newDividends);
 
-        return checked(account.Balance + notCreditedDividends);
+        return checked(account.DividendBalance + notCreditedDividends); //Delay divide by TotalSupply to final stage for avoid decimal value loss.
     }
 
     /// <summary>
@@ -94,7 +88,7 @@ public class DividendToken : SmartContract, IStandardToken
     {
         var account = GetAccount(address);
 
-        return GetWithdrawableDividends(address, account);
+        return GetWithdrawableDividends(address, account) / TotalSupply;
     }
 
     /// <summary>
@@ -111,7 +105,7 @@ public class DividendToken : SmartContract, IStandardToken
     public ulong GetTotalDividends(Address address)
     {
         var account = GetAccount(address);
-        return GetWithdrawableDividends(address, account) + account.WithdrawnDividends;
+        return checked(GetWithdrawableDividends(address, account) + account.WithdrawnDividends) / TotalSupply;
     }
 
     /// <summary>
@@ -120,14 +114,15 @@ public class DividendToken : SmartContract, IStandardToken
     public void Withdraw()
     {
         var account = UpdateAccount(Message.Sender);
-        Assert(account.Balance > 0, "The account has no dividends.");
+        var balance = account.DividendBalance / TotalSupply;
+        Assert(balance > 0, "The account has no dividends.");
 
-        var transfer = Transfer(Message.Sender, account.Balance);
+        var transfer = Transfer(Message.Sender, account.DividendBalance);
 
         Assert(transfer.Success, "Transfer failed.");
 
-        checked { account.WithdrawnDividends += account.Balance; }
-        account.Balance = 0;
+        account.WithdrawnDividends = checked(account.WithdrawnDividends + balance);
+        account.DividendBalance = 0;
 
         SetAccount(Message.Sender, account);
     }
@@ -135,11 +130,19 @@ public class DividendToken : SmartContract, IStandardToken
     public struct Account
     {
         /// <summary>
-        /// Withdrawable Dividend Balance
+        /// Withdrawable Dividend Balance. Exact value should to divided by <see cref="TotalSupply"/>
         /// </summary>
-        public ulong Balance;
+        public ulong DividendBalance;
+
+        /// <summary>
+        /// 
+        /// </summary>
 
         public ulong WithdrawnDividends;
+
+        /// <summary>
+        /// Dividends computed and added to <see cref="DividendBalance"/>
+        /// </summary>
 
         public ulong CreditedDividends;
     }
