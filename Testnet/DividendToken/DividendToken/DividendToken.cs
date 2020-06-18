@@ -117,7 +117,7 @@ public class DividendToken : SmartContract, IStandardToken
         var balance = account.DividendBalance / TotalSupply;
         Assert(balance > 0, "The account has no dividends.");
 
-        var transfer = Transfer(Message.Sender, account.DividendBalance);
+        var transfer = Transfer(Message.Sender, balance);
 
         Assert(transfer.Success, "Transfer failed.");
 
