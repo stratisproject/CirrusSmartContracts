@@ -129,5 +129,51 @@ namespace DividendTokenContract.Tests
             this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.tokenHolder, 100), Times.Once);
             Assert.Equal(0ul, contract.GetDividends());
         }
+
+        [Fact]
+        public void GetDividends_Returns_Current_Sender_Dividends()
+        {
+            var dividend = 1000ul;
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
+            this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
+
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.tokenHolder, dividend));
+            contract.Receive();
+
+            Assert.Equal(100ul, contract.GetDividends());
+        }
+
+        /// <summary>
+        /// GetTotalDividends should returns Withdrawable + Withdrawn dividends
+        /// </summary>
+        [Fact]
+        public void GetTotalDividends_Returns_Current_Sender_TotalDividends()
+        {
+            var dividend = 1000ul;
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
+            this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
+
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            contract.Receive();
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.tokenHolder, 0));
+
+            contract.Withdraw();
+
+            this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.tokenHolder, 100), Times.Once);
+            Assert.Equal(0ul, contract.GetDividends());
+            Assert.Equal(100ul, contract.GetTotalDividends());
+        }
     }
 }

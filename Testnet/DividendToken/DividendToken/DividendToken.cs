@@ -121,7 +121,7 @@ public class DividendToken : SmartContract, IStandardToken
 
         Assert(transfer.Success, "Transfer failed.");
 
-        account.WithdrawnDividends = checked(account.WithdrawnDividends + balance);
+        account.WithdrawnDividends = checked(account.WithdrawnDividends + account.DividendBalance);
         account.DividendBalance = 0;
 
         SetAccount(Message.Sender, account);
