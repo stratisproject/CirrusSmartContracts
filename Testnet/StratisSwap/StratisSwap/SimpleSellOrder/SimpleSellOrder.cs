@@ -8,16 +8,22 @@ public class SimpleSellOrder : SmartContract
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="token">The address of the src token being sold.</param>
+    /// <param name="fullTokenInStratoshis">The number of stratoshis that make up 1 full SRC token.</param>
     /// <param name="price">The price for each src token in stratoshis.</param>
     /// <param name="amount">The amount of src token to sell in full.</param>
-    public SimpleSellOrder(ISmartContractState smartContractState, Address token, ulong price, ulong amount)
-        : base (smartContractState)
+    public SimpleSellOrder(
+        ISmartContractState smartContractState,
+        Address token,
+        uint fullTokenInStratoshis,
+        ulong price,
+        ulong amount) : base (smartContractState)
     {
         Assert(price > 0, "Price must be greater than 0");
         Assert(amount > 0, "Amount must be greater than 0");
         Assert(PersistentState.IsContract(token), "Not a valid token address");
 
         Token = token;
+        FullTokenInStratoshis = fullTokenInStratoshis;
         Price = price;
         Amount = amount;
         Seller = Message.Sender;
@@ -31,6 +37,15 @@ public class SimpleSellOrder : SmartContract
     {
         get => PersistentState.GetAddress(nameof(Token));
         private set => PersistentState.SetAddress(nameof(Token), value);
+    }
+
+    /// <summary>
+    /// The number of stratoshis that make up 1 full SRC token.
+    /// </summary>
+    public uint FullTokenInStratoshis
+    {
+        get => PersistentState.GetUInt32(nameof(FullTokenInStratoshis));
+        private set => PersistentState.SetUInt32(nameof(FullTokenInStratoshis), value);
     }
 
     /// <summary>
@@ -84,17 +99,17 @@ public class SimpleSellOrder : SmartContract
         var cost = Price * amountToBuy;
         Assert(Message.Value >= cost, "Not enough funds to cover cost.");
 
-        var amountToBuyInStratoshis = amountToBuy * 100_000_000;
+        var amountToBuyInStratoshis = amountToBuy * FullTokenInStratoshis;
         var transferResult = Call(Token, 0, "TransferFrom", new object[] { Seller, Message.Sender, amountToBuyInStratoshis });
 
         Assert((bool)transferResult.ReturnValue == true, "Transfer failure.");
 
         Transfer(Seller, cost);
 
-        var balance = Message.Value - cost;
-        if (balance > 0)
+        var change = Message.Value - cost;
+        if (change > 0)
         {
-            Transfer(Message.Sender, balance);
+            Transfer(Message.Sender, change);
         }
 
         Amount -= amountToBuy;

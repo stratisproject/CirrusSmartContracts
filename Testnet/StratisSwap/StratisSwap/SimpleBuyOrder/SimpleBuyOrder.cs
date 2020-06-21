@@ -8,11 +8,13 @@ public class SimpleBuyOrder : SmartContract
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="token">The address of the src token being bought.</param>
+    /// <param name="fullTokenInStratoshis">The number of stratoshis that make up 1 full SRC token.</param>
     /// <param name="price">The price for each src token in stratoshis.</param>
     /// <param name="amount">The amount of src token to buy in full.</param>
     public SimpleBuyOrder(
         ISmartContractState smartContractState, 
         Address token,
+        uint fullTokenInStratoshis,
         ulong price,
         ulong amount) : base (smartContractState)
     {
@@ -22,6 +24,7 @@ public class SimpleBuyOrder : SmartContract
         Assert(PersistentState.IsContract(token), "Not a valid token address");
 
         Token = token;
+        FullTokenInStratoshis = fullTokenInStratoshis;
         Price = price;
         Amount = amount;
         Buyer = Message.Sender;
@@ -35,6 +38,15 @@ public class SimpleBuyOrder : SmartContract
     {
         get => PersistentState.GetAddress(nameof(Token));
         private set => PersistentState.SetAddress(nameof(Token), value);
+    }
+
+    /// <summary>
+    /// The number of stratoshis that make up 1 full SRC token.
+    /// </summary>
+    public uint FullTokenInStratoshis
+    {
+        get => PersistentState.GetUInt32(nameof(FullTokenInStratoshis));
+        private set => PersistentState.SetUInt32(nameof(FullTokenInStratoshis), value);
     }
 
     /// <summary>
@@ -88,7 +100,7 @@ public class SimpleBuyOrder : SmartContract
         var cost = Price * amountToSell;
         Assert(Balance >= cost, "Not enough funds to cover cost.");
 
-        var amountInStratoshis = amountToSell * 100_000_000;
+        var amountInStratoshis = amountToSell * FullTokenInStratoshis;
         var transferResult = Call(Token, 0, "TransferFrom", new object[] { Message.Sender, Buyer, amountInStratoshis });
 
         Assert((bool)transferResult.ReturnValue == true, "Transfer failure.");
