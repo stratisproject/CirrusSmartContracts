@@ -18,5 +18,5 @@ A standard token contract on Cirrus sidechain.
 
 - `ulong supply` - The total supply for the new token in stratoshis (e.g. 100_000_000 would create 1 token.)
 - `string name` - The name for the new token (e.g. MediConnect)
-- `ulong symbol` - The symbol for the new token (e.g. MEDI)
-- `ulong decimals` - The amount decimals used per full token (e.g. 8 would equal 1.00000000 meaning 1 full token is 100_000_000 stratoshis)
+- `string symbol` - The symbol for the new token (e.g. MEDI)
+- `uint decimals` - The amount decimals used per full token (e.g. 8 would equal 1.00000000 meaning 1 full token is 100_000_000 stratoshis)
