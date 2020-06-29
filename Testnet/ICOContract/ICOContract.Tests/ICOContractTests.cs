@@ -82,7 +82,7 @@
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
             this.mBlock.Setup(s => s.Number).Returns(1);
-            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeeded(this.tokenContract));
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(contractCreation);
             this.mPersistentState.Setup(s => s.GetUInt64(nameof(ICOContract.TokenBalance))).Returns(this.totalSupply);
             this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.Owner))).Returns(this.owner);
             this.mPersistentState.Setup(s => s.GetAddress(nameof(ICOContract.TokenAddress))).Returns(this.tokenContract);

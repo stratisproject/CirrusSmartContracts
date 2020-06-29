@@ -8,26 +8,25 @@ namespace DividendTokenContract.Tests
 {
     public class DividendTokenTests
     {
-        private const ulong Satoshis = 100_000_000;
+        private readonly IPersistentState persistentState;
 
         private readonly Mock<ISmartContractState> mContractState;
-        private readonly IPersistentState persistentState;
         private readonly Mock<IContractLogger> mContractLogger;
         private readonly Mock<IInternalTransactionExecutor> mTransactionExecutor;
 
-        private Address owner;
-        private Address tokenHolder;
-        private Address contract;
+        private readonly Address owner;
+        private readonly Address tokenHolder;
+        private readonly Address contract;
 
-        private string name;
-        private string symbol;
-        private ulong totalSupply;
+        private readonly string name;
+        private readonly string symbol;
+        private readonly ulong totalSupply;
 
         public DividendTokenTests()
         {
-            this.mContractLogger = new Mock<IContractLogger>();
             this.persistentState = new InMemoryState();
             this.mContractState = new Mock<ISmartContractState>();
+            this.mContractLogger = new Mock<IContractLogger>();
             this.mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
             this.mContractState.Setup(s => s.PersistentState).Returns(this.persistentState);
             this.mContractState.Setup(s => s.ContractLogger).Returns(this.mContractLogger.Object);
@@ -110,15 +109,15 @@ namespace DividendTokenContract.Tests
         [Fact]
         public void Deposited_Dividend_Should_Be_Withdrawable()
         {
-            var dividend = 1000ul;
+            var dividend = 500ul;
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 5)).Returns(TransferResult.Transferred(true));
 
             var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
 
-            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+            Assert.True(contract.TransferTo(this.tokenHolder, 11));
 
             contract.Receive();
 
@@ -126,8 +125,10 @@ namespace DividendTokenContract.Tests
 
             contract.Withdraw();
 
-            this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.tokenHolder, 100), Times.Once);
+            this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.tokenHolder, 5), Times.Once);
             Assert.Equal(0ul, contract.GetDividends());
+            var account = this.persistentState.GetStruct<DividendToken.Account>($"Account:{this.tokenHolder}");
+            Assert.Equal(500ul, account.DividendBalance);
         }
 
         [Fact]
@@ -150,7 +151,7 @@ namespace DividendTokenContract.Tests
         }
 
         /// <summary>
-        /// GetTotalDividends should returns Withdrawable + Withdrawn dividends
+        /// GetTotalDividends should to return Withdrawable + Withdrawn dividends
         /// </summary>
         [Fact]
         public void GetTotalDividends_Returns_Current_Sender_TotalDividends()
