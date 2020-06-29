@@ -386,7 +386,7 @@ public class DividendToken : SmartContract, IStandardToken
         private set => PersistentState.SetUInt64(nameof(this.Dividends), value);
     }
 
-    public Account GetAccount(Address address) => PersistentState.GetStruct<Account>($"Account:{address}");
+    private Account GetAccount(Address address) => PersistentState.GetStruct<Account>($"Account:{address}");
 
     private void SetAccount(Address address, Account account) => PersistentState.SetStruct($"Account:{address}", account);
 
@@ -490,14 +490,16 @@ public class DividendToken : SmartContract, IStandardToken
     {
         var account = UpdateAccount(Message.Sender);
         var balance = account.DividendBalance / TotalSupply;
+        var remainder = account.DividendBalance % TotalSupply;
+
         Assert(balance > 0, "The account has no dividends.");
 
         var transfer = Transfer(Message.Sender, balance);
 
         Assert(transfer.Success, "Transfer failed.");
 
-        account.WithdrawnDividends = checked(account.WithdrawnDividends + account.DividendBalance);
-        account.DividendBalance = 0;
+        account.WithdrawnDividends = checked(account.WithdrawnDividends + account.DividendBalance - remainder);
+        account.DividendBalance = remainder;
 
         SetAccount(Message.Sender, account);
     }
