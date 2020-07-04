@@ -161,7 +161,8 @@ public class SimpleBuyOrder : SmartContract
             Amount = Amount,
             OrderType = nameof(SimpleBuyOrder),
             IsActive = IsActive,
-            Balance = Balance
+            Balance = Balance,
+            FullTokenInStratoshis = FullTokenInStratoshis
         };
     }
 
@@ -225,5 +226,10 @@ public class SimpleBuyOrder : SmartContract
         /// The current CRS balance of the contract in stratoshis.
         /// </summary>
         public ulong Balance;
+
+        /// <summary>
+        /// The number of stratoshis that make up 1 full SRC token being bought.
+        /// </summary>
+        public ulong FullTokenInStratoshis;
     }
 }

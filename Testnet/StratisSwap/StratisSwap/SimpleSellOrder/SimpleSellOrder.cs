@@ -159,7 +159,8 @@ public class SimpleSellOrder : SmartContract
             Amount = Amount,
             OrderType = nameof(SimpleSellOrder),
             IsActive = IsActive,
-            Balance = balance
+            Balance = balance,
+            FullTokenInStratoshis = FullTokenInStratoshis
         };
     }
 
@@ -223,5 +224,10 @@ public class SimpleSellOrder : SmartContract
         /// The current allowance this contract has of the src token being traded in stratoshis.
         /// </summary>
         public ulong Balance;
+
+        /// <summary>
+        /// The number of stratoshis that make up 1 full SRC token being sold.
+        /// </summary>
+        public ulong FullTokenInStratoshis;
     }
 }

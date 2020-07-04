@@ -113,7 +113,8 @@ namespace StratisSwap.Tests
                 Amount = DefaultAmount,
                 OrderType = nameof(SimpleSellOrder),
                 IsActive = true,
-                Balance = expectedBalance
+                Balance = expectedBalance,
+                FullTokenInStratoshis = DefaultFullTokenInStratoshis
             };
 
             Assert.Equal(expectedOrderDetails, actualOrderDetails);
