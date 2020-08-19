@@ -17,6 +17,12 @@ public class ICOContract : SmartContract
         private set => this.PersistentState.SetAddress(nameof(TokenAddress), value);
     }
 
+    public Address KYCAddress
+    {
+        get => this.PersistentState.GetAddress(nameof(KYCAddress));
+        private set => this.PersistentState.SetAddress(nameof(KYCAddress), value);
+    }
+
     public ulong TokenBalance
     {
         get => this.PersistentState.GetUInt64(nameof(TokenBalance));
@@ -42,6 +48,7 @@ public class ICOContract : SmartContract
     public ICOContract(ISmartContractState smartContractState,
                        Address owner,
                        uint tokenType,
+                       Address kycAddress,
                        ulong totalSupply,
                        string name,
                        string symbol,
@@ -49,20 +56,22 @@ public class ICOContract : SmartContract
     {
         Assert(tokenType < 2, $"The {nameof(tokenType)} parameter can be 0 or 1 only");
 
+        Assert(PersistentState.IsContract(kycAddress), "The kycAdress is not a contract adress");
+
         var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
 
         ValidatePeriods(periods);
 
-        var parameters = new object[] { tokenType, totalSupply, name, symbol };
+        var parameters = new object[] { totalSupply, name, symbol };
 
-        var result = tokenType == 0 ? Create<StandardToken>(parameters: parameters) 
+        var result = tokenType == 0 ? Create<StandardToken>(parameters: parameters)
                                     : Create<DividendToken>(parameters: parameters);
 
         Assert(result.Success, "Creating token contract failed.");
 
         Log(new ICOSetupLog { StandardTokenAddress = result.NewContractAddress });
 
-
+        KYCAddress = kycAddress;
         TokenAddress = result.NewContractAddress;
         TokenBalance = totalSupply;
         Owner = owner;
@@ -73,8 +82,10 @@ public class ICOContract : SmartContract
 
     public bool Invest()
     {
-        Assert(SaleOpen, "ICO is completed.");
+        Assert(SaleOpen, "The ICO is completed.");
         Assert(Message.Value > 0, "The amount should be higher than zero");
+
+        EnsureKycVerified();
 
         var saleInfo = GetSaleInfo();
 
@@ -90,6 +101,13 @@ public class ICOContract : SmartContract
             Transfer(Message.Sender, saleInfo.RefundAmount);
 
         return true;
+    }
+
+    private void EnsureKycVerified()
+    {
+        var result = Call(KYCAddress, 0, "GetClaim", new object[] { Message.Sender, 3 /*shufti kyc*/ });
+
+        Assert(result.Success && result.ReturnValue != null, "Your KYC is not verified.");
     }
 
     public bool WithdrawFunds()
@@ -123,13 +141,18 @@ public class ICOContract : SmartContract
 
     private SalePeriod GetCurrentPeriod()
     {
+        var result = default(SalePeriod);
+
         foreach (var period in SalePeriods)
         {
             if (period.EndBlock >= Block.Number)
-                return period;
+            {
+                result = period;
+                break;
+            }
         }
 
-        return default(SalePeriod);
+        return result;
     }
     private void SetPeriods(SalePeriodInput[] periods)
     {
@@ -217,6 +240,15 @@ public class ICOContract : SmartContract
         public ulong Invested;
         public ulong TokenAmount;
         public ulong Refunded;
+    }
+
+    public struct Claim
+    {
+        public string Key;
+
+        public string Description;
+
+        public bool IsRevoked;
     }
 }
 
