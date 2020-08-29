@@ -20,14 +20,8 @@ public class StandardToken : SmartContract, IStandardToken
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
-        this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
-    }
-
-    public uint Decimals
-    {
-        get => PersistentState.GetUInt32(nameof(this.Decimals));
-        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
+        this.SetDecimals(decimals);
     }
 
     public string Symbol
@@ -58,6 +52,16 @@ public class StandardToken : SmartContract, IStandardToken
     private void SetBalance(Address address, ulong value)
     {
         PersistentState.SetUInt64($"Balance:{address}", value);
+    }
+
+    public uint GetDecimals()
+    {
+        return PersistentState.GetUInt32("Decimals");
+    }
+
+    private void SetDecimals(uint value)
+    {
+        PersistentState.SetUInt32("Decimals", value);
     }
 
     /// <inheritdoc />

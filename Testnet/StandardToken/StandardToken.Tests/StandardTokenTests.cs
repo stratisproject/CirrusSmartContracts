@@ -77,6 +77,21 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
+        public void GetDecimals_Returns_Correct_Amount()
+        {
+            uint decimalAmount = 4;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, decimalAmount);
+
+            // Setup the decimals amount in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt32("Decimals")).Returns(decimalAmount);
+
+            Assert.Equal(decimalAmount, standardToken.GetDecimals());
+        }
+
+        [Fact]
         public void Approve_Sets_Approval_Correctly()
         {
             ulong approval = 1000;
