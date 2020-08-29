@@ -24,6 +24,7 @@ namespace StratisSwap.Tests
         private const ulong DefaultPrice = 10_000_000;
         private const ulong DefaultZeroValue = 0;
         private const ulong DefaultCostValue = 100_000_000;
+        private const uint DefaultFullTokenInStratoshis = 100_000_000;
 
         public SimpleSellOrderTests()
         {
@@ -41,25 +42,26 @@ namespace StratisSwap.Tests
             ContractAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
         }
 
-        private SimpleSellOrder NewSimpleSellOrder(Address sender, ulong value, ulong price, ulong amount)
+        private SimpleSellOrder NewSimpleSellOrder(Address sender, ulong value, ulong price, ulong amount, uint fullTokenInStratoshis)
         {
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, sender, value));
             MockContractState.Setup(x => x.GetBalance).Returns(() => value);
             MockContractState.Setup(x => x.Block.Number).Returns(12345);
             MockPersistentState.Setup(x => x.GetAddress(nameof(Seller))).Returns(Seller);
             MockPersistentState.Setup(x => x.GetAddress(nameof(Token))).Returns(Token);
+            MockPersistentState.Setup(x => x.GetUInt32("FullTokenInStratoshis")).Returns(fullTokenInStratoshis);
             MockPersistentState.Setup(x => x.GetUInt64(nameof(Price))).Returns(price);
             MockPersistentState.Setup(x => x.GetUInt64(nameof(Amount))).Returns(amount);
             MockPersistentState.Setup(x => x.GetBool(nameof(IsActive))).Returns(true);
             MockPersistentState.Setup(x => x.IsContract(Token)).Returns(true);
 
-            return new SimpleSellOrder(MockContractState.Object, Token, price, amount);
+            return new SimpleSellOrder(MockContractState.Object, Token, fullTokenInStratoshis, price, amount);
         }
 
         [Fact]
         public void Creates_New_SimpleSellOrder()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockPersistentState.Verify(x => x.SetAddress(nameof(Seller), Seller));
             Assert.Equal(Seller, order.Seller);
@@ -84,13 +86,13 @@ namespace StratisSwap.Tests
         {
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, Seller, 0));
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => new SimpleSellOrder(MockContractState.Object, Token, amount, price));
+            Assert.ThrowsAny<SmartContractAssertException>(() => new SimpleSellOrder(MockContractState.Object, Token, DefaultFullTokenInStratoshis, amount, price));
         }
 
         [Fact]
         public void Success_GetOrderDetails()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, DefaultZeroValue));
 
@@ -111,7 +113,8 @@ namespace StratisSwap.Tests
                 Amount = DefaultAmount,
                 OrderType = nameof(SimpleSellOrder),
                 IsActive = true,
-                Balance = expectedBalance
+                Balance = expectedBalance,
+                FullTokenInStratoshis = DefaultFullTokenInStratoshis
             };
 
             Assert.Equal(expectedOrderDetails, actualOrderDetails);
@@ -121,7 +124,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void CloseOrder_Fails_Sender_IsNot_Owner()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, 0));
 
@@ -131,7 +134,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void CloseOrder_Success()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             order.CloseOrder();
 
@@ -145,7 +148,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void Buy_Fails_IfContract_IsNotActive()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockPersistentState.Setup(x => x.GetBool(nameof(IsActive))).Returns(false);
 
@@ -170,7 +173,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void Buy_Fails_If_Sender_IsSeller()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, Seller, 0));
 
@@ -193,7 +196,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void Buy_Fails_If_MessageValue_IsLessThan_Cost()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, DefaultZeroValue));
 
@@ -216,11 +219,11 @@ namespace StratisSwap.Tests
         [Fact]
         public void Buy_Fails_If_SrcTransfer_Fails()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, DefaultCostValue));
 
-            var amountInStratoshis = DefaultAmount * 100_000_000;
+            var amountInStratoshis = DefaultAmount * DefaultFullTokenInStratoshis;
             var expectedCallParams = new object[] { Seller, BuyerOne, amountInStratoshis };
 
             MockInternalExecutor.Setup(x =>
@@ -244,7 +247,7 @@ namespace StratisSwap.Tests
         [Fact]
         public void Buy_Success_Until_Amount_IsGone()
         {
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             // First Seller
             ulong amountToBuy = DefaultAmount - 5;
@@ -253,7 +256,7 @@ namespace StratisSwap.Tests
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, orderCost));
 
-            var amountInStratoshis = amountToBuy * 100_000_000;
+            var amountInStratoshis = amountToBuy * DefaultFullTokenInStratoshis;
             var expectedCallParams = new object[] { Seller, BuyerOne, amountInStratoshis };
 
             MockInternalExecutor.Setup(x =>
@@ -287,7 +290,7 @@ namespace StratisSwap.Tests
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerTwo, secondOrderCost));
 
-            var secondAmountInStratoshis = secondAmountToBuy * 100_000_000;
+            var secondAmountInStratoshis = secondAmountToBuy * DefaultFullTokenInStratoshis;
             var secondExpectedCallParams = new object[] { Seller, BuyerTwo, secondAmountInStratoshis };
 
             MockInternalExecutor.Setup(x =>
@@ -321,14 +324,14 @@ namespace StratisSwap.Tests
         {
             amountToBuy = DefaultAmount >= amountToBuy ? amountToBuy : DefaultAmount;
 
-            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount);
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, DefaultFullTokenInStratoshis);
 
             ulong orderCost = amountToBuy * DefaultPrice;
             ulong updatedContractBalance = order.Balance - orderCost;
 
             MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, orderCost));
 
-            var amountInStratoshis = amountToBuy * 100_000_000;
+            var amountInStratoshis = amountToBuy * DefaultFullTokenInStratoshis;
             var expectedCallParams = new object[] { Seller, BuyerOne, amountInStratoshis };
 
             MockInternalExecutor.Setup(x =>
@@ -358,6 +361,44 @@ namespace StratisSwap.Tests
             MockPersistentState.Verify(x => x.SetBool(nameof(IsActive), false), Times.Once);
 
             MockContractLogger.Verify(x => x.Log(It.IsAny<ISmartContractState>(), It.IsAny<Transaction>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(DefaultAmount, DefaultFullTokenInStratoshis)]
+        [InlineData(DefaultAmount, 1_000_000)]
+        [InlineData(DefaultAmount, 10_000)]
+        [InlineData(DefaultAmount, 100)]
+        public void Buy_CalculatesStratoshisToSend_Success(ulong amountToBuy, uint fullTokenInStratoshies)
+        {
+            amountToBuy = DefaultAmount >= amountToBuy ? amountToBuy : DefaultAmount;
+
+            var order = NewSimpleSellOrder(Seller, DefaultZeroValue, DefaultPrice, DefaultAmount, fullTokenInStratoshies);
+
+            ulong orderCost = amountToBuy * DefaultPrice;
+            ulong updatedContractBalance = order.Balance - orderCost;
+
+            MockContractState.Setup(x => x.Message).Returns(new Message(ContractAddress, BuyerOne, orderCost));
+
+            var amountInStratoshis = amountToBuy * fullTokenInStratoshies;
+            var expectedCallParams = new object[] { Seller, BuyerOne, amountInStratoshis };
+
+            MockInternalExecutor.Setup(x =>
+                x.Call(It.IsAny<ISmartContractState>(), Token, 0, "TransferFrom", expectedCallParams, 0))
+                .Returns(TransferResult.Transferred(true));
+
+            MockInternalExecutor.Setup(x => x.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()))
+                .Callback(() => MockContractState.Setup(x => x.GetBalance).Returns(() => updatedContractBalance));
+
+            MockPersistentState.Setup(x => x.SetUInt64(nameof(Amount), DefaultAmount - amountToBuy))
+                .Callback(() => MockPersistentState.Setup(x => x.GetUInt64(nameof(Amount))).Returns(DefaultAmount - amountToBuy));
+
+            order.Buy(amountToBuy);
+
+            MockInternalExecutor.Verify(x =>
+                x.Call(It.IsAny<ISmartContractState>(), Token, 0, "TransferFrom", expectedCallParams, 0), Times.Once);
+
+            MockContractState.Verify(x => x.InternalTransactionExecutor
+                .Transfer(It.IsAny<ISmartContractState>(), Seller, orderCost), Times.Once);
         }
 
         #endregion

@@ -13,8 +13,8 @@ public class OrdersHistory : SmartContract
     /// <summary>
     /// Add an order receipt to the contract.
     /// </summary>
-    /// <param name="order"></param>
-    /// <param name="token"></param>
+    /// <param name="order">The address of the order contract.</param>
+    /// <param name="token">The address of the src token used in the order.</param>
     public void AddOrder(Address order, Address token)
     {
         Assert(PersistentState.IsContract(order)
@@ -45,6 +45,7 @@ public class OrdersHistory : SmartContract
         {
             Token = token,
             Order = order,
+            Taker = Message.Sender,
             OrderTxHash = orderTxHash,
             Block = Block.Number
         });
@@ -63,6 +64,12 @@ public class OrdersHistory : SmartContract
         /// </summary>
         [Index]
         public Address Order;
+
+        /// <summary>
+        /// The address of the wallet that filled the order.
+        /// </summary>
+        [Index]
+        public Address Taker;
 
         /// <summary>
         /// The transactionHash of the order transaction.
