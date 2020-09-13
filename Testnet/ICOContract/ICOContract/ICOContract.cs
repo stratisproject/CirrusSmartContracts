@@ -1,8 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
 using System;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection.Metadata.Ecma335;
 
 [Deploy]
 public class ICOContract : SmartContract
@@ -56,7 +54,9 @@ public class ICOContract : SmartContract
     public ICOContract(ISmartContractState smartContractState,
                        Address owner,
                        uint tokenType,
-                       object[] tokenContractParams,
+                       ulong totalSupply,
+                       string name,
+                       string symbol,
                        Address kycAddress,
                        byte[] salePeriods) : base(smartContractState)
     {
@@ -67,33 +67,30 @@ public class ICOContract : SmartContract
         var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
 
         ValidatePeriods(periods);
-
-        var tokenTypeEnum = Enum.Parse<TokenType>(tokenType.ToString());
-
-        var result = CreateTokenContract(tokenTypeEnum, tokenContractParams);
+        var tokenTypeEnum = (TokenType)tokenType;
+        var result = CreateTokenContract(tokenTypeEnum, totalSupply, name, symbol);
 
         Assert(result.Success, "Creating token contract failed.");
 
-        Log(new ICOSetupLog { StandardTokenAddress = result.NewContractAddress });
+        Log(new ICOSetupLog { TokenAddress = result.NewContractAddress });
 
-        IsNonFungibleToken = tokenTypeEnum == TokenType.NonFungibleToken;
         KYCAddress = kycAddress;
         TokenAddress = result.NewContractAddress;
-        TokenBalance = IsNonFungibleToken ? ulong.MaxValue : (ulong)tokenContractParams[0] /*first parameter is total supply*/;
+        IsNonFungibleToken = tokenTypeEnum == TokenType.NonFungibleToken;
+        TokenBalance = IsNonFungibleToken ? ulong.MaxValue : totalSupply;
         Owner = owner;
         SetPeriods(periods);
     }
 
-    private ICreateResult CreateTokenContract(TokenType tokenTypeEnum, object[] parameters)
+    private ICreateResult CreateTokenContract(TokenType tokenType, ulong totalSupply, string name, string symbol)
     {
-        return tokenTypeEnum switch
+        switch (tokenType)
         {
-            TokenType.StandardToken => Create<StandardToken>(parameters: parameters),
-            TokenType.DividendToken => Create<DividendToken>(parameters: parameters),
-            _ => Create<NonFungibleToken>(parameters: parameters),
-        };
+            case TokenType.StandardToken: return Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol });
+            case TokenType.DividendToken: return Create<DividendToken>(parameters: new object[] { totalSupply, name, symbol });
+            default: return Create<NonFungibleToken>(parameters: new object[] { name, symbol });
+        }
     }
-
     public override void Receive() => Invest();
 
     public bool Invest()
@@ -105,7 +102,7 @@ public class ICOContract : SmartContract
 
         var saleInfo = GetSaleInfo();
 
-        var method = IsNonFungibleToken ? nameof(NonFungibleToken.MintAll) : nameof(StandardToken.TransferTo);
+        var method = IsNonFungibleToken ? nameof(NonFungibleToken.MintAll) : nameof(IStandardToken.TransferTo);
         var result = Call(TokenAddress, 0, method, new object[] { Message.Sender, saleInfo.TokenAmount });
 
         Assert(result.Success && (bool)result.ReturnValue, "Token transfer failed.");
@@ -243,7 +240,7 @@ public class ICOContract : SmartContract
 
     public struct ICOSetupLog
     {
-        public Address StandardTokenAddress;
+        public Address TokenAddress;
     }
 
     public struct InvestLog
