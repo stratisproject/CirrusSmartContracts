@@ -1,6 +1,5 @@
 ﻿namespace ICOContrat.Tests
 {
-    using Microsoft.AspNetCore.Authentication;
     using Moq;
     using NBitcoin;
     using Stratis.SmartContracts;
@@ -27,7 +26,7 @@
         private Address tokenContract;
         private Address kycContract;
 
-        private IPersistentState persistentState;
+        private InMemoryState persistentState;
         private string name;
         private string symbol;
         private ulong totalSupply;
@@ -58,23 +57,77 @@
             this.name = "Test Token";
             this.symbol = "TST";
             this.totalSupply = 100 * Satoshis;
+            this.persistentState.IsContractResult = true;
         }
 
         [Fact]
-        public void Constructor_Sets_Parameters()
+        public void Constructor_IsContract_ReturnsFalse_ThrowsAssertException()
         {
-            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, 0)).Returns(CreateResult.Succeeded(this.tokenContract));
+            this.persistentState.IsContractResult = false;
 
-            var (contract, periods) = this.Setup(contractCreation: this.createSuccess, TokenType.StandardToken);
+            Assert.Throws<SmartContractAssertException>(() => this.Create(TokenType.StandardToken));
+        }
+
+        [Fact]
+        public void Constructor_TokenType_HigherThan2_ThrowsAssertException()
+        {
+            var tokenType = (TokenType)3;
+
+            Assert.Throws<SmartContractAssertException>(() => this.Create(tokenType));
+        }
+
+        [Fact]
+        public void Constructor_CreateReturnsFailedResult_ThrowsAssertException()
+        {
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(CreateResult.Failed());
+            Assert.Throws<SmartContractAssertException>(() => this.Create(TokenType.StandardToken));
+
+            this.mTransactionExecutor.Verify(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>()), Times.Once);
+        }
+
+        [Fact]
+        public void Constructor_TokenTypeIsStandardToken_Success()
+        {
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            var (contract, periods) = this.Create(TokenType.StandardToken);
 
             Assert.Equal(this.totalSupply, contract.TokenBalance);
             Assert.Equal(this.owner, contract.Owner);
             Assert.Equal(this.tokenContract, contract.TokenAddress);
             Assert.Equal(4ul, contract.EndBlock);
             Assert.Equal(periods, contract.SalePeriods);
+            this.mTransactionExecutor.Verify(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, 0), Times.Once);
         }
 
-        public (ICOContract contract, SalePeriod[] periods) Setup(ICreateResult contractCreation, TokenType tokenType = TokenType.StandardToken)
+        [Fact]
+        public void Constructor_TokenTypeIsDividendToken_Success()
+        {
+            this.mTransactionExecutor.Setup(m => m.Create<DividendToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            var (contract, periods) = this.Create(TokenType.DividendToken);
+
+            Assert.Equal(this.totalSupply, contract.TokenBalance);
+            Assert.Equal(this.owner, contract.Owner);
+            Assert.Equal(this.tokenContract, contract.TokenAddress);
+            Assert.Equal(4ul, contract.EndBlock);
+            Assert.Equal(periods, contract.SalePeriods);
+            this.mTransactionExecutor.Verify(m => m.Create<DividendToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, 0), Times.Once);
+        }
+
+        [Fact]
+        public void Constructor_TokenTypeIsNonFungibleToken_Success()
+        {
+            this.mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(this.mContractState.Object, 0, new object[] { this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            var (contract, periods) = this.Create(TokenType.NonFungibleToken);
+
+            Assert.Equal(ulong.MaxValue, contract.TokenBalance);
+            Assert.Equal(this.owner, contract.Owner);
+            Assert.Equal(this.tokenContract, contract.TokenAddress);
+            Assert.Equal(4ul, contract.EndBlock);
+            Assert.Equal(periods, contract.SalePeriods);
+            this.mTransactionExecutor.Verify(m => m.Create<NonFungibleToken>(this.mContractState.Object, 0, new object[] { this.name, this.symbol }, 0), Times.Once);
+        }
+
+        public (ICOContract contract, SalePeriod[] periods) Create(TokenType tokenType)
         {
             var periodInputs = new[]
             {
@@ -89,21 +142,22 @@
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
             this.mBlock.Setup(s => s.Number).Returns(1);
-            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(contractCreation);
-            var contract = new ICOContract(this.mContractState.Object, this.owner, (uint)tokenType, new object[] { this.totalSupply, this.name, this.symbol }, this.kycContract, this.serializer.Serialize(periodInputs));
+            var contract = new ICOContract(this.mContractState.Object, this.owner, (uint)tokenType, this.totalSupply, this.name, this.symbol, this.kycContract, this.serializer.Serialize(periodInputs));
             return (contract, periods);
         }
 
         [Fact]
-        public void Invest_Success()
+        public void Invest_CalledForStandardToken_Success()
         {
             var amount = 15 * Satoshis;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 5ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -120,14 +174,46 @@
         }
 
         [Fact]
+        public void Invest_CalledForNonFungibleToken_Success()
+        {
+            var amount = 15 * Satoshis;
+            var totalSupply = ulong.MaxValue;
+
+            this.mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(this.mContractState.Object, 0, new object[] { this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+
+            var (contract, _) = this.Create(TokenType.NonFungibleToken);
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { this.investor, 5ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+
+            Assert.True(contract.Invest());
+
+            Assert.Equal(totalSupply - 5ul, contract.TokenBalance);
+            this.mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
+
+            this.mBlock.Setup(s => s.Number).Returns(4);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { this.investor, 3ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+
+            Assert.True(contract.Invest());
+
+            Assert.Equal(totalSupply - 8ul, contract.TokenBalance);
+            this.mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
+        }
+
+        [Fact]
         public void Invest_Refunds_Oversold_Tokens()
         {
             this.totalSupply = 60;
             var amount = 190 * Satoshis;
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+
+            var (contract, _) = this.Create(TokenType.StandardToken);
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, this.totalSupply }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -139,8 +225,10 @@
         public void Invest_Fails_If_TokenBalance_Is_Zero()
         {
             var amount = 1 * Satoshis;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
             this.persistentState.SetUInt64(nameof(ICOContract.TokenBalance), 0);
 
@@ -151,8 +239,9 @@
         public void Invest_Fails_If_EndBlock_Reached()
         {
             var amount = 1 * Satoshis;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
             this.mBlock.Setup(s => s.Number).Returns(5);
@@ -164,8 +253,9 @@
         public void Invest_Fails_If_Investment_Amount_Is_Zero()
         {
             var amount = 0ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
             Assert.Throws<SmartContractAssertException>(() => contract.Invest());
@@ -175,8 +265,9 @@
         public void WithdrawFunds_Fails_If_Caller_Is_Not_Owner()
         {
             var amount = 0ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
             this.mBlock.Setup(m => m.Number).Returns(5);
 
@@ -187,12 +278,47 @@
         public void WithdrawFunds_Fails_If_Sale_Is_Open()
         {
             var amount = 0ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
 
-            var (contract, _) = this.Setup(contractCreation: this.createSuccess);
+            var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, amount));
             this.mBlock.Setup(m => m.Number).Returns(4);
 
             Assert.Throws<SmartContractAssertException>(() => contract.WithdrawFunds());
+        }
+
+
+
+        [Fact]
+        public void WithdrawFunds_Called_By_Owner_Success()
+        {
+            var amount = 0ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, amount));
+            this.mBlock.Setup(m => m.Number).Returns(4);
+
+            Assert.Throws<SmartContractAssertException>(() => contract.WithdrawFunds());
+        }
+
+        [Fact]
+        public void WithdrawTokens_Called_By_Owner_After_Sale_Is_Closed_Success()
+        {
+            var amount = 0ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, amount));
+            this.mBlock.Setup(m => m.Number).Returns(5);
+            this.persistentState.SetUInt64(nameof(contract.TokenBalance), 100);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.owner, 100ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+
+            var success = contract.WithdrawTokens();
+
+            Assert.True(success);
+            Assert.Equal(0ul, this.persistentState.GetUInt64(nameof(contract.TokenBalance)));
+            this.mTransactionExecutor.Verify(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.owner, 100ul }, 0));
         }
     }
 }
