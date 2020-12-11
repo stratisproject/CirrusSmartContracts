@@ -56,11 +56,10 @@ namespace Tests
             // Assert that an exception is thrown if the total supply is set to 0
             Assert.True(contract.MapAddress(secondaryAddress));
 
-            mContractLogger.Verify(m => m.Log(mContractState.Object, new AddressMappedLog { Primary = primaryAddress, Secondary = secondaryAddress }));
+            mContractLogger.Verify(m => m.Log(mContractState.Object, new AddressMapPendingLog { Primary = primaryAddress, Secondary = secondaryAddress }));
 
             mPersistentState.Verify(x => x.SetBool($"SecondaryAddressInUse:{secondaryAddress}", true));
             mPersistentState.Verify(m => m.SetAddress($"SecondaryAddress:{primaryAddress}", secondaryAddress));
-
         }
     }
 }
