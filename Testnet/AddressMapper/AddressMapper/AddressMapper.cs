@@ -3,16 +3,18 @@ using Stratis.SmartContracts;
 
 public class AddressMapper : SmartContract
 {
-    public Address GetSecondaryAddress(Address primary) => this.PersistentState.GetAddress($"SecondaryAddress:{primary}");
-    private void SetSecondaryAddress(Address primary, Address secondary) => this.PersistentState.SetAddress($"SecondaryAddress:{primary}", secondary);
+    public Address GetSecondaryAddress(Address primary) => PersistentState.GetAddress($"SecondaryAddress:{primary}");
+    private void SetSecondaryAddress(Address primary, Address secondary) => PersistentState.SetAddress($"SecondaryAddress:{primary}", secondary);
 
-    private Status GetSecondaryStatus(Address secondary) => (Status)this.PersistentState.GetInt32($"SecondaryAddressStatus:{secondary}");
-    private void SetSecondaryStatus(Address secondary, Status status) => this.PersistentState.SetInt32($"SecondaryAddressStatus:{secondary}", (Int32)status);
+    private MappingInfo GetMappingInfo(Address secondary) => PersistentState.GetStruct<MappingInfo>($"MappingInfo:{secondary}");
+    private void SetMappingInfo(Address secondary, MappingInfo value) => PersistentState.SetStruct($"MappingInfo:{secondary}", value);
+    
+    private void ClearMappingInfo(Address secondary) => PersistentState.Clear($"MappingInfo:{secondary}");
 
     public Address Owner
     {
-        get => this.PersistentState.GetAddress(nameof(Owner));
-        private set => this.PersistentState.SetAddress(nameof(Owner), value);
+        get => PersistentState.GetAddress(nameof(Owner));
+        private set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
     public AddressMapper(ISmartContractState smartContractState, Address Owner) : base(smartContractState)
@@ -20,36 +22,35 @@ public class AddressMapper : SmartContract
         this.Owner = Owner;
     }
 
-    public bool MapAddress(Address secondary)
+    public void MapAddress(Address secondary)
     {
-        if (GetSecondaryStatus(secondary) != Status.NoStatus)
-            return false;
+        Assert(GetMappingInfo(secondary).Status == (int)Status.NoStatus);
 
-        SetSecondaryAddress(Message.Sender, secondary);
-        SetSecondaryStatus(secondary, Status.Pending);
-
-        Log(new AddressMapPendingLog { Primary = Message.Sender, Secondary = secondary });
-
-        return true;
+        SetMappingInfo(secondary, new MappingInfo { Primary = Message.Sender, Status = (int)Status.Pending });
     }
 
-    public void SetApproval(Address secondary, bool approve)
+    public void Approve(Address secondary)
     {
         EnsureAdminOnly();
-        Assert(GetSecondaryStatus(secondary) == Status.Pending, "Mapping is not in pending state.");
+        var mapping = GetMappingInfo(secondary);
+        Assert(mapping.Status == (int)Status.Pending, "Mapping is not in pending state.");
 
-        if (approve)
-        {
-            SetSecondaryStatus(secondary, Status.Approved);
-
-            Log(new AddressMappedLog { Primary = Message.Sender, Secondary = secondary });
-
-            return;
-        }
-
-        SetSecondaryStatus(secondary, Status.NoStatus); // same address can be mapped again. 
+        SetSecondaryAddress(mapping.Primary, secondary);
+        SetMappingInfo(secondary, new MappingInfo { Primary = mapping.Primary, Status = (int)Status.Approved });
+        
+        Log(new AddressMappedLog { Primary = mapping.Primary, Secondary = secondary });
     }
 
+    public void Reject(Address secondary)
+    {
+        EnsureAdminOnly();
+        var mapping = GetMappingInfo(secondary);
+        Assert(mapping.Status == (int)Status.Pending, "Mapping is not in pending state.");
+
+        ClearMappingInfo(secondary); // same address can be mapped again. 
+    }
+
+    public string GetStatus(Address secondary) => GetMappingInfo(secondary).Status.ToString();
     public void EnsureAdminOnly() => Assert(this.Owner == Message.Sender, "Only contract owner can access.");
 
     public enum Status
@@ -59,13 +60,10 @@ public class AddressMapper : SmartContract
         Approved,
     }
 
-    public struct AddressMapPendingLog
+    public struct MappingInfo
     {
-        [Index]
         public Address Primary;
-
-        [Index]
-        public Address Secondary;
+        public int Status;
     }
 
     public struct AddressMappedLog
