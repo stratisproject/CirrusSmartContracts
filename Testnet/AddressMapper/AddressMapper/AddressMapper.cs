@@ -51,6 +51,7 @@ public class AddressMapper : SmartContract
     }
 
     public string GetStatus(Address secondary) => GetMappingInfo(secondary).Status.ToString();
+    public Address GetPrimaryAddress(Address secondary) => GetMappingInfo(secondary).Primary;
     public void EnsureAdminOnly() => Assert(this.Owner == Message.Sender, "Only contract owner can access.");
 
     public enum Status
