@@ -22,9 +22,11 @@
         private Address sender;
         private Address owner;
         private Address investor;
+        private Address identity;
         private Address contract;
         private Address tokenContract;
         private Address kycContract;
+        private Address mapperContract;
 
         private InMemoryState persistentState;
         private string name;
@@ -50,9 +52,11 @@
             this.sender = "0x0000000000000000000000000000000000000001".HexToAddress();
             this.owner = "0x0000000000000000000000000000000000000002".HexToAddress();
             this.investor = "0x0000000000000000000000000000000000000003".HexToAddress();
-            this.contract = "0x0000000000000000000000000000000000000004".HexToAddress();
-            this.tokenContract = "0x0000000000000000000000000000000000000005".HexToAddress();
-            this.kycContract = "0x0000000000000000000000000000000000000006".HexToAddress();
+            this.identity = "0x0000000000000000000000000000000000000004".HexToAddress();
+            this.contract = "0x0000000000000000000000000000000000000005".HexToAddress();
+            this.tokenContract = "0x0000000000000000000000000000000000000006".HexToAddress();
+            this.kycContract = "0x0000000000000000000000000000000000000007".HexToAddress();
+            this.mapperContract = "0x0000000000000000000000000000000000000008".HexToAddress();
             this.createSuccess = CreateResult.Succeeded(this.tokenContract);
             this.name = "Test Token";
             this.symbol = "TST";
@@ -142,7 +146,7 @@
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
             this.mBlock.Setup(s => s.Number).Returns(1);
-            var contract = new ICOContract(this.mContractState.Object, this.owner, (uint)tokenType, this.totalSupply, this.name, this.symbol, this.kycContract, this.serializer.Serialize(periodInputs));
+            var contract = new ICOContract(this.mContractState.Object, this.owner, (uint)tokenType, this.totalSupply, this.name, this.symbol, this.kycContract,this.mapperContract, this.serializer.Serialize(periodInputs));
             return (contract, periods);
         }
 
@@ -157,7 +161,8 @@
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, 5ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
-            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(this.identity));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -186,7 +191,8 @@
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { this.investor, 5ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
-            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(this.identity));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -213,7 +219,8 @@
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { this.investor, this.totalSupply }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
-            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.investor, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(this.identity));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 

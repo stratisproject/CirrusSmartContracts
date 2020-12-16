@@ -23,6 +23,12 @@ public class ICOContract : SmartContract
         private set => this.PersistentState.SetAddress(nameof(KYCAddress), value);
     }
 
+    public Address MapperAddress
+    {
+        get => this.PersistentState.GetAddress(nameof(MapperAddress));
+        private set => this.PersistentState.SetAddress(nameof(MapperAddress), value);
+    }
+
     public ulong TokenBalance
     {
         get => this.PersistentState.GetUInt64(nameof(TokenBalance));
@@ -49,8 +55,6 @@ public class ICOContract : SmartContract
         private set => PersistentState.SetArray(nameof(SalePeriods), value);
     }
 
-    private const ulong Satoshis = 100_000_000;
-
     public ICOContract(ISmartContractState smartContractState,
                        Address owner,
                        uint tokenType,
@@ -58,6 +62,7 @@ public class ICOContract : SmartContract
                        string name,
                        string symbol,
                        Address kycAddress,
+                       Address mapperAddress,
                        byte[] salePeriods) : base(smartContractState)
     {
         Assert(tokenType < 3, $"The {nameof(tokenType)} parameter can be between 0 and 2");
@@ -75,6 +80,7 @@ public class ICOContract : SmartContract
         Log(new ICOSetupLog { TokenAddress = result.NewContractAddress });
 
         KYCAddress = kycAddress;
+        MapperAddress = mapperAddress;
         TokenAddress = result.NewContractAddress;
         IsNonFungibleToken = tokenTypeEnum == TokenType.NonFungibleToken;
         TokenBalance = IsNonFungibleToken ? ulong.MaxValue : totalSupply;
@@ -119,9 +125,18 @@ public class ICOContract : SmartContract
 
     private void EnsureKycVerified()
     {
-        var result = Call(KYCAddress, 0, "GetClaim", new object[] { Message.Sender, 3 /*shufti kyc*/ });
+        var result = Call(MapperAddress, 0, "GetSecondaryAddress", new object[] { Message.Sender });
 
-        Assert(result.Success && result.ReturnValue != null, "Your KYC is not verified.");
+        if (result.Success && result.ReturnValue is Address identityAddress && identityAddress != Address.Zero)
+        {
+            result = Call(KYCAddress, 0, "GetClaim", new object[] { identityAddress, 3 /*shufti kyc*/ });
+
+            Assert(result.Success && result.ReturnValue != null, "Your KYC is not verified.");
+
+            return;
+        }
+
+        throw new SmartContractAssertException("The address has no mapping.");
     }
 
     public bool WithdrawFunds()
@@ -428,7 +443,6 @@ public class StandardToken : SmartContract, IStandardToken
 
 public class DividendToken : SmartContract, IStandardToken
 {
-
     public ulong Dividends
     {
         get => PersistentState.GetUInt64(nameof(this.Dividends));
