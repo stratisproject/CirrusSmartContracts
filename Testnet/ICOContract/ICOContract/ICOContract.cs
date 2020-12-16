@@ -136,7 +136,7 @@ public class ICOContract : SmartContract
             return;
         }
 
-        throw new SmartContractAssertException("The address has no mapping.");
+        Assert(false, "The address has no mapping.");
     }
 
     public bool WithdrawFunds()

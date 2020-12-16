@@ -269,6 +269,58 @@
         }
 
         [Fact]
+        public void Invest_Fails_If_GetSecondaryAddress_Call_Fails()
+        {
+            var amount = 10ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Failed());
+            //this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+
+            Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+        }
+
+        [Fact]
+        public void Invest_Fails_If_GetSecondaryAddress_Call_Returns_Zero_Address()
+        {
+            var amount = 10ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(Address.Zero));
+            //this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+
+            Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+        }
+
+        [Fact]
+        public void Invest_Fails_If_GetClaim_Call_Fails()
+        {
+            var amount = 10ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(this.identity));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Failed());
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+
+            Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+        }
+
+        [Fact]
+        public void Invest_Fails_If_GetClaim_Call_Returns_Null()
+        {
+            var amount = 10ul;
+            this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(this.identity));
+            this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(null));
+            var (contract, _) = this.Create(TokenType.StandardToken);
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
+
+            Assert.Throws<SmartContractAssertException>(() => contract.Invest());
+        }
+
+        [Fact]
         public void WithdrawFunds_Fails_If_Caller_Is_Not_Owner()
         {
             var amount = 0ul;
@@ -293,8 +345,6 @@
 
             Assert.Throws<SmartContractAssertException>(() => contract.WithdrawFunds());
         }
-
-
 
         [Fact]
         public void WithdrawFunds_Called_By_Owner_Success()
