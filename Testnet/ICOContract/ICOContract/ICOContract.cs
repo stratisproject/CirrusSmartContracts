@@ -129,7 +129,7 @@ public class ICOContract : SmartContract
 
         if (result.Success && result.ReturnValue is Address identityAddress && identityAddress != Address.Zero)
         {
-            result = Call(KYCAddress, 0, "GetClaim", new object[] { identityAddress, 3 /*shufti kyc*/ });
+            result = Call(KYCAddress, 0, "GetClaim", new object[] { identityAddress, (uint)3 /*shufti kyc*/ });
 
             Assert(result.Success && result.ReturnValue != null, "Your KYC is not verified.");
 

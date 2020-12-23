@@ -274,7 +274,6 @@
             var amount = 10ul;
             this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Failed());
-            //this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
             var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
@@ -287,7 +286,6 @@
             var amount = 10ul;
             this.mTransactionExecutor.Setup(m => m.Create<StandardToken>(this.mContractState.Object, 0, new object[] { this.totalSupply, this.name, this.symbol }, It.IsAny<ulong>())).Returns(this.createSuccess);
             this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.mapperContract, 0, "GetSecondaryAddress", new object[] { this.investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(Address.Zero));
-            //this.mTransactionExecutor.Setup(m => m.Call(this.mContractState.Object, this.kycContract, 0, "GetClaim", new object[] { this.identity, 3 /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
             var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
 
