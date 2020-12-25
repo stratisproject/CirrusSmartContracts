@@ -1,5 +1,9 @@
 ﻿# Address Mapper Contract
 
+**Compiler Version**
+```
+v0.0.2
+```
 **Contract Hash**
 ```
 a38365a7b84fed37f8c8a3b3e64fb8f4f9b67eb5718ecb955faa090369abe2c5
