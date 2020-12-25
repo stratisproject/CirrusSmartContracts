@@ -5,11 +5,7 @@ VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract", "ICOContract\ICOContract.csproj", "{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Integration", "ICOContract.Integration\ICOContract.Integration.csproj", "{D4648FAE-8081-415E-98F3-6E893A7046CB}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Integration.Tests", "ICOContract.Integration.Tests\ICOContract.Integration.Tests.csproj", "{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICOContract.Tests", "ICOContract.Tests\ICOContract.Tests.csproj", "{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Tests", "ICOContract.Tests\ICOContract.Tests.csproj", "{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,14 +17,6 @@ Global
 		{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D4648FAE-8081-415E-98F3-6E893A7046CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D4648FAE-8081-415E-98F3-6E893A7046CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D4648FAE-8081-415E-98F3-6E893A7046CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D4648FAE-8081-415E-98F3-6E893A7046CB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DDEBBEBC-6FAB-4A70-8F57-BAA585046784}.Release|Any CPU.Build.0 = Release|Any CPU
 		{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
