@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29920.165
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract", "ICOContract\ICOContract.csproj", "{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "STOContract", "STOContract\STOContract.csproj", "{5A9239B7-6AB3-40AC-BC6A-42B6F6E7FE76}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ICOContract.Tests", "ICOContract.Tests\ICOContract.Tests.csproj", "{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "STOContract.Tests", "STOContract.Tests\STOContract.Tests.csproj", "{658848FE-FF0B-43CE-8B58-96CCAD85CD8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

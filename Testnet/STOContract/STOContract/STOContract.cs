@@ -1,9 +1,8 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
-using System;
 
 [Deploy]
-public class ICOContract : SmartContract
+public class STOContract : SmartContract
 {
     public ulong EndBlock
     {
@@ -55,7 +54,7 @@ public class ICOContract : SmartContract
         private set => PersistentState.SetArray(nameof(SalePeriods), value);
     }
 
-    public ICOContract(ISmartContractState smartContractState,
+    public STOContract(ISmartContractState smartContractState,
                        Address owner,
                        uint tokenType,
                        ulong totalSupply,
@@ -77,7 +76,7 @@ public class ICOContract : SmartContract
 
         Assert(result.Success, "Creating token contract failed.");
 
-        Log(new ICOSetupLog { TokenAddress = result.NewContractAddress });
+        Log(new STOSetupLog { TokenAddress = result.NewContractAddress });
 
         KYCAddress = kycAddress;
         MapperAddress = mapperAddress;
@@ -101,7 +100,7 @@ public class ICOContract : SmartContract
 
     public bool Invest()
     {
-        Assert(SaleOpen, "The ICO is completed.");
+        Assert(SaleOpen, "The STO is completed.");
         Assert(Message.Value > 0, "The amount should be higher than zero");
 
         EnsureKycVerified();
@@ -142,7 +141,7 @@ public class ICOContract : SmartContract
     public bool WithdrawFunds()
     {
         Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
-        Assert(!SaleOpen, "ICO is not ended yet.");
+        Assert(!SaleOpen, "STO is not ended yet.");
 
         var result = Transfer(this.Owner, Balance);
 
@@ -153,7 +152,7 @@ public class ICOContract : SmartContract
     {
         Assert(!IsNonFungibleToken, $"The {nameof(WithdrawTokens)} method is not supported for Non-Fungible Token.");
         Assert(Message.Sender == Owner, "Only contract owner can transfer tokens.");
-        Assert(!SaleOpen, "ICO is not ended yet.");
+        Assert(!SaleOpen, "STO is not ended yet.");
 
         var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, TokenBalance });
 
@@ -253,7 +252,7 @@ public class ICOContract : SmartContract
 
     }
 
-    public struct ICOSetupLog
+    public struct STOSetupLog
     {
         public Address TokenAddress;
     }

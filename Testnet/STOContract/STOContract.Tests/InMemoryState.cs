@@ -2,12 +2,14 @@
 using Stratis.SmartContracts;
 using System;
 using System.Collections.Generic;
+using static STOContract;
 
-namespace ICOContrat.Tests
+namespace STOContractTests
 {
     public class InMemoryState : IPersistentState
     {
         private readonly Dictionary<string, object> storage = new Dictionary<string, object>();
+
         public bool IsContractResult { get; set; }
 
         public void Clear(string key) => this.storage.Remove(key);
