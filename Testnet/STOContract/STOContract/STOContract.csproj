@@ -10,7 +10,7 @@
     <PackageReference Include="Stratis.SmartContracts.Standards" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Update="ICOContract.cs">
+    <Compile Update="STOContract.cs">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Compile>
   </ItemGroup>

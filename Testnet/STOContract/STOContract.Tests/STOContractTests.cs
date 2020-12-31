@@ -1,4 +1,4 @@
-﻿namespace ICOContrat.Tests
+﻿namespace STOContractTests
 {
     using Moq;
     using NBitcoin;
@@ -6,11 +6,11 @@
     using Stratis.SmartContracts.CLR;
     using Stratis.SmartContracts.CLR.Serialization;
     using Xunit;
-    using SalePeriod = ICOContract.SalePeriod;
-    using SalePeriodInput = ICOContract.SalePeriodInput;
-    using TokenType = ICOContract.TokenType;
+    using SalePeriod = STOContract.SalePeriod;
+    using SalePeriodInput = STOContract.SalePeriodInput;
+    using TokenType = STOContract.TokenType;
 
-    public class ICOContractTests
+    public class STOContractTests
     {
         private const ulong Satoshis = 100_000_000;
 
@@ -35,7 +35,7 @@
         private Mock<Network> network;
         private Serializer serializer;
 
-        public ICOContractTests()
+        public STOContractTests()
         {
             this.mContractLogger = new Mock<IContractLogger>();
             this.mContractState = new Mock<ISmartContractState>();
@@ -131,7 +131,7 @@
             this.mTransactionExecutor.Verify(m => m.Create<NonFungibleToken>(this.mContractState.Object, 0, new object[] { this.name, this.symbol }, 0), Times.Once);
         }
 
-        public (ICOContract contract, SalePeriod[] periods) Create(TokenType tokenType)
+        public (STOContract contract, SalePeriod[] periods) Create(TokenType tokenType)
         {
             var periodInputs = new[]
             {
@@ -146,7 +146,7 @@
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
             this.mBlock.Setup(s => s.Number).Returns(1);
-            var contract = new ICOContract(this.mContractState.Object, this.owner, (uint)tokenType, this.totalSupply, this.name, this.symbol, this.kycContract,this.mapperContract, this.serializer.Serialize(periodInputs));
+            var contract = new STOContract(this.mContractState.Object, this.owner, (uint)tokenType, this.totalSupply, this.name, this.symbol, this.kycContract,this.mapperContract, this.serializer.Serialize(periodInputs));
             return (contract, periods);
         }
 
@@ -237,7 +237,7 @@
 
             var (contract, _) = this.Create(TokenType.StandardToken);
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.investor, amount));
-            this.persistentState.SetUInt64(nameof(ICOContract.TokenBalance), 0);
+            this.persistentState.SetUInt64(nameof(STOContract.TokenBalance), 0);
 
             Assert.Throws<SmartContractAssertException>(() => contract.Invest());
         }
