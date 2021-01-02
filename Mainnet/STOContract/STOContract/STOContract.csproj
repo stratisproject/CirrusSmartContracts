@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+	
+	<LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Stratis.SmartContracts" Version="1.2.1" />
+    <PackageReference Include="Stratis.SmartContracts.Standards" Version="1.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="STOContract.cs">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
+</Project>
