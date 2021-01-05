@@ -50,7 +50,7 @@ public class DividendToken : SmartContract, IStandardToken
         return TransferTokensFrom(from, to, amount);
     }
 
-    Account UpdateAccount(Address address)
+    private Account UpdateAccount(Address address)
     {
         var account = GetAccount(address);
         var newDividends = GetWithdrawableDividends(address, account);
