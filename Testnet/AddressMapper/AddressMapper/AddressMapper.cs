@@ -17,9 +17,9 @@ public class AddressMapper : SmartContract
         private set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
-    public AddressMapper(ISmartContractState smartContractState, Address Owner) : base(smartContractState)
+    public AddressMapper(ISmartContractState smartContractState, Address owner) : base(smartContractState)
     {
-        this.Owner = Owner;
+        this.Owner = owner;
     }
 
     public void MapAddress(Address secondary)
