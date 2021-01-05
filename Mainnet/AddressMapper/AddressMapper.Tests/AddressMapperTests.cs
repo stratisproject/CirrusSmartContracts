@@ -51,8 +51,6 @@ namespace Tests
         [Fact]
         public void MappAddress_Maps_PrimaryAddres()
         {
-            persistentState.SetStruct($"MappingInfo:{secondaryAddress}", new MappingInfo { Primary = primaryAddress, Status = (int)Status.NoStatus });
-
             mContractState.Setup(x => x.Message).Returns(new Message(contractAddress, primaryAddress, 0));
 
             var contract = new AddressMapper(mContractState.Object, ownerAddress);
