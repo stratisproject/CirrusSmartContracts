@@ -52,6 +52,16 @@ public class AddressMapper : SmartContract
 
     public string GetStatus(Address secondary) => GetMappingInfo(secondary).Status.ToString();
     public Address GetPrimaryAddress(Address secondary) => GetMappingInfo(secondary).Primary;
+
+    public void ChangeOwner(Address owner)
+    {
+        EnsureAdminOnly();
+
+        Assert(owner != Address.Zero, $"The {nameof(owner)} parameter can not be default(zero) address.");
+
+        this.Owner = owner;
+    }
+
     public void EnsureAdminOnly() => Assert(this.Owner == Message.Sender, "Only contract owner can access.");
 
     public enum Status
