@@ -8,7 +8,7 @@ public class AddressMapper : SmartContract
 
     private MappingInfo GetMappingInfo(Address secondary) => PersistentState.GetStruct<MappingInfo>($"MappingInfo:{secondary}");
     private void SetMappingInfo(Address secondary, MappingInfo value) => PersistentState.SetStruct($"MappingInfo:{secondary}", value);
-    
+
     private void ClearMappingInfo(Address secondary) => PersistentState.Clear($"MappingInfo:{secondary}");
 
     public Address Owner
@@ -17,9 +17,9 @@ public class AddressMapper : SmartContract
         private set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
-    public AddressMapper(ISmartContractState smartContractState, Address Owner) : base(smartContractState)
+    public AddressMapper(ISmartContractState smartContractState, Address owner) : base(smartContractState)
     {
-        this.Owner = Owner;
+        this.Owner = owner;
     }
 
     public void MapAddress(Address secondary)
@@ -37,7 +37,7 @@ public class AddressMapper : SmartContract
 
         SetSecondaryAddress(mapping.Primary, secondary);
         SetMappingInfo(secondary, new MappingInfo { Primary = mapping.Primary, Status = (int)Status.Approved });
-        
+
         Log(new AddressMappedLog { Primary = mapping.Primary, Secondary = secondary });
     }
 
