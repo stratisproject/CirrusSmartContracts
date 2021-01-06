@@ -76,7 +76,9 @@ namespace DividendTokenContract.Tests
 
             contract.Receive();
 
-            Assert.Equal(2*dividend, contract.Dividends);
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            Assert.Equal(2 * dividend, contract.Dividends);
             Assert.Equal(300ul, contract.GetDividends(this.tokenHolder));
             Assert.Equal(300ul, contract.GetTotalDividends(this.tokenHolder));
 
