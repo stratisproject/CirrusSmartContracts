@@ -54,7 +54,36 @@ namespace DividendTokenContract.Tests
 
             Assert.Equal(dividend, contract.Dividends);
             Assert.Equal(100ul, contract.GetDividends(this.tokenHolder));
+            Assert.Equal(100ul, contract.GetTotalDividends(this.tokenHolder));
             Assert.Equal(900ul, contract.GetDividends(this.owner));
+            Assert.Equal(900ul, contract.GetTotalDividends(this.owner));
+        }
+
+        [Fact]
+        public void Multiple_Deposited_Dividend_Should_Be_Distributed_Equaly()
+        {
+            var dividend = 1000ul;
+
+            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
+
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            contract.Receive();
+
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            contract.Receive();
+
+            Assert.True(contract.TransferTo(this.tokenHolder, 100));
+
+            Assert.Equal(2 * dividend, contract.Dividends);
+            Assert.Equal(300ul, contract.GetDividends(this.tokenHolder));
+            Assert.Equal(300ul, contract.GetTotalDividends(this.tokenHolder));
+
+            Assert.Equal(1700ul, contract.GetDividends(this.owner));
+            Assert.Equal(1700ul, contract.GetTotalDividends(this.owner));
         }
 
         [Fact]
