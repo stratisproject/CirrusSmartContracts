@@ -25,15 +25,20 @@ public class DividendToken : SmartContract, IStandardToken
         this.SetBalance(Message.Sender, totalSupply);
     }
 
+
+    public override void Receive()
+    {
+        DistributeDividends();
+    }
+
     /// <summary>
     /// It is advised that deposit amount should to be evenly divided by total supply, 
     /// otherwise small amount of satoshi may lost(burn)
     /// </summary>
-    public override void Receive()
+    public void DistributeDividends()
     {
         Dividends += Message.Value;
     }
-
     public bool TransferTo(Address to, ulong amount)
     {
         UpdateAccount(Message.Sender);
@@ -53,7 +58,7 @@ public class DividendToken : SmartContract, IStandardToken
     private Account UpdateAccount(Address address)
     {
         var account = GetAccount(address);
-        var newDividends = GetWithdrawableDividends(address, account);
+        var newDividends = GetNewDividends(address, account);
 
         if (newDividends > 0)
         {
@@ -67,10 +72,16 @@ public class DividendToken : SmartContract, IStandardToken
 
     private ulong GetWithdrawableDividends(Address address, Account account)
     {
-        var newDividends = Dividends - account.CreditedDividends;
-        var notCreditedDividends = checked(GetBalance(address) * newDividends);
+        return checked(account.DividendBalance + GetNewDividends(address, account)); //Delay divide by TotalSupply to final stage for avoid decimal value loss.
+    }
 
-        return checked(account.DividendBalance + notCreditedDividends); //Delay divide by TotalSupply to final stage for avoid decimal value loss.
+    private ulong GetNewDividends(Address address, Account account)
+    {
+        checked
+        {
+            var notCreditedDividends = Dividends - account.CreditedDividends;
+            return GetBalance(address) * notCreditedDividends;
+        }
     }
 
     /// <summary>
@@ -118,7 +129,7 @@ public class DividendToken : SmartContract, IStandardToken
         var remainder = account.DividendBalance % TotalSupply;
 
         Assert(balance > 0, "The account has no dividends.");
-        
+
         account.WithdrawnDividends = checked(account.WithdrawnDividends + account.DividendBalance - remainder);
         account.DividendBalance = remainder;
 
