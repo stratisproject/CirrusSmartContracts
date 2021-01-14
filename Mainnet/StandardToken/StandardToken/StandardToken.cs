@@ -1,5 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
+using Amount = Stratis.SmartContracts.UInt256;
 
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
@@ -13,7 +14,7 @@ public class StandardToken : SmartContract, IStandardToken
     /// <param name="totalSupply">The total token supply.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
-    public StandardToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol)
+    public StandardToken(ISmartContractState smartContractState, Amount totalSupply, string name, string symbol)
         : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
@@ -35,25 +36,36 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public ulong TotalSupply
+    public Amount TotalSupply
     {
-        get => PersistentState.GetUInt64(nameof(this.TotalSupply));
-        private set => PersistentState.SetUInt64(nameof(this.TotalSupply), value);
+        get => PersistentState.GetUInt256(nameof(this.TotalSupply));
+        private set => PersistentState.SetUInt256(nameof(this.TotalSupply), value);
     }
 
     /// <inheritdoc />
-    public ulong GetBalance(Address address)
+    public uint GetDecimals()
     {
-        return PersistentState.GetUInt64($"Balance:{address}");
+        return PersistentState.GetUInt32($"Decimals");
     }
 
-    private void SetBalance(Address address, ulong value)
+    private void SetDecimals(uint decimals)
     {
-        PersistentState.SetUInt64($"Balance:{address}", value);
+        PersistentState.SetUInt32($"Decimals", decimals);
     }
 
     /// <inheritdoc />
-    public bool TransferTo(Address to, ulong amount)
+    public Amount GetBalance(Address address)
+    {
+        return PersistentState.GetUInt256($"Balance:{address}");
+    }
+
+    private void SetBalance(Address address, Amount value)
+    {
+        PersistentState.SetUInt256($"Balance:{address}", value);
+    }
+
+    /// <inheritdoc />
+    public bool TransferTo(Address to, Amount amount)
     {
         if (amount == 0)
         {
@@ -62,7 +74,7 @@ public class StandardToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderBalance = GetBalance(Message.Sender);
+        Amount senderBalance = GetBalance(Message.Sender);
 
         if (senderBalance < amount)
         {
@@ -79,7 +91,7 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public bool TransferFrom(Address from, Address to, ulong amount)
+    public bool TransferFrom(Address from, Address to, Amount amount)
     {
         if (amount == 0)
         {
@@ -88,8 +100,8 @@ public class StandardToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderAllowance = Allowance(from, Message.Sender);
-        ulong fromBalance = GetBalance(from);
+        Amount senderAllowance = Allowance(from, Message.Sender);
+        Amount fromBalance = GetBalance(from);
 
         if (senderAllowance < amount || fromBalance < amount)
         {
@@ -108,7 +120,7 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public bool Approve(Address spender, ulong currentAmount, ulong amount)
+    public bool Approve(Address spender, Amount currentAmount, Amount amount)
     {
         if (Allowance(Message.Sender, spender) != currentAmount)
         {
@@ -122,15 +134,15 @@ public class StandardToken : SmartContract, IStandardToken
         return true;
     }
 
-    private void SetApproval(Address owner, Address spender, ulong value)
+    private void SetApproval(Address owner, Address spender, Amount value)
     {
-        PersistentState.SetUInt64($"Allowance:{owner}:{spender}", value);
+        PersistentState.SetUInt256($"Allowance:{owner}:{spender}", value);
     }
 
     /// <inheritdoc />
-    public ulong Allowance(Address owner, Address spender)
+    public Amount Allowance(Address owner, Address spender)
     {
-        return PersistentState.GetUInt64($"Allowance:{owner}:{spender}");
+        return PersistentState.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
     public struct TransferLog
@@ -141,7 +153,7 @@ public class StandardToken : SmartContract, IStandardToken
         [Index]
         public Address To;
 
-        public ulong Amount;
+        public Amount Amount;
     }
 
     public struct ApprovalLog
@@ -152,8 +164,8 @@ public class StandardToken : SmartContract, IStandardToken
         [Index]
         public Address Spender;
 
-        public ulong OldAmount;
+        public Amount OldAmount;
 
-        public ulong Amount;
+        public Amount Amount;
     }
 }
