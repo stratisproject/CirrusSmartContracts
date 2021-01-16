@@ -72,7 +72,7 @@ namespace Stratis.SmartContracts.Samples.Tests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.spender}")).Returns(balance);
@@ -88,7 +88,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             standardToken.Approve(this.spender, 0, approval);
 
@@ -106,7 +106,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -127,7 +127,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -145,7 +145,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             standardToken.Allowance(this.owner, this.spender);
 
@@ -161,7 +161,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(standardToken.TransferTo(this.destination, amount));
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = this.sender, To = this.destination, Amount = amount }));
@@ -178,7 +178,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the sender's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
@@ -208,7 +208,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
@@ -230,7 +230,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(senderBalance);
@@ -258,7 +258,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
@@ -304,7 +304,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
 
@@ -322,7 +322,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
@@ -359,7 +359,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
@@ -387,7 +387,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
@@ -416,7 +416,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(ownerBalance);
@@ -448,7 +448,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
@@ -510,7 +510,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance);
@@ -546,7 +546,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance);
