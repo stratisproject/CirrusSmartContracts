@@ -1,6 +1,5 @@
 using System;
 using Moq;
-using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.CLR;
 using Xunit;
 
@@ -19,6 +18,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         private string name;
         private string symbol;
         private uint decimals;
+        private ulong totalSupply;
 
         public StandardTokenTests()
         {
@@ -35,30 +35,34 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.name = "Test Token";
             this.symbol = "TST";
             this.decimals = 8;
+            this.totalSupply = 100_000;
         }
-
+        
         [Fact]
-        public void Constructor_Sets_TotalSupply()
+        public void Constructor_Sets_Name_Symbol_Decimals_And_TotalSupply()
         {
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
+            Address subject = this.sender;
 
-            ulong totalSupply = 100_000;
-            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, subject, 0));
 
-            // Verify that PersistentState was called with the total supply
-            this.mockPersistentState.Verify(s => s.SetUInt64(nameof(StandardToken.TotalSupply), totalSupply));
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
+
+            // Verify we set the name, symbol, decimals and total supply
+            this.mockPersistentState.Verify(s => s.SetString("Name", this.name));
+            this.mockPersistentState.Verify(s => s.SetString("Symbol", this.symbol));
+            this.mockPersistentState.Verify(s => s.SetUInt32("Decimals", this.decimals));
+            this.mockPersistentState.Verify(s => s.SetUInt64(nameof(StandardToken.TotalSupply), this.totalSupply));
         }
 
         [Fact]
         public void Constructor_Assigns_TotalSupply_To_Owner()
         {
-            ulong totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new StandardToken(this.mockContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", totalSupply));
+            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", this.totalSupply));
         }
 
         [Fact]
@@ -579,22 +583,6 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{subject}:{subject}", balance - amount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = subject, To = subject, Amount = amount }));
-        }
-
-        [Fact]
-        public void Constructor_Sets_Name_Symbol_And_Decimals()
-        {
-            Address subject = this.sender;
-
-            this.mockContractState.Setup(m => m.Message)
-                .Returns(new Message(this.contract, subject, 0));
-
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
-
-            // Verify we set the name and the symbol
-            this.mockPersistentState.Verify(s => s.SetString("Name", this.name));
-            this.mockPersistentState.Verify(s => s.SetString("Symbol", this.symbol));
-            this.mockPersistentState.Verify(s => s.SetUInt32("Decimals", this.decimals));
         }
     }
 }

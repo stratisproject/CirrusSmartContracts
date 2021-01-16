@@ -24,22 +24,25 @@ public class StandardToken : SmartContract, IStandardToken
         this.SetBalance(Message.Sender, totalSupply);
     }
 
-    public uint Decimals
-    {
-        get => PersistentState.GetUInt32(nameof(this.Decimals));
-        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
-    }
-
+    /// <inheritdoc />
     public string Symbol
     {
         get => PersistentState.GetString(nameof(this.Symbol));
         private set => PersistentState.SetString(nameof(this.Symbol), value);
     }
 
+    /// <inheritdoc />
     public string Name
     {
         get => PersistentState.GetString(nameof(this.Name));
         private set => PersistentState.SetString(nameof(this.Name), value);
+    }
+
+    /// <inheritdoc />
+    public uint Decimals
+    {
+        get => PersistentState.GetUInt32(nameof(this.Decimals));
+        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
     }
 
     /// <inheritdoc />
