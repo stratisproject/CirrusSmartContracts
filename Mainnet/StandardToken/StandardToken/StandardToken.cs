@@ -24,14 +24,12 @@ public class StandardToken : SmartContract, IStandardToken
         this.SetBalance(Message.Sender, totalSupply);
     }
 
-    /// <inheritdoc />
     public string Symbol
     {
         get => PersistentState.GetString(nameof(this.Symbol));
         private set => PersistentState.SetString(nameof(this.Symbol), value);
     }
 
-    /// <inheritdoc />
     public string Name
     {
         get => PersistentState.GetString(nameof(this.Name));
