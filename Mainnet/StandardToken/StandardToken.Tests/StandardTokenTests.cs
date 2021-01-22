@@ -1,9 +1,7 @@
 using System;
 using Moq;
-using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.CLR;
 using Xunit;
-using Amount = Stratis.SmartContracts.UInt256;
 
 namespace Stratis.SmartContracts.Samples.Tests
 {
@@ -43,7 +41,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            Amount totalSupply = 100_000;
+            UInt256 totalSupply = 100_000;
             var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
@@ -53,7 +51,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Constructor_Assigns_TotalSupply_To_Owner()
         {
-            Amount totalSupply = 100_000;
+            UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
             var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
@@ -65,7 +63,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void GetBalance_Returns_Correct_Balance()
         {
-            Amount balance = 100;
+            UInt256 balance = 100;
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
@@ -80,7 +78,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly()
         {
-            Amount approval = 1000;
+            UInt256 approval = 1000;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
@@ -97,8 +95,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly_When_NonZero()
         {
-            Amount approval = 1000;
-            Amount newApproval = 2000;
+            UInt256 approval = 1000;
+            UInt256 newApproval = 2000;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
@@ -167,9 +165,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Full_Balance_Returns_True()
         {
-            Amount balance = 10000;
-            Amount amount = balance;
-            Amount destinationBalance = 123;
+            UInt256 balance = 10000;
+            UInt256 amount = balance;
+            UInt256 destinationBalance = 123;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -198,8 +196,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Greater_Than_Balance_Returns_False()
         {
-            Amount balance = 0;
-            Amount amount = balance + 1;
+            UInt256 balance = 0;
+            UInt256 amount = balance + 1;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -219,9 +217,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
         {
-            Amount destinationBalance = Amount.MaxValue;
-            Amount senderBalance = 100;
-            Amount amount = senderBalance - 1; // Transfer less than the balance
+            UInt256 destinationBalance = UInt256.MaxValue;
+            UInt256 senderBalance = 100;
+            UInt256 amount = senderBalance - 1; // Transfer less than the balance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -247,9 +245,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Destination_Success_Returns_True()
         {
-            Amount destinationBalance = 400_000;
-            Amount senderBalance = 100;
-            Amount amount = senderBalance - 1; // Transfer less than the balance
+            UInt256 destinationBalance = 400_000;
+            UInt256 senderBalance = 100;
+            UInt256 amount = senderBalance - 1; // Transfer less than the balance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -264,7 +262,7 @@ namespace Stratis.SmartContracts.Samples.Tests
                 .Callback(() => Assert.Equal(1, callOrder++));
 
             // Setup the sender's balance
-            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.sender}", It.IsAny<Amount>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.sender}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(2, callOrder++));
 
             // Setup the destination's balance
@@ -272,7 +270,7 @@ namespace Stratis.SmartContracts.Samples.Tests
                 .Callback(() => Assert.Equal(3, callOrder++));
 
             // Setup the destination's balance. Important that this happens AFTER setting the sender's balance
-            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<Amount>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(4, callOrder++));
 
             Assert.True(standardToken.TransferTo(this.destination, amount));
@@ -311,9 +309,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Full_Balance_Returns_True()
         {
-            Amount allowance = 1000;
-            Amount amount = allowance;
-            Amount balance = amount; // Balance should be the same as the amount we are trying to send
+            UInt256 allowance = 1000;
+            UInt256 amount = allowance;
+            UInt256 balance = amount; // Balance should be the same as the amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -348,9 +346,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Greater_Than_Senders_Allowance_Returns_False()
         {
-            Amount allowance = 0;
-            Amount amount = allowance + 1;
-            Amount balance = amount + 1; // Balance should be more than amount we are trying to send
+            UInt256 allowance = 0;
+            UInt256 amount = allowance + 1;
+            UInt256 balance = amount + 1; // Balance should be more than amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -376,9 +374,9 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Greater_Than_Owners_Balance_Returns_False()
         {
-            Amount balance = 0; // Balance should be less than amount we are trying to send
-            Amount amount = balance + 1;
-            Amount allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 balance = 0; // Balance should be less than amount we are trying to send
+            UInt256 amount = balance + 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -404,10 +402,10 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_To_Destination_With_Balance_Greater_Than_Amount_MaxValue_Returns_False()
         {
-            Amount destinationBalance = Amount.MaxValue; // Destination balance should be ulong.MaxValue
-            Amount amount = 1;
-            Amount allowance = amount + 1; // Allowance should be more than amount we are trying to send
-            Amount ownerBalance = allowance + 1; // Owner balance should be more than allowance
+            UInt256 destinationBalance = UInt256.MaxValue; // Destination balance should be ulong.MaxValue
+            UInt256 amount = 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 ownerBalance = allowance + 1; // Owner balance should be more than allowance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -436,10 +434,10 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_To_Destination_Success_Returns_True()
         {
-            Amount destinationBalance = 100;
-            Amount amount = 1;
-            Amount allowance = amount + 1; // Allowance should be more than amount we are trying to send
-            Amount ownerBalance = allowance + 1; // Owner balance should be more than allowance
+            UInt256 destinationBalance = 100;
+            UInt256 amount = 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 ownerBalance = allowance + 1; // Owner balance should be more than allowance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
@@ -458,11 +456,11 @@ namespace Stratis.SmartContracts.Samples.Tests
                 .Callback(() => Assert.Equal(2, callOrder++));
 
             // Set the sender's new allowance
-            this.mockPersistentState.Setup(s => s.SetUInt256($"Allowance:{this.owner}:{this.sender}", It.IsAny<Amount>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Allowance:{this.owner}:{this.sender}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(3, callOrder++));
 
             // Set the owner's new balance
-            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.owner}", It.IsAny<Amount>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.owner}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(4, callOrder++));
 
             // Setup the balance of the destination in persistent state
@@ -470,7 +468,7 @@ namespace Stratis.SmartContracts.Samples.Tests
                 .Callback(() => Assert.Equal(5, callOrder++));
 
             // Setup the destination's balance. Important that this happens AFTER setting the owner's balance
-            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<Amount>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(6, callOrder++));
 
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
@@ -499,8 +497,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Self()
         {
-            Amount balance = 100;
-            Amount amount = 27;
+            UInt256 balance = 100;
+            UInt256 amount = 27;
 
             Address subject = this.sender;
 
@@ -535,8 +533,8 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Self()
         {
-            Amount balance = 100;
-            Amount amount = 27;
+            UInt256 balance = 100;
+            UInt256 amount = 27;
 
             Address subject = this.sender;
 
