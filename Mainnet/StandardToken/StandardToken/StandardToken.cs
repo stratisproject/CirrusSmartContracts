@@ -50,17 +50,6 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public uint GetDecimals()
-    {
-        return PersistentState.GetUInt32($"Decimals");
-    }
-
-    private void SetDecimals(uint decimals)
-    {
-        PersistentState.SetUInt32($"Decimals", decimals);
-    }
-
-    /// <inheritdoc />
     public UInt256 GetBalance(Address address)
     {
         return PersistentState.GetUInt256($"Balance:{address}");
