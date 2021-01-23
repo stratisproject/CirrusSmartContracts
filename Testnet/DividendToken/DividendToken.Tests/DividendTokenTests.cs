@@ -1,5 +1,4 @@
 ﻿using Moq;
-using NBitcoin;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
 using Xunit;
@@ -20,7 +19,8 @@ namespace DividendTokenContract.Tests
 
         private readonly string name;
         private readonly string symbol;
-        private readonly ulong totalSupply;
+        private readonly UInt256 totalSupply;
+        private readonly uint decimals;
 
         public DividendTokenTests()
         {
@@ -37,6 +37,7 @@ namespace DividendTokenContract.Tests
             this.name = "Test Token";
             this.symbol = "TST";
             this.totalSupply = 1_000;
+            this.decimals = 0;
         }
 
         [Fact]
@@ -46,7 +47,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 100));
 
@@ -66,7 +67,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 100));
 
@@ -93,7 +94,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 100));
 
@@ -118,7 +119,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 1));
 
@@ -144,7 +145,7 @@ namespace DividendTokenContract.Tests
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
             this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 5)).Returns(TransferResult.Transferred(true));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 11));
 
@@ -157,7 +158,9 @@ namespace DividendTokenContract.Tests
             this.mTransactionExecutor.Verify(s => s.Transfer(this.mContractState.Object, this.tokenHolder, 5), Times.Once);
             Assert.Equal(0ul, contract.GetDividends());
             var account = this.persistentState.GetStruct<DividendToken.Account>($"Account:{this.tokenHolder}");
-            Assert.Equal(500ul, account.DividendBalance);
+            Assert.Equal((UInt256)500, account.DividendBalance);
+            Assert.Equal(5ul, account.WithdrawnDividends);
+            Assert.Equal(dividend, account.CreditedDividends);
         }
 
         [Fact]
@@ -169,7 +172,7 @@ namespace DividendTokenContract.Tests
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
             this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 100));
 
@@ -191,7 +194,7 @@ namespace DividendTokenContract.Tests
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
             this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
 
-            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol);
+            var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
             Assert.True(contract.TransferTo(this.tokenHolder, 100));
 

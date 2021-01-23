@@ -38,6 +38,10 @@ namespace DividendTokenContract.Tests
 
         public ulong GetUInt64(string key) => this.GetValue<ulong>(key);
 
+        public UInt128 GetUInt128(string key) => this.GetValue<UInt128>(key);
+
+        public UInt256 GetUInt256(string key) => this.GetValue<UInt256>(key);
+
         public bool IsContract(Address address)
         {
             throw new NotImplementedException();
@@ -70,5 +74,9 @@ namespace DividendTokenContract.Tests
         public void SetUInt32(string key, uint value) => this.storage.AddOrReplace(key, value);
 
         public void SetUInt64(string key, ulong value) => this.storage.AddOrReplace(key, value);
+
+        public void SetUInt128(string key, UInt128 value) => this.storage.AddOrReplace(key, value);
+
+        public void SetUInt256(string key, UInt256 value) => this.storage.AddOrReplace(key, value);
     }
 }
