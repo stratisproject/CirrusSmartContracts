@@ -28,10 +28,10 @@ public class STOContract : SmartContract
         private set => this.PersistentState.SetAddress(nameof(MapperAddress), value);
     }
 
-    public ulong TokenBalance
+    public UInt256 TokenBalance
     {
-        get => this.PersistentState.GetUInt64(nameof(TokenBalance));
-        private set => this.PersistentState.SetUInt64(nameof(TokenBalance), value);
+        get => this.PersistentState.GetUInt256(nameof(TokenBalance));
+        private set => this.PersistentState.SetUInt256(nameof(TokenBalance), value);
     }
 
     public bool IsNonFungibleToken
@@ -57,22 +57,24 @@ public class STOContract : SmartContract
     public STOContract(ISmartContractState smartContractState,
                        Address owner,
                        uint tokenType,
-                       ulong totalSupply,
+                       UInt256 totalSupply,
                        string name,
                        string symbol,
+                       uint decimals,
                        Address kycAddress,
                        Address mapperAddress,
                        byte[] salePeriods) : base(smartContractState)
     {
-        Assert(tokenType < 3, $"The {nameof(tokenType)} parameter can be between 0 and 2");
+        Assert(tokenType < 3, $"The {nameof(tokenType)} parameter can be between 0 and 2.");
 
-        Assert(PersistentState.IsContract(kycAddress), "The kycAdress is not a contract adress");
+        Assert(PersistentState.IsContract(kycAddress), $"The {nameof(kycAddress)} is not a contract adress.");
+        Assert(PersistentState.IsContract(mapperAddress), $"The {nameof(mapperAddress)} is not a contract adress.");
 
         var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
 
         ValidatePeriods(periods);
         var tokenTypeEnum = (TokenType)tokenType;
-        var result = CreateTokenContract(tokenTypeEnum, totalSupply, name, symbol);
+        var result = CreateTokenContract(tokenTypeEnum, totalSupply, name, symbol, decimals);
 
         Assert(result.Success, "Creating token contract failed.");
 
@@ -82,19 +84,19 @@ public class STOContract : SmartContract
         MapperAddress = mapperAddress;
         TokenAddress = result.NewContractAddress;
         IsNonFungibleToken = tokenTypeEnum == TokenType.NonFungibleToken;
-        TokenBalance = IsNonFungibleToken ? ulong.MaxValue : totalSupply;
+        TokenBalance = IsNonFungibleToken ? (UInt256)ulong.MaxValue : totalSupply;
         Owner = owner;
         SetPeriods(periods);
     }
 
-    private ICreateResult CreateTokenContract(TokenType tokenType, ulong totalSupply, string name, string symbol)
+    private ICreateResult CreateTokenContract(TokenType tokenType, UInt256 totalSupply, string name, string symbol, uint decimals)
     {
-        switch (tokenType)
+        return tokenType switch
         {
-            case TokenType.StandardToken: return Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol });
-            case TokenType.DividendToken: return Create<DividendToken>(parameters: new object[] { totalSupply, name, symbol });
-            default: return Create<NonFungibleToken>(parameters: new object[] { name, symbol });
-        }
+            TokenType.StandardToken => Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol, decimals }),
+            TokenType.DividendToken => Create<DividendToken>(parameters: new object[] { totalSupply, name, symbol, decimals }),
+            _ => Create<NonFungibleToken>(parameters: new object[] { name, symbol }),
+        };
     }
     public override void Receive() => Invest();
 
@@ -107,17 +109,21 @@ public class STOContract : SmartContract
 
         var saleInfo = GetSaleInfo();
 
-        var method = IsNonFungibleToken ? nameof(NonFungibleToken.MintAll) : nameof(IStandardToken.TransferTo);
-        var result = Call(TokenAddress, 0, method, new object[] { Message.Sender, saleInfo.TokenAmount });
+        var result = IsNonFungibleToken ?
+                        Call(TokenAddress, 0, nameof(NonFungibleToken.MintAll), new object[] { Message.Sender, (ulong)saleInfo.TokenAmount }) :
+                        Call(TokenAddress, 0, nameof(IStandardToken.TransferTo), new object[] { Message.Sender, saleInfo.TokenAmount });
 
         Assert(result.Success && (bool)result.ReturnValue, "Token transfer failed.");
 
         Log(new InvestLog { Sender = Message.Sender, Invested = saleInfo.Invested, TokenAmount = saleInfo.TokenAmount, Refunded = saleInfo.RefundAmount });
 
-        TokenBalance = checked(TokenBalance - saleInfo.TokenAmount);
+        TokenBalance -= saleInfo.TokenAmount;
 
         if (saleInfo.RefundAmount > 0) // refund over sold amount
-            Transfer(Message.Sender, saleInfo.RefundAmount);
+        {
+            result = Transfer(Message.Sender, saleInfo.RefundAmount);
+            Assert(result.Success, "Refund failed.");
+        }
 
         return true;
     }
@@ -130,7 +136,7 @@ public class STOContract : SmartContract
         {
             result = Call(KYCAddress, 0, "GetClaim", new object[] { identityAddress, (uint)3 /*shufti kyc*/ });
 
-            Assert(result.Success && result.ReturnValue != null, "Your KYC is not verified.");
+            Assert(result.Success && result.ReturnValue is byte[] b && b?.Length > 0, "Your KYC is not verified.");
 
             return;
         }
@@ -147,6 +153,7 @@ public class STOContract : SmartContract
 
         return result.Success;
     }
+
 
     public bool WithdrawTokens()
     {
@@ -223,7 +230,7 @@ public class STOContract : SmartContract
         var tokenBalance = TokenBalance;
         if (tokenAmount > tokenBalance) // refund over sold amount
         {
-            var spend = checked(tokenBalance * period.PricePerToken);
+            var spend = (ulong)tokenBalance * period.PricePerToken;
             var refund = Message.Value - spend;
 
             return new SaleInfo { Invested = spend, RefundAmount = refund, TokenAmount = tokenBalance };
@@ -248,7 +255,7 @@ public class STOContract : SmartContract
     {
         public ulong Invested;
         public ulong RefundAmount;
-        public ulong TokenAmount;
+        public UInt256 TokenAmount;
 
     }
 
@@ -262,7 +269,7 @@ public class STOContract : SmartContract
         [Index]
         public Address Sender;
         public ulong Invested;
-        public ulong TokenAmount;
+        public UInt256 TokenAmount;
         public ulong Refunded;
     }
 
@@ -295,12 +302,13 @@ public class StandardToken : SmartContract, IStandardToken
     /// <param name="totalSupply">The total token supply.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
-    public StandardToken(ISmartContractState smartContractState, ulong totalSupply, string name, string symbol)
+    public StandardToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, uint decimals)
         : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
+        this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
     }
 
@@ -317,25 +325,32 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public ulong TotalSupply
+    public uint Decimals
     {
-        get => PersistentState.GetUInt64(nameof(this.TotalSupply));
-        private set => PersistentState.SetUInt64(nameof(this.TotalSupply), value);
+        get => PersistentState.GetUInt32(nameof(this.Decimals));
+        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
     }
 
     /// <inheritdoc />
-    public ulong GetBalance(Address address)
+    public UInt256 TotalSupply
     {
-        return PersistentState.GetUInt64($"Balance:{address}");
-    }
-
-    private void SetBalance(Address address, ulong value)
-    {
-        PersistentState.SetUInt64($"Balance:{address}", value);
+        get => PersistentState.GetUInt256(nameof(this.TotalSupply));
+        private set => PersistentState.SetUInt256(nameof(this.TotalSupply), value);
     }
 
     /// <inheritdoc />
-    public bool TransferTo(Address to, ulong amount)
+    public UInt256 GetBalance(Address address)
+    {
+        return PersistentState.GetUInt256($"Balance:{address}");
+    }
+
+    private void SetBalance(Address address, UInt256 value)
+    {
+        PersistentState.SetUInt256($"Balance:{address}", value);
+    }
+
+    /// <inheritdoc />
+    public bool TransferTo(Address to, UInt256 amount)
     {
         if (amount == 0)
         {
@@ -344,7 +359,7 @@ public class StandardToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderBalance = GetBalance(Message.Sender);
+        UInt256 senderBalance = GetBalance(Message.Sender);
 
         if (senderBalance < amount)
         {
@@ -361,7 +376,7 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public bool TransferFrom(Address from, Address to, ulong amount)
+    public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
         if (amount == 0)
         {
@@ -370,8 +385,8 @@ public class StandardToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderAllowance = Allowance(from, Message.Sender);
-        ulong fromBalance = GetBalance(from);
+        UInt256 senderAllowance = Allowance(from, Message.Sender);
+        UInt256 fromBalance = GetBalance(from);
 
         if (senderAllowance < amount || fromBalance < amount)
         {
@@ -390,7 +405,7 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public bool Approve(Address spender, ulong currentAmount, ulong amount)
+    public bool Approve(Address spender, UInt256 currentAmount, UInt256 amount)
     {
         if (Allowance(Message.Sender, spender) != currentAmount)
         {
@@ -404,15 +419,15 @@ public class StandardToken : SmartContract, IStandardToken
         return true;
     }
 
-    private void SetApproval(Address owner, Address spender, ulong value)
+    private void SetApproval(Address owner, Address spender, UInt256 value)
     {
-        PersistentState.SetUInt64($"Allowance:{owner}:{spender}", value);
+        PersistentState.SetUInt256($"Allowance:{owner}:{spender}", value);
     }
 
     /// <inheritdoc />
-    public ulong Allowance(Address owner, Address spender)
+    public UInt256 Allowance(Address owner, Address spender)
     {
-        return PersistentState.GetUInt64($"Allowance:{owner}:{spender}");
+        return PersistentState.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
     public struct TransferLog
@@ -423,7 +438,7 @@ public class StandardToken : SmartContract, IStandardToken
         [Index]
         public Address To;
 
-        public ulong Amount;
+        public UInt256 Amount;
     }
 
     public struct ApprovalLog
@@ -434,14 +449,15 @@ public class StandardToken : SmartContract, IStandardToken
         [Index]
         public Address Spender;
 
-        public ulong OldAmount;
+        public UInt256 OldAmount;
 
-        public ulong Amount;
+        public UInt256 Amount;
     }
 }
 
 public class DividendToken : SmartContract, IStandardToken
 {
+
     public ulong Dividends
     {
         get => PersistentState.GetUInt64(nameof(this.Dividends));
@@ -453,25 +469,32 @@ public class DividendToken : SmartContract, IStandardToken
     private void SetAccount(Address address, Account account) => PersistentState.SetStruct($"Account:{address}", account);
 
 
-    public DividendToken(ISmartContractState state, ulong totalSupply, string name, string symbol)
+    public DividendToken(ISmartContractState state, UInt256 totalSupply, string name, string symbol, uint decimals)
         : base(state)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
+        this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
+    }
+
+
+    public override void Receive()
+    {
+        DistributeDividends();
     }
 
     /// <summary>
     /// It is advised that deposit amount should to be evenly divided by total supply, 
     /// otherwise small amount of satoshi may lost(burn)
     /// </summary>
-    public override void Receive()
+    public void DistributeDividends()
     {
         Dividends += Message.Value;
     }
 
-    public bool TransferTo(Address to, ulong amount)
+    public bool TransferTo(Address to, UInt256 amount)
     {
         UpdateAccount(Message.Sender);
         UpdateAccount(to);
@@ -479,7 +502,7 @@ public class DividendToken : SmartContract, IStandardToken
         return TransferTokensTo(to, amount);
     }
 
-    public bool TransferFrom(Address from, Address to, ulong amount)
+    public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
         UpdateAccount(from);
         UpdateAccount(to);
@@ -487,14 +510,14 @@ public class DividendToken : SmartContract, IStandardToken
         return TransferTokensFrom(from, to, amount);
     }
 
-    Account UpdateAccount(Address address)
+    private Account UpdateAccount(Address address)
     {
         var account = GetAccount(address);
-        var newDividends = GetWithdrawableDividends(address, account);
+        var newDividends = GetNewDividends(address, account);
 
         if (newDividends > 0)
         {
-            account.DividendBalance = checked(account.DividendBalance + newDividends);
+            account.DividendBalance += newDividends;
             account.CreditedDividends = Dividends;
             SetAccount(address, account);
         }
@@ -502,12 +525,15 @@ public class DividendToken : SmartContract, IStandardToken
         return account;
     }
 
-    private ulong GetWithdrawableDividends(Address address, Account account)
+    private UInt256 GetWithdrawableDividends(Address address, Account account)
     {
-        var newDividends = Dividends - account.CreditedDividends;
-        var notCreditedDividends = checked(GetBalance(address) * newDividends);
+        return account.DividendBalance + GetNewDividends(address, account); //Delay divide by TotalSupply to final stage for avoid decimal value loss.
+    }
 
-        return checked(account.DividendBalance + notCreditedDividends); //Delay divide by TotalSupply to final stage for avoid decimal value loss.
+    private UInt256 GetNewDividends(Address address, Account account)
+    {
+        var notCreditedDividends = checked(Dividends - account.CreditedDividends);
+        return GetBalance(address) * notCreditedDividends;
     }
 
     /// <summary>
@@ -542,7 +568,8 @@ public class DividendToken : SmartContract, IStandardToken
     public ulong GetTotalDividends(Address address)
     {
         var account = GetAccount(address);
-        return checked(GetWithdrawableDividends(address, account) + account.WithdrawnDividends) / TotalSupply;
+        var withdrawable = GetWithdrawableDividends(address, account) / TotalSupply;
+        return withdrawable + account.WithdrawnDividends;
     }
 
     /// <summary>
@@ -552,12 +579,12 @@ public class DividendToken : SmartContract, IStandardToken
     {
         var account = UpdateAccount(Message.Sender);
         var balance = account.DividendBalance / TotalSupply;
-        var remainder = account.DividendBalance % TotalSupply;
 
         Assert(balance > 0, "The account has no dividends.");
 
-        account.WithdrawnDividends = checked(account.WithdrawnDividends + account.DividendBalance - remainder);
-        account.DividendBalance = remainder;
+        account.WithdrawnDividends += balance;
+
+        account.DividendBalance %= TotalSupply;
 
         SetAccount(Message.Sender, account);
 
@@ -571,11 +598,7 @@ public class DividendToken : SmartContract, IStandardToken
         /// <summary>
         /// Withdrawable Dividend Balance. Exact value should to divided by <see cref="TotalSupply"/>
         /// </summary>
-        public ulong DividendBalance;
-
-        /// <summary>
-        /// 
-        /// </summary>
+        public UInt256 DividendBalance;
 
         public ulong WithdrawnDividends;
 
@@ -587,6 +610,7 @@ public class DividendToken : SmartContract, IStandardToken
     }
 
     #region StandardToken code is inlined
+
 
     public string Symbol
     {
@@ -601,24 +625,32 @@ public class DividendToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public ulong TotalSupply
+    public UInt256 TotalSupply
     {
-        get => PersistentState.GetUInt64(nameof(this.TotalSupply));
-        private set => PersistentState.SetUInt64(nameof(this.TotalSupply), value);
-    }
-    /// <inheritdoc />
-    public ulong GetBalance(Address address)
-    {
-        return PersistentState.GetUInt64($"Balance:{address}");
+        get => PersistentState.GetUInt256(nameof(this.TotalSupply));
+        private set => PersistentState.SetUInt256(nameof(this.TotalSupply), value);
     }
 
-    private void SetBalance(Address address, ulong value)
+    public uint Decimals
     {
-        PersistentState.SetUInt64($"Balance:{address}", value);
+        get => PersistentState.GetUInt32(nameof(Decimals));
+        private set => PersistentState.SetUInt32(nameof(Decimals), value);
+    }
+
+
+    /// <inheritdoc />
+    public UInt256 GetBalance(Address address)
+    {
+        return PersistentState.GetUInt256($"Balance:{address}");
+    }
+
+    private void SetBalance(Address address, UInt256 value)
+    {
+        PersistentState.SetUInt256($"Balance:{address}", value);
     }
 
     /// <inheritdoc />
-    private bool TransferTokensTo(Address to, ulong amount)
+    private bool TransferTokensTo(Address to, UInt256 amount)
     {
         if (amount == 0)
         {
@@ -627,7 +659,7 @@ public class DividendToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderBalance = GetBalance(Message.Sender);
+        UInt256 senderBalance = GetBalance(Message.Sender);
 
         if (senderBalance < amount)
         {
@@ -644,7 +676,7 @@ public class DividendToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    private bool TransferTokensFrom(Address from, Address to, ulong amount)
+    private bool TransferTokensFrom(Address from, Address to, UInt256 amount)
     {
         if (amount == 0)
         {
@@ -653,8 +685,8 @@ public class DividendToken : SmartContract, IStandardToken
             return true;
         }
 
-        ulong senderAllowance = Allowance(from, Message.Sender);
-        ulong fromBalance = GetBalance(from);
+        UInt256 senderAllowance = Allowance(from, Message.Sender);
+        UInt256 fromBalance = GetBalance(from);
 
         if (senderAllowance < amount || fromBalance < amount)
         {
@@ -673,7 +705,7 @@ public class DividendToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public bool Approve(Address spender, ulong currentAmount, ulong amount)
+    public bool Approve(Address spender, UInt256 currentAmount, UInt256 amount)
     {
         if (Allowance(Message.Sender, spender) != currentAmount)
         {
@@ -687,15 +719,15 @@ public class DividendToken : SmartContract, IStandardToken
         return true;
     }
 
-    private void SetApproval(Address owner, Address spender, ulong value)
+    private void SetApproval(Address owner, Address spender, UInt256 value)
     {
-        PersistentState.SetUInt64($"Allowance:{owner}:{spender}", value);
+        PersistentState.SetUInt256($"Allowance:{owner}:{spender}", value);
     }
 
     /// <inheritdoc />
-    public ulong Allowance(Address owner, Address spender)
+    public UInt256 Allowance(Address owner, Address spender)
     {
-        return PersistentState.GetUInt64($"Allowance:{owner}:{spender}");
+        return PersistentState.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
     public struct TransferLog
@@ -706,7 +738,7 @@ public class DividendToken : SmartContract, IStandardToken
         [Index]
         public Address To;
 
-        public ulong Amount;
+        public UInt256 Amount;
     }
 
     public struct ApprovalLog
@@ -717,9 +749,9 @@ public class DividendToken : SmartContract, IStandardToken
         [Index]
         public Address Spender;
 
-        public ulong OldAmount;
+        public UInt256 OldAmount;
 
-        public ulong Amount;
+        public UInt256 Amount;
     }
     #endregion
 }
