@@ -1,6 +1,5 @@
 ﻿using Moq;
 using Stratis.SmartContracts;
-using Stratis.SmartContracts.CLR;
 using Xunit;
 
 namespace DividendTokenContract.Tests
@@ -40,6 +39,25 @@ namespace DividendTokenContract.Tests
             this.decimals = 0;
         }
 
+        private ITransferResult TransferSucceed(object returnValue = null)
+        {
+            var mock = new Mock<ITransferResult>();
+
+            mock.SetupGet(m => m.Success).Returns(true);
+            mock.SetupGet(m => m.ReturnValue).Returns(returnValue);
+
+            return mock.Object;
+        }
+
+        private ITransferResult TransferFailed()
+        {
+            var mock = new Mock<ITransferResult>();
+
+            mock.SetupGet(m => m.Success).Returns(false);
+
+            return mock.Object;
+        }
+
         [Fact]
         public void Deposited_Dividend_Should_Be_Distributed_Equaly()
         {
@@ -65,7 +83,7 @@ namespace DividendTokenContract.Tests
         {
             var dividend = 1000ul;
 
-            this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
+            mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
 
             var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
@@ -143,7 +161,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 5)).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 5)).Returns(TransferSucceed(true));
 
             var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
@@ -170,7 +188,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferSucceed(true));
 
             var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
@@ -192,7 +210,7 @@ namespace DividendTokenContract.Tests
 
             this.mContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, dividend));
             this.mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferResult.Transferred(true));
+            this.mTransactionExecutor.Setup(m => m.Transfer(this.mContractState.Object, this.tokenHolder, 100)).Returns(TransferSucceed(true));
 
             var contract = new DividendToken(this.mContractState.Object, this.totalSupply, this.name, this.symbol, this.decimals);
 
