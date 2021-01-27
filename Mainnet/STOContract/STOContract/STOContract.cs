@@ -161,6 +161,9 @@ public class STOContract : SmartContract
         Assert(Message.Sender == Owner, "Only contract owner can transfer tokens.");
         Assert(!SaleOpen, "STO is not ended yet.");
 
+        if (TokenBalance == 0)
+            return true;
+
         var result = Call(TokenAddress, 0, nameof(StandardToken.TransferTo), new object[] { Message.Sender, TokenBalance });
 
         TokenBalance = 0;
