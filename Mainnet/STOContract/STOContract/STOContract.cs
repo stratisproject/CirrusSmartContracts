@@ -6,46 +6,46 @@ public class STOContract : SmartContract
 {
     public ulong EndBlock
     {
-        get => this.PersistentState.GetUInt64(nameof(EndBlock));
-        private set => this.PersistentState.SetUInt64(nameof(EndBlock), value);
+        get => PersistentState.GetUInt64(nameof(EndBlock));
+        private set => PersistentState.SetUInt64(nameof(EndBlock), value);
     }
 
     public Address TokenAddress
     {
-        get => this.PersistentState.GetAddress(nameof(TokenAddress));
-        private set => this.PersistentState.SetAddress(nameof(TokenAddress), value);
+        get => PersistentState.GetAddress(nameof(TokenAddress));
+        private set => PersistentState.SetAddress(nameof(TokenAddress), value);
     }
 
     public Address KYCAddress
     {
-        get => this.PersistentState.GetAddress(nameof(KYCAddress));
-        private set => this.PersistentState.SetAddress(nameof(KYCAddress), value);
+        get => PersistentState.GetAddress(nameof(KYCAddress));
+        private set => PersistentState.SetAddress(nameof(KYCAddress), value);
     }
 
     public Address MapperAddress
     {
-        get => this.PersistentState.GetAddress(nameof(MapperAddress));
-        private set => this.PersistentState.SetAddress(nameof(MapperAddress), value);
+        get => PersistentState.GetAddress(nameof(MapperAddress));
+        private set => PersistentState.SetAddress(nameof(MapperAddress), value);
     }
 
     public UInt256 TokenBalance
     {
-        get => this.PersistentState.GetUInt256(nameof(TokenBalance));
-        private set => this.PersistentState.SetUInt256(nameof(TokenBalance), value);
+        get => PersistentState.GetUInt256(nameof(TokenBalance));
+        private set => PersistentState.SetUInt256(nameof(TokenBalance), value);
     }
 
     public bool IsNonFungibleToken
     {
-        get => this.PersistentState.GetBool(nameof(IsNonFungibleToken));
-        private set => this.PersistentState.SetBool(nameof(IsNonFungibleToken), value);
+        get => PersistentState.GetBool(nameof(IsNonFungibleToken));
+        private set => PersistentState.SetBool(nameof(IsNonFungibleToken), value);
     }
 
-    public bool SaleOpen => EndBlock >= this.Block.Number && TokenBalance > 0;
+    public bool SaleOpen => EndBlock >= Block.Number && TokenBalance > 0;
 
     public Address Owner
     {
-        get => this.PersistentState.GetAddress(nameof(Owner));
-        private set => this.PersistentState.SetAddress(nameof(Owner), value);
+        get => PersistentState.GetAddress(nameof(Owner));
+        private set => PersistentState.SetAddress(nameof(Owner), value);
     }
 
     public SalePeriod[] SalePeriods
@@ -149,7 +149,7 @@ public class STOContract : SmartContract
         Assert(Message.Sender == Owner, "Only contract owner can transfer funds.");
         Assert(!SaleOpen, "STO is not ended yet.");
 
-        var result = Transfer(this.Owner, Balance);
+        var result = Transfer(Owner, Balance);
 
         return result.Success;
     }
