@@ -6,52 +6,52 @@ public class STOContract : SmartContract
 {
     public ulong EndBlock
     {
-        get => PersistentState.GetUInt64(nameof(EndBlock));
-        private set => PersistentState.SetUInt64(nameof(EndBlock), value);
+        get => State.GetUInt64(nameof(EndBlock));
+        private set => State.SetUInt64(nameof(EndBlock), value);
     }
 
     public Address TokenAddress
     {
-        get => PersistentState.GetAddress(nameof(TokenAddress));
-        private set => PersistentState.SetAddress(nameof(TokenAddress), value);
+        get => State.GetAddress(nameof(TokenAddress));
+        private set => State.SetAddress(nameof(TokenAddress), value);
     }
 
     public Address KYCAddress
     {
-        get => PersistentState.GetAddress(nameof(KYCAddress));
-        private set => PersistentState.SetAddress(nameof(KYCAddress), value);
+        get => State.GetAddress(nameof(KYCAddress));
+        private set => State.SetAddress(nameof(KYCAddress), value);
     }
 
     public Address MapperAddress
     {
-        get => PersistentState.GetAddress(nameof(MapperAddress));
-        private set => PersistentState.SetAddress(nameof(MapperAddress), value);
+        get => State.GetAddress(nameof(MapperAddress));
+        private set => State.SetAddress(nameof(MapperAddress), value);
     }
 
     public UInt256 TokenBalance
     {
-        get => PersistentState.GetUInt256(nameof(TokenBalance));
-        private set => PersistentState.SetUInt256(nameof(TokenBalance), value);
+        get => State.GetUInt256(nameof(TokenBalance));
+        private set => State.SetUInt256(nameof(TokenBalance), value);
     }
 
     public bool IsNonFungibleToken
     {
-        get => PersistentState.GetBool(nameof(IsNonFungibleToken));
-        private set => PersistentState.SetBool(nameof(IsNonFungibleToken), value);
+        get => State.GetBool(nameof(IsNonFungibleToken));
+        private set => State.SetBool(nameof(IsNonFungibleToken), value);
     }
 
     public bool SaleOpen => EndBlock >= Block.Number && TokenBalance > 0;
 
     public Address Owner
     {
-        get => PersistentState.GetAddress(nameof(Owner));
-        private set => PersistentState.SetAddress(nameof(Owner), value);
+        get => State.GetAddress(nameof(Owner));
+        private set => State.SetAddress(nameof(Owner), value);
     }
 
     public SalePeriod[] SalePeriods
     {
-        get => PersistentState.GetArray<SalePeriod>(nameof(SalePeriods));
-        private set => PersistentState.SetArray(nameof(SalePeriods), value);
+        get => State.GetArray<SalePeriod>(nameof(SalePeriods));
+        private set => State.SetArray(nameof(SalePeriods), value);
     }
 
     public STOContract(ISmartContractState smartContractState,
@@ -67,8 +67,8 @@ public class STOContract : SmartContract
     {
         Assert(tokenType < 3, $"The {nameof(tokenType)} parameter can be between 0 and 2.");
 
-        Assert(PersistentState.IsContract(kycAddress), $"The {nameof(kycAddress)} is not a contract adress.");
-        Assert(PersistentState.IsContract(mapperAddress), $"The {nameof(mapperAddress)} is not a contract adress.");
+        Assert(State.IsContract(kycAddress), $"The {nameof(kycAddress)} is not a contract adress.");
+        Assert(State.IsContract(mapperAddress), $"The {nameof(mapperAddress)} is not a contract adress.");
 
         var periods = Serializer.ToArray<SalePeriodInput>(salePeriods);
 

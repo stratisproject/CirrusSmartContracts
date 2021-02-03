@@ -1,7 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using System;
 using System.Collections.Generic;
-using static STOContract;
 
 namespace STOContractTests
 {

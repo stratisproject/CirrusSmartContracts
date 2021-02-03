@@ -61,44 +61,6 @@
             persistentState.IsContractResult = true;
         }
 
-        private ICreateResult CreateSucceed()
-        {
-            var mock = new Mock<ICreateResult>();
-
-            mock.SetupGet(m => m.Success).Returns(true);
-            mock.SetupGet(m => m.NewContractAddress).Returns(tokenContract);
-
-            return mock.Object;
-        }
-
-        private ICreateResult CreateFailed()
-        {
-            var mock = new Mock<ICreateResult>();
-
-            mock.SetupGet(m => m.Success).Returns(false);
-
-            return mock.Object;
-        }
-
-        private ITransferResult TransferSucceed(object returnValue = null)
-        {
-            var mock = new Mock<ITransferResult>();
-
-            mock.SetupGet(m => m.Success).Returns(true);
-            mock.SetupGet(m => m.ReturnValue).Returns(returnValue);
-
-            return mock.Object;
-        }
-
-        private ITransferResult TransferFailed()
-        {
-            var mock = new Mock<ITransferResult>();
-
-            mock.SetupGet(m => m.Success).Returns(false);
-
-            return mock.Object;
-        }
-
         [Fact]
         public void Constructor_IsContract_ReturnsFalse_ThrowsAssertException()
         {
@@ -118,7 +80,7 @@
         [Fact]
         public void Constructor_CreateReturnsFailedResult_ThrowsAssertException()
         {
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateFailed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Failed());
             Assert.Throws<SmartContractAssertException>(() => Create(TokenType.StandardToken));
 
             mTransactionExecutor.Verify(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>()), Times.Once);
@@ -127,7 +89,7 @@
         [Fact]
         public void Constructor_TokenTypeIsStandardToken_Success()
         {
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
             var (contract, periods) = Create(TokenType.StandardToken);
 
             Assert.Equal(totalSupply, contract.TokenBalance);
@@ -141,7 +103,7 @@
         [Fact]
         public void Constructor_TokenTypeIsDividendToken_Success()
         {
-            mTransactionExecutor.Setup(m => m.Create<DividendToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<DividendToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
             var (contract, periods) = Create(TokenType.DividendToken);
 
             Assert.Equal(totalSupply, contract.TokenBalance);
@@ -155,7 +117,7 @@
         [Fact]
         public void Constructor_TokenTypeIsNonFungibleToken_Success()
         {
-            mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(mContractState.Object, 0, new object[] { name, symbol }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(mContractState.Object, 0, new object[] { name, symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
             var (contract, periods) = Create(TokenType.NonFungibleToken);
 
             Assert.Equal((UInt256)ulong.MaxValue, contract.TokenBalance);
@@ -190,15 +152,15 @@
         public void Invest_CalledForStandardToken_Success()
         {
             var amount = 15 * Satoshis;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, (UInt256)5 }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(identity));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferSucceed(new byte[] { 1 }));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, (UInt256)5 }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(identity));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(new byte[] { 1 }));
 
             Assert.True(contract.Invest());
 
@@ -206,7 +168,7 @@
             mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
 
             mBlock.Setup(s => s.Number).Returns(4);
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, (UInt256)3 }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, (UInt256)3 }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -220,15 +182,15 @@
             var amount = 15 * Satoshis;
             var totalSupply = (UInt256)ulong.MaxValue;
 
-            mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(mContractState.Object, 0, new object[] { name, symbol }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<NonFungibleToken>(mContractState.Object, 0, new object[] { name, symbol }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.NonFungibleToken);
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { investor, 5ul }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(identity));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferSucceed(new byte[] { 1 }));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { investor, 5ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(identity));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(new byte[] { 1 }));
 
             Assert.True(contract.Invest());
 
@@ -236,7 +198,7 @@
             mTransactionExecutor.Verify(s => s.Transfer(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>()), Times.Never);
 
             mBlock.Setup(s => s.Number).Returns(4);
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { investor, 3ul }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(NonFungibleToken.MintAll), new object[] { investor, 3ul }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             Assert.True(contract.Invest());
 
@@ -249,15 +211,15 @@
         {
             totalSupply = 60;
             var amount = 190 * Satoshis;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, totalSupply }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(identity));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferSucceed(new byte[] { 1 }));
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, investor, 10 * Satoshis)).Returns(TransferSucceed());
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { investor, totalSupply }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(identity));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(new byte[] { 1 }));
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, investor, 10 * Satoshis)).Returns(TransferResult.Transferred(null));
             Assert.True(contract.Invest());
 
             Assert.Equal((UInt256)0, contract.TokenBalance); // All tokens are sold
@@ -268,8 +230,8 @@
         public void Invest_Fails_If_TokenBalance_Is_Zero()
         {
             var amount = 1 * Satoshis;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { investor, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferSucceed(new byte[] { 1 }));
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { investor, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(new byte[] { 1 }));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
@@ -282,7 +244,7 @@
         public void Invest_Fails_If_EndBlock_Reached()
         {
             var amount = 1 * Satoshis;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
 
@@ -296,7 +258,7 @@
         public void Invest_Fails_If_Investment_Amount_Is_Zero()
         {
             var amount = 0ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
@@ -308,8 +270,8 @@
         public void Invest_Fails_If_GetSecondaryAddress_Call_Fails()
         {
             var amount = 10ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferFailed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Failed());
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
@@ -320,8 +282,8 @@
         public void Invest_Fails_If_GetSecondaryAddress_Call_Returns_Zero_Address()
         {
             var amount = 10ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(Address.Zero));
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(Address.Zero));
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
@@ -332,9 +294,9 @@
         public void Invest_Fails_If_GetClaim_Call_Fails()
         {
             var amount = 10ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(identity));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferFailed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(identity));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Failed());
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
@@ -345,9 +307,9 @@
         public void Invest_Fails_If_GetClaim_Call_Returns_Null()
         {
             var amount = 10ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferSucceed(identity));
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferSucceed(null));
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, mapperContract, 0, "GetSecondaryAddress", new object[] { investor }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(identity));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, kycContract, 0, "GetClaim", new object[] { identity, 3U /*shufti kyc*/ }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(null));
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
 
@@ -358,7 +320,7 @@
         public void WithdrawFunds_Fails_If_Caller_Is_Not_Owner()
         {
             var amount = 0ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
@@ -371,7 +333,7 @@
         public void WithdrawFunds_Fails_If_Sale_Is_Open()
         {
             var amount = 0ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, amount));
@@ -384,7 +346,7 @@
         public void WithdrawFunds_Called_By_Owner_Success()
         {
             var amount = 0ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, amount));
@@ -397,13 +359,13 @@
         public void WithdrawTokens_Called_By_Owner_After_Sale_Is_Closed_Success()
         {
             var amount = 0ul;
-            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateSucceed());
+            mTransactionExecutor.Setup(m => m.Create<StandardToken>(mContractState.Object, 0, new object[] { totalSupply, name, symbol, decimals }, It.IsAny<ulong>())).Returns(CreateResult.Succeed(tokenContract));
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, amount));
             mBlock.Setup(m => m.Number).Returns(5);
             persistentState.SetUInt256(nameof(contract.TokenBalance), 100);
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { owner, (UInt256)100 }, It.IsAny<ulong>())).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { owner, (UInt256)100 }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             var success = contract.WithdrawTokens();
 
