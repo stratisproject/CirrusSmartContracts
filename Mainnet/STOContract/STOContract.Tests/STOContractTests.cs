@@ -26,7 +26,7 @@
         private readonly Address kycContract;
         private readonly Address mapperContract;
 
-        private readonly InMemoryState persistentState;
+        private readonly InMemoryState state;
         private UInt256 totalSupply;
         private readonly string name;
         private readonly string symbol;
@@ -37,10 +37,10 @@
             mContractLogger = new Mock<IContractLogger>();
             mContractState = new Mock<ISmartContractState>();
             mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
-            persistentState = new InMemoryState();
+            state = new InMemoryState();
             mBlock = new Mock<IBlock>();
             mContractState.Setup(s => s.Block).Returns(mBlock.Object);
-            mContractState.Setup(s => s.PersistentState).Returns(persistentState);
+            mContractState.Setup(s => s.PersistentState).Returns(state);
             mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
             mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
             mSerializer = new Mock<ISerializer>();
@@ -58,13 +58,13 @@
             symbol = "TST";
             totalSupply = 100 * Satoshis;
             decimals = 0;
-            persistentState.IsContractResult = true;
+            state.IsContractResult = true;
         }
 
         [Fact]
         public void Constructor_IsContract_ReturnsFalse_ThrowsAssertException()
         {
-            persistentState.IsContractResult = false;
+            state.IsContractResult = false;
 
             Assert.Throws<SmartContractAssertException>(() => Create(TokenType.StandardToken));
         }
@@ -235,7 +235,7 @@
 
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, investor, amount));
-            persistentState.SetUInt256(nameof(STOContract.TokenBalance), 0);
+            state.SetUInt256(nameof(STOContract.TokenBalance), 0);
 
             Assert.Throws<SmartContractAssertException>(() => contract.Invest());
         }
@@ -364,13 +364,13 @@
             var (contract, _) = Create(TokenType.StandardToken);
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, amount));
             mBlock.Setup(m => m.Number).Returns(5);
-            persistentState.SetUInt256(nameof(contract.TokenBalance), 100);
+            state.SetUInt256(nameof(contract.TokenBalance), 100);
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { owner, (UInt256)100 }, It.IsAny<ulong>())).Returns(TransferResult.Transferred(true));
 
             var success = contract.WithdrawTokens();
 
             Assert.True(success);
-            Assert.Equal((UInt256)0, persistentState.GetUInt256(nameof(contract.TokenBalance)));
+            Assert.Equal((UInt256)0, state.GetUInt256(nameof(contract.TokenBalance)));
             mTransactionExecutor.Verify(m => m.Call(mContractState.Object, tokenContract, 0, nameof(StandardToken.TransferTo), new object[] { owner, (UInt256)100 }, 0));
         }
     }
