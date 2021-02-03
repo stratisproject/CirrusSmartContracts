@@ -19,13 +19,13 @@ namespace PrivateYesNoVoteTests
             var voteContract = CreateNewVoteContract(currentBlock, duration);
 
             voteContract.VotePeriodEndBlock.Should().Be(expectedEndBlock);
-            voteContract.IsAuthorized(AddressOne).Should().BeTrue();
-            voteContract.IsAuthorized(AddressTwo).Should().BeTrue();
-            voteContract.IsAuthorized(AddressThree).Should().BeTrue();
+            voteContract.IsVoter(AddressOne).Should().BeTrue();
+            voteContract.IsVoter(AddressTwo).Should().BeTrue();
+            voteContract.IsVoter(AddressThree).Should().BeTrue();
         }
 
         [Fact]
-        public void WhitelistAddresses_Success()
+        public void WhitelistVoters_Success()
         {
             var voteContract = CreateNewVoteContract();
 
@@ -34,15 +34,15 @@ namespace PrivateYesNoVoteTests
             var addressList = new[] {AddressFour, AddressFive, AddressSix};
             var bytes = Serializer.Serialize(addressList);
             
-            voteContract.WhitelistAddresses(bytes);
+            voteContract.WhitelistVoters(bytes);
 
-            voteContract.IsAuthorized(AddressFour).Should().BeTrue();
-            voteContract.IsAuthorized(AddressFive).Should().BeTrue();
-            voteContract.IsAuthorized(AddressSix).Should().BeTrue();
+            voteContract.IsVoter(AddressFour).Should().BeTrue();
+            voteContract.IsVoter(AddressFive).Should().BeTrue();
+            voteContract.IsVoter(AddressSix).Should().BeTrue();
         }
 
         [Fact]
-        public void WhitelistAddresses_Throws_SenderIsNotOwner()
+        public void WhitelistVoters_Throws_SenderIsNotOwner()
         {
             var voteContract = CreateNewVoteContract();
             var addressList = new[] {AddressFour, AddressFive, AddressSix};
@@ -51,7 +51,32 @@ namespace PrivateYesNoVoteTests
             SetupMessage(Contract, AddressOne);
 
             voteContract
-                .Invoking(v => v.WhitelistAddresses(bytes))
+                .Invoking(v => v.WhitelistVoters(bytes))
+                .Should().Throw<SmartContractAssertException>()
+                .WithMessage("Must be contract owner to whitelist addresses.");
+        }
+        
+        [Fact]
+        public void WhitelistVoter_Success()
+        {
+            var voteContract = CreateNewVoteContract();
+
+            SetupMessage(Contract, Owner);
+            
+            voteContract.WhitelistVoter(AddressFour);
+
+            voteContract.IsVoter(AddressFour).Should().BeTrue();
+        }
+
+        [Fact]
+        public void WhitelistVoter_Throws_SenderIsNotOwner()
+        {
+            var voteContract = CreateNewVoteContract();
+            
+            SetupMessage(Contract, AddressOne);
+
+            voteContract
+                .Invoking(v => v.WhitelistVoter(AddressFour))
                 .Should().Throw<SmartContractAssertException>()
                 .WithMessage("Must be contract owner to whitelist addresses.");
         }
