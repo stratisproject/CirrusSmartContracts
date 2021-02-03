@@ -2,21 +2,20 @@
 using Stratis.SmartContracts.Standards;
 
 [Deploy]
-public class DividendToken : SmartContract, IStandardToken
+public class DividendToken : SmartContract, IStandardToken256
 {
-
     public ulong Dividends
     {
-        get => PersistentState.GetUInt64(nameof(this.Dividends));
-        private set => PersistentState.SetUInt64(nameof(this.Dividends), value);
+        get => State.GetUInt64(nameof(this.Dividends));
+        private set => State.SetUInt64(nameof(this.Dividends), value);
     }
 
-    private Account GetAccount(Address address) => PersistentState.GetStruct<Account>($"Account:{address}");
+    private Account GetAccount(Address address) => State.GetStruct<Account>($"Account:{address}");
 
-    private void SetAccount(Address address, Account account) => PersistentState.SetStruct($"Account:{address}", account);
+    private void SetAccount(Address address, Account account) => State.SetStruct($"Account:{address}", account);
 
 
-    public DividendToken(ISmartContractState state, UInt256 totalSupply, string name, string symbol,uint decimals)
+    public DividendToken(ISmartContractState state, UInt256 totalSupply, string name, string symbol, byte decimals)
         : base(state)
     {
         this.TotalSupply = totalSupply;
@@ -98,7 +97,9 @@ public class DividendToken : SmartContract, IStandardToken
     {
         var account = GetAccount(address);
 
-        return GetWithdrawableDividends(address, account) / TotalSupply;
+        var withdrawable = GetWithdrawableDividends(address, account) / TotalSupply;
+
+        return (ulong)withdrawable;
     }
 
     /// <summary>
@@ -116,7 +117,7 @@ public class DividendToken : SmartContract, IStandardToken
     {
         var account = GetAccount(address);
         var withdrawable = GetWithdrawableDividends(address, account) / TotalSupply;
-        return withdrawable + account.WithdrawnDividends;
+        return (ulong)withdrawable + account.WithdrawnDividends;
     }
 
     /// <summary>
@@ -125,7 +126,7 @@ public class DividendToken : SmartContract, IStandardToken
     public void Withdraw()
     {
         var account = UpdateAccount(Message.Sender);
-        var balance = account.DividendBalance / TotalSupply;
+        var balance = (ulong)(account.DividendBalance / TotalSupply);
 
         Assert(balance > 0, "The account has no dividends.");
 
@@ -161,39 +162,39 @@ public class DividendToken : SmartContract, IStandardToken
 
     public string Symbol
     {
-        get => PersistentState.GetString(nameof(this.Symbol));
-        private set => PersistentState.SetString(nameof(this.Symbol), value);
+        get => State.GetString(nameof(this.Symbol));
+        private set => State.SetString(nameof(this.Symbol), value);
     }
 
     public string Name
     {
-        get => PersistentState.GetString(nameof(this.Name));
-        private set => PersistentState.SetString(nameof(this.Name), value);
+        get => State.GetString(nameof(this.Name));
+        private set => State.SetString(nameof(this.Name), value);
     }
 
     /// <inheritdoc />
     public UInt256 TotalSupply
     {
-        get => PersistentState.GetUInt256(nameof(this.TotalSupply));
-        private set => PersistentState.SetUInt256(nameof(this.TotalSupply), value);
+        get => State.GetUInt256(nameof(this.TotalSupply));
+        private set => State.SetUInt256(nameof(this.TotalSupply), value);
     }
 
-    public uint Decimals
+    public byte Decimals
     {
-        get => PersistentState.GetUInt32(nameof(Decimals));
-        private set => PersistentState.SetUInt32(nameof(Decimals), value);
+        get => State.GetBytes(nameof(Decimals))[0];
+        private set => State.SetBytes(nameof(Decimals), new[] { value });
     }
 
 
     /// <inheritdoc />
     public UInt256 GetBalance(Address address)
     {
-        return PersistentState.GetUInt256($"Balance:{address}");
+        return State.GetUInt256($"Balance:{address}");
     }
 
     private void SetBalance(Address address, UInt256 value)
     {
-        PersistentState.SetUInt256($"Balance:{address}", value);
+        State.SetUInt256($"Balance:{address}", value);
     }
 
     /// <inheritdoc />
@@ -268,13 +269,13 @@ public class DividendToken : SmartContract, IStandardToken
 
     private void SetApproval(Address owner, Address spender, UInt256 value)
     {
-        PersistentState.SetUInt256($"Allowance:{owner}:{spender}", value);
+        State.SetUInt256($"Allowance:{owner}:{spender}", value);
     }
 
     /// <inheritdoc />
     public UInt256 Allowance(Address owner, Address spender)
     {
-        return PersistentState.GetUInt256($"Allowance:{owner}:{spender}");
+        return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
     public struct TransferLog

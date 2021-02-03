@@ -6,7 +6,7 @@ namespace DividendTokenContract.Tests
 {
     public class DividendTokenTests
     {
-        private readonly IPersistentState persistentState;
+        private readonly IPersistentState state;
 
         private readonly Mock<ISmartContractState> mContractState;
         private readonly Mock<IContractLogger> mContractLogger;
@@ -19,15 +19,15 @@ namespace DividendTokenContract.Tests
         private readonly string name;
         private readonly string symbol;
         private readonly UInt256 totalSupply;
-        private readonly uint decimals;
+        private readonly byte decimals;
 
         public DividendTokenTests()
         {
-            this.persistentState = new InMemoryState();
+            this.state = new InMemoryState();
             this.mContractState = new Mock<ISmartContractState>();
             this.mContractLogger = new Mock<IContractLogger>();
             this.mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
-            this.mContractState.Setup(s => s.PersistentState).Returns(persistentState);
+            this.mContractState.Setup(s => s.PersistentState).Returns(state);
             this.mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
             this.mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
             this.owner = "0x0000000000000000000000000000000000000001".HexToAddress();
@@ -39,24 +39,6 @@ namespace DividendTokenContract.Tests
             this.decimals = 0;
         }
 
-        private ITransferResult TransferSucceed(object returnValue = null)
-        {
-            var mock = new Mock<ITransferResult>();
-
-            mock.SetupGet(m => m.Success).Returns(true);
-            mock.SetupGet(m => m.ReturnValue).Returns(returnValue);
-
-            return mock.Object;
-        }
-
-        private ITransferResult TransferFailed()
-        {
-            var mock = new Mock<ITransferResult>();
-
-            mock.SetupGet(m => m.Success).Returns(false);
-
-            return mock.Object;
-        }
 
         [Fact]
         public void Deposited_Dividend_Should_Be_Distributed_Equaly()
@@ -161,7 +143,7 @@ namespace DividendTokenContract.Tests
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, dividend));
             mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 5)).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 5)).Returns(TransferResult.Succeed(true));
 
             var contract = new DividendToken(mContractState.Object, totalSupply, name, symbol, decimals);
 
@@ -175,7 +157,7 @@ namespace DividendTokenContract.Tests
 
             mTransactionExecutor.Verify(s => s.Transfer(mContractState.Object, tokenHolder, 5), Times.Once);
             Assert.Equal(0ul, contract.GetDividends());
-            var account = persistentState.GetStruct<DividendToken.Account>($"Account:{tokenHolder}");
+            var account = state.GetStruct<DividendToken.Account>($"Account:{tokenHolder}");
             Assert.Equal((UInt256)500, account.DividendBalance);
             Assert.Equal(5ul, account.WithdrawnDividends);
             Assert.Equal(dividend, account.CreditedDividends);
@@ -188,7 +170,7 @@ namespace DividendTokenContract.Tests
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, dividend));
             mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 100)).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 100)).Returns(TransferResult.Succeed(true));
 
             var contract = new DividendToken(mContractState.Object, totalSupply, name, symbol, decimals);
 
@@ -210,7 +192,7 @@ namespace DividendTokenContract.Tests
 
             mContractState.Setup(m => m.Message).Returns(new Message(currentContract, owner, dividend));
             mContractState.Setup(m => m.GetBalance).Returns(() => dividend);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 100)).Returns(TransferSucceed(true));
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, tokenHolder, 100)).Returns(TransferResult.Succeed(true));
 
             var contract = new DividendToken(mContractState.Object, totalSupply, name, symbol, decimals);
 
