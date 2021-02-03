@@ -4,7 +4,7 @@ using Stratis.SmartContracts.Standards;
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
-public class StandardToken : SmartContract, IStandardToken
+public class StandardToken : SmartContract, IStandardToken256
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -14,7 +14,7 @@ public class StandardToken : SmartContract, IStandardToken
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-    public StandardToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, uint decimals)
+    public StandardToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals)
         : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
@@ -37,10 +37,10 @@ public class StandardToken : SmartContract, IStandardToken
     }
 
     /// <inheritdoc />
-    public uint Decimals
+    public byte Decimals
     {
-        get => PersistentState.GetUInt32(nameof(this.Decimals));
-        private set => PersistentState.SetUInt32(nameof(this.Decimals), value);
+        get => PersistentState.GetBytes(nameof(this.Decimals))[0];
+        private set => PersistentState.SetBytes(nameof(this.Decimals), new[] { value });
     }
 
     /// <inheritdoc />
