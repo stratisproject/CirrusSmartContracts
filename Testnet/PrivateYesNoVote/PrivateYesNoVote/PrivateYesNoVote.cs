@@ -2,6 +2,9 @@
 
 public class PrivateYesNoVote : SmartContract
 {
+    private const char Yes = 'y';
+    private const char No = 'n';
+    
     public PrivateYesNoVote(ISmartContractState smartContractState, ulong duration, byte[] addresses) 
         : base(smartContractState)
     {
@@ -86,12 +89,12 @@ public class PrivateYesNoVote : SmartContract
         
         if (vote)
         {
-            voteChar = 'y';
+            voteChar = Yes;
             YesVotes++;
         }
         else
         {
-            voteChar = 'n';
+            voteChar = No;
             NoVotes++;
         }
         
