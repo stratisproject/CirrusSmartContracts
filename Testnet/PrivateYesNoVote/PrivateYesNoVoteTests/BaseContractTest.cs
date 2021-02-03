@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using Moq;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
@@ -67,54 +65,9 @@ namespace OpdexProposalVoteTests
             MockContractState.Setup(x => x.Block.Number).Returns(blockNumber);
         }
 
-        protected void SetupBalance(ulong balance)
-        {
-            MockContractState.Setup(x => x.GetBalance).Returns(() => balance);
-        }
-
-        protected void SetupCall(Address to, ulong amountToTransfer, string methodName, object[] parameters, TransferResult result)
-        {
-            MockInternalExecutor
-                .Setup(x => x.Call(MockContractState.Object, to, amountToTransfer, methodName, parameters, It.IsAny<ulong>()))
-                .Returns(result); 
-        }
-
-        protected void SetupTransfer(Address to, ulong value, TransferResult result)
-        {
-            MockInternalExecutor
-                .Setup(x => x.Transfer(MockContractState.Object, to, value))
-                .Returns(result);
-        }
-
-        protected void SetupCreate<T>(CreateResult result, ulong amount = 0ul, object[] parameters = null)
-        {
-            MockInternalExecutor
-                .Setup(x => x.Create<T>(MockContractState.Object, amount, parameters, It.IsAny<ulong>()))
-                .Returns(result);
-        }
-
-        protected void VerifyCall(Address addressTo, ulong amountToTransfer, string methodName, object[] parameters, Func<Times> times)
-        {
-            MockInternalExecutor.Verify(x => x.Call(MockContractState.Object, addressTo, amountToTransfer, methodName, parameters, 0ul), times);
-        }
-
-        protected void VerifyTransfer(Address to, ulong value, Func<Times> times)
-        {
-            MockInternalExecutor.Verify(x => x.Transfer(MockContractState.Object, to, value), times);
-        }
-
         protected void VerifyLog<T>(T expectedLog, Func<Times> times) where T : struct
         {
             MockContractLogger.Verify(x => x.Log(MockContractState.Object, expectedLog), times);
-        }
-        
-        protected static byte[] ObjectToByteArray(object obj)
-        {
-            if(obj == null) return null;
-            BinaryFormatter bf = new BinaryFormatter();
-            using MemoryStream ms = new MemoryStream();
-            bf.Serialize(ms, obj);
-            return ms.ToArray();
         }
     }
 }
