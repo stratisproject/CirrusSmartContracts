@@ -105,7 +105,7 @@ public class PrivateYesNoVote : SmartContract
 
     private void AuthorizeOwner()
     {
-        Assert(Message.Sender == Owner, "Must be contract owner to authorize addresses.");
+        Assert(Message.Sender == Owner, "Must be the contract owner to authorize voters.");
     }
     
     public struct VoteEvent

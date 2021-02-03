@@ -53,7 +53,7 @@ namespace PrivateYesNoVoteTests
             voteContract
                 .Invoking(v => v.AuthorizeVoters(bytes))
                 .Should().Throw<SmartContractAssertException>()
-                .WithMessage("Must be contract owner to authorize addresses.");
+                .WithMessage("Must be the contract owner to authorize voters.");
         }
         
         [Fact]
@@ -78,7 +78,7 @@ namespace PrivateYesNoVoteTests
             voteContract
                 .Invoking(v => v.AuthorizeVoter(AddressFour))
                 .Should().Throw<SmartContractAssertException>()
-                .WithMessage("Must be contract owner to authorize addresses.");
+                .WithMessage("Must be the contract owner to authorize voters.");
         }
 
         [Fact]
