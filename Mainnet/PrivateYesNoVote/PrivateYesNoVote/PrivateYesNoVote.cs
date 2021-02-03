@@ -2,12 +2,12 @@
 
 public class PrivateYesNoVote : SmartContract
 {
-    public PrivateYesNoVote(ISmartContractState smartContractState, ulong duration, byte[] addressesBytes) 
+    public PrivateYesNoVote(ISmartContractState smartContractState, ulong duration, byte[] addresses) 
         : base(smartContractState)
     {
         VotePeriodEndBlock = checked(Block.Number + duration);
         Owner = Message.Sender;
-        WhiteListAddressesExecute(addressesBytes);
+        WhitelistVotersExecute(addresses);
     }
 
     public Address Owner
@@ -34,12 +34,12 @@ public class PrivateYesNoVote : SmartContract
         private set => PersistentState.SetUInt32(nameof(NoVotes), value);
     }
 
-    private void SetAuthorization(Address address)
+    private void AuthorizeVoter(Address address)
     {
         PersistentState.SetBool($"Voter:{address}", true);
     }
 
-    public bool IsAuthorized(Address address)
+    public bool IsVoter(Address address)
     {
         return PersistentState.GetBool($"Voter:{address}");
     }
@@ -48,25 +48,40 @@ public class PrivateYesNoVote : SmartContract
     {
         return PersistentState.GetChar($"Vote:{address}");
     }
-
-    public void WhitelistAddresses(byte[] addressBytes)
+    
+    private void SetVote(Address address, char vote)
     {
-        Assert(Message.Sender == Owner, "Must be contract owner to whitelist addresses.");
-        WhiteListAddressesExecute(addressBytes);
+        PersistentState.SetChar($"Vote:{address}", vote);
+    }
+    
+    public void WhitelistVoter(Address address)
+    {
+        AuthorizeOwner();
+        AuthorizeVoter(address);
+    }
+    
+    public void WhitelistVoters(byte[] addresses)
+    {
+        AuthorizeOwner();
+        WhitelistVotersExecute(addresses);
     }
 
-    private void WhiteListAddressesExecute(byte[] addressBytes)
+    private void WhitelistVotersExecute(byte[] addresses)
     {
-        var addresses = Serializer.ToArray<Address>(addressBytes);
+        var addressList = Serializer.ToArray<Address>(addresses);
         
-        foreach (var address in addresses)
+        foreach (var address in addressList)
         {
-            SetAuthorization(address);
+            AuthorizeVoter(address);
         }
     }
-
-    private void SetVote(Address address, bool vote)
+    
+    public void Vote(bool vote)
     {
+        Assert(IsVoter(Message.Sender), "Sender is not authorized to vote.");
+        Assert(GetVote(Message.Sender) == default(char), "Sender has already voted.");
+        Assert(Block.Number <= VotePeriodEndBlock, "Voting period has ended.");
+        
         char voteChar;
         
         if (vote)
@@ -80,20 +95,16 @@ public class PrivateYesNoVote : SmartContract
             NoVotes++;
         }
         
-        PersistentState.SetChar($"Vote:{address}", voteChar);
-    }
-
-    public void Vote(bool vote)
-    {
-        Assert(IsAuthorized(Message.Sender), "Sender is not authorized to vote.");
-        Assert(GetVote(Message.Sender) == default(char), "Sender has already voted.");
-        Assert(Block.Number <= VotePeriodEndBlock, "Voting period has ended.");
-        
-        SetVote(Message.Sender, vote);
+        SetVote(Message.Sender, voteChar);
         
         Log(new VoteEvent { Voter = Message.Sender, Vote = vote });
     }
 
+    private void AuthorizeOwner()
+    {
+        Assert(Message.Sender == Owner, "Must be contract owner to whitelist addresses.");
+    }
+    
     public struct VoteEvent
     {
         [Index]
