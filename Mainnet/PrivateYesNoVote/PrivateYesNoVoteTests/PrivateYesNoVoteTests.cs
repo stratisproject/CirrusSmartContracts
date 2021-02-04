@@ -1,7 +1,6 @@
 ﻿using System;
 using FluentAssertions;
 using Moq;
-using OpdexProposalVoteTests;
 using Stratis.SmartContracts;
 using Xunit;
 
