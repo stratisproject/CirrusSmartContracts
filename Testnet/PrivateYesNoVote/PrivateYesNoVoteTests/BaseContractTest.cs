@@ -5,7 +5,7 @@ using Stratis.SmartContracts.CLR;
 using Stratis.SmartContracts.CLR.Serialization;
 using Stratis.SmartContracts.Networks;
 
-namespace OpdexProposalVoteTests
+namespace PrivateYesNoVoteTests
 {
     public class BaseContractTest
     {
