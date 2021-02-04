@@ -24,7 +24,7 @@ namespace PrivateYesNoVoteTests
         }
 
         [Fact]
-        public void AuthorizeVoters_Success()
+        public void SetVoters_Success()
         {
             var voteContract = CreateNewVoteContract();
 
@@ -33,7 +33,7 @@ namespace PrivateYesNoVoteTests
             var addressList = new[] {AddressFour, AddressFive, AddressSix};
             var bytes = Serializer.Serialize(addressList);
             
-            voteContract.AuthorizeVoters(bytes);
+            voteContract.SetVoters(bytes);
 
             voteContract.IsVoter(AddressFour).Should().BeTrue();
             voteContract.IsVoter(AddressFive).Should().BeTrue();
@@ -41,7 +41,7 @@ namespace PrivateYesNoVoteTests
         }
 
         [Fact]
-        public void AuthorizeVoters_Throws_SenderIsNotOwner()
+        public void SetVoters_Throws_SenderIsNotOwner()
         {
             var voteContract = CreateNewVoteContract();
             var addressList = new[] {AddressFour, AddressFive, AddressSix};
@@ -50,32 +50,32 @@ namespace PrivateYesNoVoteTests
             SetupMessage(Contract, AddressOne);
 
             voteContract
-                .Invoking(v => v.AuthorizeVoters(bytes))
+                .Invoking(v => v.SetVoters(bytes))
                 .Should().Throw<SmartContractAssertException>()
                 .WithMessage("Must be the contract owner to authorize voters.");
         }
         
         [Fact]
-        public void AuthorizeVoter_Success()
+        public void SetVoter_Success()
         {
             var voteContract = CreateNewVoteContract();
 
             SetupMessage(Contract, Owner);
             
-            voteContract.AuthorizeVoter(AddressFour);
+            voteContract.SetVoter(AddressFour);
 
             voteContract.IsVoter(AddressFour).Should().BeTrue();
         }
 
         [Fact]
-        public void AuthorizeVoter_Throws_SenderIsNotOwner()
+        public void SetVoter_Throws_SenderIsNotOwner()
         {
             var voteContract = CreateNewVoteContract();
             
             SetupMessage(Contract, AddressOne);
 
             voteContract
-                .Invoking(v => v.AuthorizeVoter(AddressFour))
+                .Invoking(v => v.SetVoter(AddressFour))
                 .Should().Throw<SmartContractAssertException>()
                 .WithMessage("Must be the contract owner to authorize voters.");
         }
