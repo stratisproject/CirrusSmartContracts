@@ -10,7 +10,7 @@ public class PrivateYesNoVote : SmartContract
     {
         VotePeriodEndBlock = checked(Block.Number + duration);
         Owner = Message.Sender;
-        AuthorizeVotersExecute(addresses);
+        SetVotersExecute(addresses);
     }
 
     public Address Owner
@@ -37,7 +37,7 @@ public class PrivateYesNoVote : SmartContract
         private set => PersistentState.SetUInt32(nameof(NoVotes), value);
     }
 
-    private void AuthorizeVoterExecute(Address address)
+    private void SetVoterExecute(Address address)
     {
         PersistentState.SetBool($"Voter:{address}", true);
     }
@@ -57,25 +57,25 @@ public class PrivateYesNoVote : SmartContract
         PersistentState.SetChar($"Vote:{address}", vote);
     }
     
-    public void AuthorizeVoter(Address address)
+    public void SetVoter(Address address)
     {
-        AuthorizeOwner();
-        AuthorizeVoterExecute(address);
+        EnsureOwnerOnly();
+        SetVoterExecute(address);
     }
     
-    public void AuthorizeVoters(byte[] addresses)
+    public void SetVoters(byte[] addresses)
     {
-        AuthorizeOwner();
-        AuthorizeVotersExecute(addresses);
+        EnsureOwnerOnly();
+        SetVotersExecute(addresses);
     }
 
-    private void AuthorizeVotersExecute(byte[] addresses)
+    private void SetVotersExecute(byte[] addresses)
     {
         var addressList = Serializer.ToArray<Address>(addresses);
         
         foreach (var address in addressList)
         {
-            AuthorizeVoterExecute(address);
+            SetVoterExecute(address);
         }
     }
     
@@ -85,25 +85,25 @@ public class PrivateYesNoVote : SmartContract
         Assert(GetVote(Message.Sender) == default(char), "Sender has already voted.");
         Assert(Block.Number <= VotePeriodEndBlock, "Voting period has ended.");
         
-        char voteChar;
+        char voteType;
         
         if (vote)
         {
-            voteChar = Yes;
+            voteType = Yes;
             YesVotes++;
         }
         else
         {
-            voteChar = No;
+            voteType = No;
             NoVotes++;
         }
         
-        SetVote(Message.Sender, voteChar);
+        SetVote(Message.Sender, voteType);
         
         Log(new VoteEvent { Voter = Message.Sender, Vote = vote });
     }
 
-    private void AuthorizeOwner()
+    private void EnsureOwnerOnly()
     {
         Assert(Message.Sender == Owner, "Must be the contract owner to authorize voters.");
     }
