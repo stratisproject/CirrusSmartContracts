@@ -17,7 +17,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         private Address destination;
         private string name;
         private string symbol;
-        private uint decimals;
+        private byte decimals;
 
         public StandardTokenTests()
         {
