@@ -26,39 +26,39 @@ public class StandardToken : SmartContract, IStandardToken256
 
     public string Symbol
     {
-        get => PersistentState.GetString(nameof(this.Symbol));
-        private set => PersistentState.SetString(nameof(this.Symbol), value);
+        get => State.GetString(nameof(this.Symbol));
+        private set => State.SetString(nameof(this.Symbol), value);
     }
 
     public string Name
     {
-        get => PersistentState.GetString(nameof(this.Name));
-        private set => PersistentState.SetString(nameof(this.Name), value);
+        get => State.GetString(nameof(this.Name));
+        private set => State.SetString(nameof(this.Name), value);
     }
 
     /// <inheritdoc />
     public byte Decimals
     {
-        get => PersistentState.GetBytes(nameof(this.Decimals))[0];
-        private set => PersistentState.SetBytes(nameof(this.Decimals), new[] { value });
+        get => State.GetBytes(nameof(this.Decimals))[0];
+        private set => State.SetBytes(nameof(this.Decimals), new[] { value });
     }
 
     /// <inheritdoc />
     public UInt256 TotalSupply
     {
-        get => PersistentState.GetUInt256(nameof(this.TotalSupply));
-        private set => PersistentState.SetUInt256(nameof(this.TotalSupply), value);
+        get => State.GetUInt256(nameof(this.TotalSupply));
+        private set => State.SetUInt256(nameof(this.TotalSupply), value);
     }
 
     /// <inheritdoc />
     public UInt256 GetBalance(Address address)
     {
-        return PersistentState.GetUInt256($"Balance:{address}");
+        return State.GetUInt256($"Balance:{address}");
     }
 
     private void SetBalance(Address address, UInt256 value)
     {
-        PersistentState.SetUInt256($"Balance:{address}", value);
+        State.SetUInt256($"Balance:{address}", value);
     }
 
     /// <inheritdoc />
@@ -133,13 +133,13 @@ public class StandardToken : SmartContract, IStandardToken256
 
     private void SetApproval(Address owner, Address spender, UInt256 value)
     {
-        PersistentState.SetUInt256($"Allowance:{owner}:{spender}", value);
+        State.SetUInt256($"Allowance:{owner}:{spender}", value);
     }
 
     /// <inheritdoc />
     public UInt256 Allowance(Address owner, Address spender)
     {
-        return PersistentState.GetUInt256($"Allowance:{owner}:{spender}");
+        return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
     public struct TransferLog
