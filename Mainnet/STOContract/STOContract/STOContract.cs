@@ -314,7 +314,7 @@ public class StandardToken : SmartContract, IStandardToken256
         this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
     }
-
+     
     public string Symbol
     {
         get => State.GetString(nameof(this.Symbol));
