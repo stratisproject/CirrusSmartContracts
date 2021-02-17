@@ -91,12 +91,12 @@ public class STOContract : SmartContract
 
     private ICreateResult CreateTokenContract(TokenType tokenType, UInt256 totalSupply, string name, string symbol, uint decimals)
     {
-        return tokenType switch
+        switch (tokenType)
         {
-            TokenType.StandardToken => Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol, decimals }),
-            TokenType.DividendToken => Create<DividendToken>(parameters: new object[] { totalSupply, name, symbol, decimals }),
-            _ => Create<NonFungibleToken>(parameters: new object[] { name, symbol }),
-        };
+            case TokenType.StandardToken: return Create<StandardToken>(parameters: new object[] { totalSupply, name, symbol, decimals });
+            case TokenType.DividendToken: return Create<DividendToken>(parameters: new object[] { totalSupply, name, symbol, decimals });
+            default: return Create<NonFungibleToken>(parameters: new object[] { name, symbol });
+        }
     }
     public override void Receive() => Invest();
 
