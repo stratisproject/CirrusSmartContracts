@@ -4,6 +4,11 @@ using System;
 [Deploy]
 public class DAOContract : SmartContract
 {
+    public Address Owner
+    {
+        get => State.GetAddress(nameof(Owner));
+        private set => State.SetAddress(nameof(Owner), value);
+    }
     /// <summary>
     /// Min quorum for yes votes
     /// </summary>
@@ -20,7 +25,10 @@ public class DAOContract : SmartContract
     }
 
     public bool IsWhitelisted(Address address) => State.GetBool($"Whitelisted:{address}");
-    public void SetWhitelisted(Address address, bool allowed) => State.SetBool($"Whitelisted:{address}", allowed);
+    private void SetIsWhitelisted(Address address, bool allowed) => State.SetBool($"Whitelisted:{address}", allowed);
+
+    public ulong GetVotingDeadline(uint proposalId) => State.GetUInt64($"Deadline:{proposalId}");
+    private void SetVotingDeadline(uint proposalId, ulong block) => State.SetUInt64($"Deadline:{proposalId}", block);
 
     public uint GetYesVotes(uint proposalId) => State.GetUInt32($"YesVotes:{proposalId}");
     private void SetYesVotes(uint proposalId, uint value) => State.SetUInt32($"YesVotes:{proposalId}", value);
@@ -38,22 +46,24 @@ public class DAOContract : SmartContract
         : base(state)
     {
         this.MinQuorum = minQuorum;
+        this.Owner = Message.Sender;
+        this.LastProposalIndex = 1;
     }
 
-    public uint CreateProposal(Address recipent, ulong amount, uint debatingDuration, string description)
+    public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
+        Assert(IsWhitelisted(Message.Sender));
         var proposal = new Proposal
         {
-            Amount = amount,
+            RequestedAmount = amount,
             Description = description,
             Recipient = recipent,
-            VotingDeadline = checked(debatingDuration + Block.Number),
             Creator = Message.Sender,
-            Open = true
+            VotingOpen = true
         };
 
         SetProposal(LastProposalIndex, proposal);
-
+        SetVotingDeadline(LastProposalIndex, checked(votingDuration + Block.Number));
         Log(new ProposalAddedLog
         {
             ProposalId = LastProposalIndex,
@@ -69,12 +79,9 @@ public class DAOContract : SmartContract
     {
         Assert(IsWhitelisted(Message.Sender));
 
-        var proposal = GetProposal(proposalId);
-
-        Assert(proposal.VotingDeadline > Block.Number, "Voting is closed.");
+        Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
         SetVote(proposalId, Message.Sender, ToVote(vote));
-
     }
 
     private void SetVote(uint proposalId, Address address, Votes vote)
@@ -87,7 +94,6 @@ public class DAOContract : SmartContract
         }
 
         Unvote(proposalId, currentVote);
-
         State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
 
         if (vote == Votes.Yes)
@@ -114,28 +120,53 @@ public class DAOContract : SmartContract
 
     public void ExecuteProposal(uint proposalId)
     {
-        Assert(IsWhitelisted(Message.Sender));
-
         var proposal = GetProposal(proposalId);
+
+        Assert(proposal.Creator == Message.Sender, "The proposal can be executed by proposal creator.");
+
         var yesVotes = GetYesVotes(proposalId);
         var noVotes = GetNoVotes(proposalId);
 
         Assert(yesVotes > noVotes, "The proposal voting is not passed.");
         Assert(yesVotes >= MinQuorum, "Min quorum for proposal is not reached.");
 
-        Assert(proposal.Open, "The proposal is closed.");
-        Assert(proposal.VotingDeadline < Block.Number, "Voting is still open for the proposal.");
-        Assert(proposal.Amount < Balance, "Insufficient balance.");
+        Assert(proposal.VotingOpen, "The proposal is closed.");
+        Assert(GetVotingDeadline(proposalId) < Block.Number, "Voting is still open for the proposal.");
+        Assert(proposal.RequestedAmount < Balance, "Insufficient balance.");                
 
-        proposal.Open = false;
+        proposal.VotingSucceed = true;
+        proposal.VotingOpen = false;
 
         SetProposal(proposalId, proposal);
-        var result = Transfer(proposal.Recipient, proposal.Amount);
+        var result = Transfer(proposal.Recipient, proposal.RequestedAmount);
 
         Assert(result.Success, "Transfer failed.");
 
     }
 
+    public void BlacklistAddress(Address address) => SetIsWhitelisted(address, false);
+
+    public void BlacklistAddresses(Address[] addresses)
+    {
+        foreach (var address in addresses)
+        {
+            BlacklistAddress(address);
+        }
+    }
+
+    public void WhitelistAddress(Address address) => SetIsWhitelisted(address, true);
+
+    public void WhitelistAddresses(Address[] addresses)
+    {
+        foreach (var address in addresses)
+        {
+            WhitelistAddress(address);
+        }
+    }
+
+    /// <summary>
+    /// Public method for allow deposits. 
+    /// </summary>
     public void Deposit()
     {
 
