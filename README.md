@@ -5,6 +5,10 @@ This repository contains Smart Contracts developed in C# to be executed on the S
 
 Newly developed Smart Contracts in C# can also be found here undergoing a review process by a wider audience prior to the acceptance of a contract that is achieved by a successful vote performed by the current federated members of the Cirrus Sidechain(s)
 
+Security and Liability
+----------------------
+All contracts are WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
 Submission Process
 --------------
 Submit a pull request to this repository containing the solution with the contract you want to whitelist. The pull request name should be prefixed with the network and should adhere to the below template:
