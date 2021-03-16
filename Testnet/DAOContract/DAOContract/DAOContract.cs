@@ -18,10 +18,10 @@ public class DAOContract : SmartContract
         private set => State.SetUInt32(nameof(MinQuorum), value);
     }
 
-    public uint LastProposalIndex
+    public uint LastProposalId
     {
-        get => State.GetUInt32(nameof(MinQuorum));
-        private set => State.SetUInt32(nameof(MinQuorum), value);
+        get => State.GetUInt32(nameof(LastProposalId));
+        private set => State.SetUInt32(nameof(LastProposalId), value);
     }
 
     public bool IsWhitelisted(Address address) => State.GetBool($"Whitelisted:{address}");
@@ -47,7 +47,7 @@ public class DAOContract : SmartContract
     {
         this.MinQuorum = minQuorum;
         this.Owner = Message.Sender;
-        this.LastProposalIndex = 1;
+        this.LastProposalId = 1;
     }
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
@@ -62,17 +62,17 @@ public class DAOContract : SmartContract
             VotingOpen = true
         };
 
-        SetProposal(LastProposalIndex, proposal);
-        SetVotingDeadline(LastProposalIndex, checked(votingDuration + Block.Number));
+        SetProposal(LastProposalId, proposal);
+        SetVotingDeadline(LastProposalId, checked(votingDuration + Block.Number));
         Log(new ProposalAddedLog
         {
-            ProposalId = LastProposalIndex,
+            ProposalId = LastProposalId,
             Recipent = recipent,
             Amount = amount,
             Description = description
         });
 
-        return LastProposalIndex++;
+        return LastProposalId++;
     }
 
     public void Vote(uint proposalId, bool vote)
