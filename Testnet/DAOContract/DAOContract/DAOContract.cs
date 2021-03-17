@@ -52,7 +52,6 @@ public class DAOContract : SmartContract
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
-        Assert(IsWhitelisted(Message.Sender));
         var proposal = new Proposal
         {
             RequestedAmount = amount,
