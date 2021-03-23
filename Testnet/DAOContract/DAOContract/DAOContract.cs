@@ -40,7 +40,7 @@ public class DAOContract : SmartContract
 
     public Proposal GetProposal(uint index) => State.GetStruct<Proposal>($"Proposals:{index}");
 
-    public void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
+    private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
     public DAOContract(ISmartContractState state, uint minQuorum)
         : base(state)
@@ -143,9 +143,9 @@ public class DAOContract : SmartContract
 
     public void BlacklistAddress(Address address) => SetIsWhitelisted(address, false);
 
-    public void BlacklistAddresses(Address[] addresses)
+    public void BlacklistAddresses(byte[] addresses)
     {
-        foreach (var address in addresses)
+        foreach (var address in Serializer.ToArray<Address>(addresses))
         {
             BlacklistAddress(address);
         }
@@ -153,9 +153,9 @@ public class DAOContract : SmartContract
 
     public void WhitelistAddress(Address address) => SetIsWhitelisted(address, true);
 
-    public void WhitelistAddresses(Address[] addresses)
+    public void WhitelistAddresses(byte[] addresses)
     {
-        foreach (var address in addresses)
+        foreach (var address in Serializer.ToArray<Address>(addresses))
         {
             WhitelistAddress(address);
         }
