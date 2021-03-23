@@ -141,25 +141,37 @@ public class DAOContract : SmartContract
 
     }
 
-    public void BlacklistAddress(Address address) => SetIsWhitelisted(address, false);
+    public void BlacklistAddress(Address address)
+    {
+        EnsureOwnerOnly();
+        SetIsWhitelisted(address, false);
+    }
 
     public void BlacklistAddresses(byte[] addresses)
     {
+        EnsureOwnerOnly();
         foreach (var address in Serializer.ToArray<Address>(addresses))
         {
-            BlacklistAddress(address);
+            SetIsWhitelisted(address, false);
         }
     }
 
-    public void WhitelistAddress(Address address) => SetIsWhitelisted(address, true);
+    public void WhitelistAddress(Address address)
+    {
+        EnsureOwnerOnly();
+        SetIsWhitelisted(address, true);
+    }
 
     public void WhitelistAddresses(byte[] addresses)
     {
+        EnsureOwnerOnly();
         foreach (var address in Serializer.ToArray<Address>(addresses))
         {
-            WhitelistAddress(address);
+            SetIsWhitelisted(address, true);
         }
     }
+
+    private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
 
     /// <summary>
     /// Public method for allow deposits. 

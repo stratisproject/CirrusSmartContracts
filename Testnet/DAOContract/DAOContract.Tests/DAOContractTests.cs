@@ -39,7 +39,7 @@ namespace DAOContractTests
             proposalOwner = "0x0000000000000000000000000000000000000004".HexToAddress();
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
 
-            this.minQuorum = 3;
+            minQuorum = 3;
         }
 
         [Fact]
@@ -47,10 +47,10 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, this.minQuorum);
+            var contract = new DAOContract(mContractState.Object, minQuorum);
 
             contract.MinQuorum.Should().Be(3);
-            contract.Owner.Should().Be(this.owner);
+            contract.Owner.Should().Be(owner);
             contract.LastProposalId.Should().Be(1);
         }
 
@@ -59,7 +59,7 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, this.minQuorum);
+            var contract = new DAOContract(mContractState.Object, minQuorum);
 
             contract.WhitelistAddress(voter);
 
@@ -73,7 +73,7 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, this.minQuorum);
+            var contract = new DAOContract(mContractState.Object, minQuorum);
 
             contract.WhitelistAddress(voter);
 
@@ -139,9 +139,9 @@ namespace DAOContractTests
         {
             var duration = 10u;
             var contract = CreateContract();
+            contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            contract.WhitelistAddress(voter);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
             SetupBlock(duration + 1);
@@ -159,13 +159,14 @@ namespace DAOContractTests
         {
             var duration = 10u;
             var contract = CreateContract();
-
-            SetupMessage(voter);
-            SetupBlock(10);
             contract.WhitelistAddress(voter);
+
+            SetupMessage(proposalOwner);
+            SetupBlock(10);
 
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
         }
 
@@ -174,12 +175,13 @@ namespace DAOContractTests
         {
             var duration = 10u;
             var contract = CreateContract();
-
-            SetupMessage(voter);
-            SetupBlock(10);
             contract.WhitelistAddress(voter);
 
+            SetupBlock(10);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+
+            SetupMessage(voter);
             contract.Vote(proposalId, false);
 
             contract.Vote(proposalId, true);
@@ -200,12 +202,14 @@ namespace DAOContractTests
         {
             var duration = 10u;
             var contract = CreateContract();
-
-            SetupMessage(voter);
-            SetupBlock(10);
             contract.WhitelistAddress(voter);
 
+            SetupMessage(proposalOwner);
+            SetupBlock(10);
+
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
             contract.Vote(proposalId, false);
@@ -225,20 +229,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Called_By_None_Proposal_Owner_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -253,20 +255,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Proposal_Voted_As_No_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, false);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -281,20 +281,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Voting_MinQuorum_Is_Not_Reached_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 2;
+            minQuorum = 2;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -309,20 +307,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Already_Executed_Proposal_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -340,20 +336,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Proposal_In_Voting_Duration_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(10);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -368,20 +362,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Insufficient_Balance_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 99);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -396,20 +388,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Transfer_Fails()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Failed());
@@ -424,20 +414,18 @@ namespace DAOContractTests
         public void ExecuteProposal_Success()
         {
             var duration = 10u;
-            this.minQuorum = 1;
+            minQuorum = 1;
 
             var contract = CreateContract();
-
-            SetupMessage(voter);
             contract.WhitelistAddress(voter);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
-            SetupMessage(this.voter);
+            SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            SetupMessage(this.proposalOwner);
+            SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
             mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
@@ -456,7 +444,7 @@ namespace DAOContractTests
             SetupMessage();
             SetupBlock();
 
-            return new DAOContract(mContractState.Object, this.minQuorum);
+            return new DAOContract(mContractState.Object, minQuorum);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct
@@ -471,7 +459,7 @@ namespace DAOContractTests
 
         private void SetupMessage(Address? owner = null, ulong amount = 0)
         {
-            mContractState.Setup(m => m.Message).Returns(new Message(this.contract, owner ?? this.owner, amount));
+            mContractState.Setup(m => m.Message).Returns(new Message(contract, owner ?? this.owner, amount));
         }
 
         private void SetupBlock(uint block = 1)
