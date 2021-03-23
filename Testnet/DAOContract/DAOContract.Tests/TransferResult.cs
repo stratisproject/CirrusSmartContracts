@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DividendTokenContract.Tests
+namespace DAOContractTests
 {
     public class TransferResult : ITransferResult
     {
@@ -14,6 +14,6 @@ namespace DividendTokenContract.Tests
         public static TransferResult Failed() => new TransferResult { Success = false };
 
 
-        public static TransferResult Succeed(object returnValue) => new TransferResult { Success = true, ReturnValue = returnValue };
+        public static TransferResult Succeed(object returnValue = null) => new TransferResult { Success = true, ReturnValue = returnValue };
     }
 }

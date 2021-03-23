@@ -57,8 +57,7 @@ public class DAOContract : SmartContract
             RequestedAmount = amount,
             Description = description,
             Recipient = recipent,
-            Creator = Message.Sender,
-            VotingOpen = true
+            Owner = Message.Sender
         };
 
         SetProposal(LastProposalId, proposal);
@@ -76,7 +75,7 @@ public class DAOContract : SmartContract
 
     public void Vote(uint proposalId, bool vote)
     {
-        Assert(IsWhitelisted(Message.Sender));
+        Assert(IsWhitelisted(Message.Sender), "The caller is not whitelisted.");
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
@@ -109,9 +108,9 @@ public class DAOContract : SmartContract
     {
         switch (currentVote)
         {
-            case Votes.None: break;
             case Votes.Yes: SetYesVotes(proposalId, GetYesVotes(proposalId) - 1); break;
             case Votes.No: SetNoVotes(proposalId, GetNoVotes(proposalId) - 1); break;
+            case Votes.None: break;
         }
     }
 
@@ -121,7 +120,7 @@ public class DAOContract : SmartContract
     {
         var proposal = GetProposal(proposalId);
 
-        Assert(proposal.Creator == Message.Sender, "The proposal can be executed by proposal creator.");
+        Assert(proposal.Owner == Message.Sender, "The proposal can be executed by proposal creator.");
 
         var yesVotes = GetYesVotes(proposalId);
         var noVotes = GetNoVotes(proposalId);
@@ -129,12 +128,11 @@ public class DAOContract : SmartContract
         Assert(yesVotes > noVotes, "The proposal voting is not passed.");
         Assert(yesVotes >= MinQuorum, "Min quorum for proposal is not reached.");
 
-        Assert(proposal.VotingOpen, "The proposal is closed.");
+        Assert(!proposal.Executed, "The proposal is already executed.");
         Assert(GetVotingDeadline(proposalId) < Block.Number, "Voting is still open for the proposal.");
-        Assert(proposal.RequestedAmount < Balance, "Insufficient balance.");                
+        Assert(proposal.RequestedAmount <= Balance, "Insufficient balance.");
 
-        proposal.VotingSucceed = true;
-        proposal.VotingOpen = false;
+        proposal.Executed = true;
 
         SetProposal(proposalId, proposal);
         var result = Transfer(proposal.Recipient, proposal.RequestedAmount);
@@ -177,11 +175,27 @@ public class DAOContract : SmartContract
         Yes
     }
 
-    struct ProposalAddedLog
+    public struct ProposalAddedLog
     {
         public Address Recipent;
         public uint ProposalId;
         public ulong Amount;
         public string Description;
+    }
+
+    public struct Proposal
+    {
+        public ulong RequestedAmount;
+
+        public Address Recipient;
+
+        public string Description;
+
+        /// <summary>
+        /// True if proposal executed and the requested fund is transferred
+        /// </summary>
+        public bool Executed;
+
+        public Address Owner;
     }
 }

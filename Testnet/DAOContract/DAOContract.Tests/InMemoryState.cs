@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace DividendTokenContract.Tests
+namespace DAOContractTests
 {
     public class InMemoryState : IPersistentState
     {

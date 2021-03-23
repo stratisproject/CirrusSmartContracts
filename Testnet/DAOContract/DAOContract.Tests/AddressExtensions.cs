@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DividendTokenContract.Tests
+namespace DAOContractTests
 {
     public static class AddressExtensions
     {
