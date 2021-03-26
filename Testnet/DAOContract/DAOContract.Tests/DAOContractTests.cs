@@ -437,6 +437,20 @@ namespace DAOContractTests
                     .Executed
                     .Should()
                     .BeTrue();
+
+            VerifyLog(new ProposalExecutedLog { ProposalId = proposalId, Recipent = recipent, Amount = 100 });
+        }
+
+        [Fact]
+        public void Deposit_Success()
+        {
+            var amount = 1200000ul;
+            var contract = CreateContract();
+
+            SetupMessage(owner, amount);
+            contract.Deposit();
+
+            VerifyLog(new FundRaisedLog { Sender = owner, Amount = amount });
         }
 
         private DAOContract CreateContract()

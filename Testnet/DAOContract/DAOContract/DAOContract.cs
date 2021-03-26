@@ -45,13 +45,16 @@ public class DAOContract : SmartContract
     public DAOContract(ISmartContractState state, uint minQuorum)
         : base(state)
     {
-        this.MinQuorum = minQuorum;
         this.Owner = Message.Sender;
+        this.MinQuorum = minQuorum;
         this.LastProposalId = 1;
     }
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
+        var length = description?.Length ?? 0;
+        Assert(length <= 200,"The description length can be up to 200 characters.");
+
         var proposal = new Proposal
         {
             RequestedAmount = amount,
@@ -60,17 +63,20 @@ public class DAOContract : SmartContract
             Owner = Message.Sender
         };
 
-        SetProposal(LastProposalId, proposal);
-        SetVotingDeadline(LastProposalId, checked(votingDuration + Block.Number));
+        var proposalId = LastProposalId;
+        SetProposal(proposalId, proposal);
+        SetVotingDeadline(proposalId, checked(votingDuration + Block.Number));
         Log(new ProposalAddedLog
         {
-            ProposalId = LastProposalId,
+            ProposalId = proposalId,
             Recipent = recipent,
             Amount = amount,
             Description = description
         });
 
-        return LastProposalId++;
+        LastProposalId = proposalId + 1;
+
+        return proposalId;
     }
 
     public void Vote(uint proposalId, bool vote)
@@ -133,11 +139,12 @@ public class DAOContract : SmartContract
         Assert(proposal.RequestedAmount <= Balance, "Insufficient balance.");
 
         proposal.Executed = true;
-
         SetProposal(proposalId, proposal);
         var result = Transfer(proposal.Recipient, proposal.RequestedAmount);
 
         Assert(result.Success, "Transfer failed.");
+
+        Log(new ProposalExecutedLog { ProposalId = proposalId, Amount = proposal.RequestedAmount, Recipent = proposal.Recipient });
 
     }
 
@@ -178,8 +185,9 @@ public class DAOContract : SmartContract
     /// </summary>
     public void Deposit()
     {
-
+        Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
     }
+
     public enum Votes : uint
     {
         None,
@@ -193,6 +201,19 @@ public class DAOContract : SmartContract
         public uint ProposalId;
         public ulong Amount;
         public string Description;
+    }
+
+    public struct ProposalExecutedLog
+    {
+        public Address Recipent;
+        public uint ProposalId;
+        public ulong Amount;
+    }
+
+    public struct FundRaisedLog
+    {
+        public Address Sender;
+        public ulong Amount;
     }
 
     public struct Proposal
