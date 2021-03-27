@@ -188,6 +188,18 @@ public class DAOContract : SmartContract
         Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
     }
 
+    public void UpdateMinQuorum(uint minQuorum)
+    {
+        EnsureOwnerOnly();
+        this.MinQuorum = minQuorum;
+    }
+
+    public void TransferOwnership(Address newOwner)
+    {
+        EnsureOwnerOnly();
+        this.Owner = newOwner;
+    }
+
     public enum Votes : uint
     {
         None,
