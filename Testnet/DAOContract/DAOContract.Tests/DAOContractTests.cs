@@ -22,7 +22,6 @@ namespace DAOContractTests
         private readonly Address recipent;
         private readonly Address proposalOwner;
         private readonly Address voter;
-        private uint minQuorum;
 
         public DAOContractTests()
         {
@@ -38,8 +37,6 @@ namespace DAOContractTests
             recipent = "0x0000000000000000000000000000000000000003".HexToAddress();
             proposalOwner = "0x0000000000000000000000000000000000000004".HexToAddress();
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
-
-            minQuorum = 3;
         }
 
         [Fact]
@@ -47,19 +44,20 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, minQuorum);
+            var contract = new DAOContract(mContractState.Object);
 
-            contract.MinQuorum.Should().Be(3);
+            contract.MinQuorum.Should().Be(1);
             contract.Owner.Should().Be(owner);
             contract.LastProposalId.Should().Be(1);
         }
+
 
         [Fact]
         public void WhitelistAddress_Success()
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, minQuorum);
+            var contract = new DAOContract(mContractState.Object);
 
             contract.WhitelistAddress(voter);
 
@@ -73,7 +71,7 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object, minQuorum);
+            var contract = new DAOContract(mContractState.Object);
 
             contract.WhitelistAddress(voter);
 
@@ -229,7 +227,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Called_By_None_Proposal_Owner_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -255,7 +252,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Proposal_Voted_As_No_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -281,11 +277,10 @@ namespace DAOContractTests
         public void ExecuteProposal_Voting_MinQuorum_Is_Not_Reached_Fails()
         {
             var duration = 10u;
-            minQuorum = 2;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
-
+            contract.WhitelistAddress(owner);
             SetupMessage(proposalOwner);
             var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
 
@@ -307,7 +302,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Already_Executed_Proposal_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -336,7 +330,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Proposal_In_Voting_Duration_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -362,7 +355,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Insufficient_Balance_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -388,7 +380,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Transfer_Fails()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -414,7 +405,6 @@ namespace DAOContractTests
         public void ExecuteProposal_Success()
         {
             var duration = 10u;
-            minQuorum = 1;
 
             var contract = CreateContract();
             contract.WhitelistAddress(voter);
@@ -458,7 +448,7 @@ namespace DAOContractTests
             SetupMessage();
             SetupBlock();
 
-            return new DAOContract(mContractState.Object, minQuorum);
+            return new DAOContract(mContractState.Object);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct

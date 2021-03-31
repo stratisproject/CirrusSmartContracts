@@ -9,13 +9,13 @@ public class DAOContract : SmartContract
         get => State.GetAddress(nameof(Owner));
         private set => State.SetAddress(nameof(Owner), value);
     }
-    /// <summary>
-    /// Min quorum for yes votes
-    /// </summary>
-    public uint MinQuorum
+
+    public uint MinQuorum => WhitelistedCount / 2 + 1;
+
+    public uint WhitelistedCount
     {
-        get => State.GetUInt32(nameof(MinQuorum));
-        private set => State.SetUInt32(nameof(MinQuorum), value);
+        get => State.GetUInt32(nameof(WhitelistedCount));
+        private set => State.SetUInt32(nameof(WhitelistedCount), value);
     }
 
     public uint LastProposalId
@@ -42,18 +42,17 @@ public class DAOContract : SmartContract
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
-    public DAOContract(ISmartContractState state, uint minQuorum)
+    public DAOContract(ISmartContractState state)
         : base(state)
     {
         this.Owner = Message.Sender;
-        this.MinQuorum = minQuorum;
         this.LastProposalId = 1;
     }
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
         var length = description?.Length ?? 0;
-        Assert(length <= 200,"The description length can be up to 200 characters.");
+        Assert(length <= 200, "The description length can be up to 200 characters.");
 
         var proposal = new Proposal
         {
@@ -132,6 +131,7 @@ public class DAOContract : SmartContract
         var noVotes = GetNoVotes(proposalId);
 
         Assert(yesVotes > noVotes, "The proposal voting is not passed.");
+        
         Assert(yesVotes >= MinQuorum, "Min quorum for proposal is not reached.");
 
         Assert(!proposal.Executed, "The proposal is already executed.");
@@ -151,7 +151,13 @@ public class DAOContract : SmartContract
     public void BlacklistAddress(Address address)
     {
         EnsureOwnerOnly();
+
+        if (!IsWhitelisted(address))
+            return;
+
         SetIsWhitelisted(address, false);
+        WhitelistedCount--;
+
     }
 
     public void BlacklistAddresses(byte[] addresses)
@@ -159,14 +165,24 @@ public class DAOContract : SmartContract
         EnsureOwnerOnly();
         foreach (var address in Serializer.ToArray<Address>(addresses))
         {
+            if (!IsWhitelisted(address))
+                continue;
+
             SetIsWhitelisted(address, false);
+            WhitelistedCount--;
         }
     }
 
     public void WhitelistAddress(Address address)
     {
         EnsureOwnerOnly();
+
+        if (IsWhitelisted(address))
+            return;
+
         SetIsWhitelisted(address, true);
+
+        WhitelistedCount++;
     }
 
     public void WhitelistAddresses(byte[] addresses)
@@ -174,7 +190,11 @@ public class DAOContract : SmartContract
         EnsureOwnerOnly();
         foreach (var address in Serializer.ToArray<Address>(addresses))
         {
+            if (IsWhitelisted(address))
+                continue;
+
             SetIsWhitelisted(address, true);
+            WhitelistedCount++;
         }
     }
 
@@ -186,12 +206,6 @@ public class DAOContract : SmartContract
     public void Deposit()
     {
         Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
-    }
-
-    public void UpdateMinQuorum(uint minQuorum)
-    {
-        EnsureOwnerOnly();
-        this.MinQuorum = minQuorum;
     }
 
     public void TransferOwnership(Address newOwner)
