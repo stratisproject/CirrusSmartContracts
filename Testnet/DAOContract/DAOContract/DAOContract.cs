@@ -24,6 +24,12 @@ public class DAOContract : SmartContract
         private set => State.SetUInt32(nameof(MinVotingDuration), value);
     }
 
+    public uint MaxVotingDuration
+    {
+        get => State.GetUInt32(nameof(MaxVotingDuration));
+        private set => State.SetUInt32(nameof(MaxVotingDuration), value);
+    }
+
     public uint LastProposalId
     {
         get => State.GetUInt32(nameof(LastProposalId));
@@ -44,23 +50,29 @@ public class DAOContract : SmartContract
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
 
-    private void SetVote(uint proposalId, Address address, Votes vote)=> State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
+    private void SetVote(uint proposalId, Address address, Votes vote) => State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
 
     public Proposal GetProposal(uint index) => State.GetStruct<Proposal>($"Proposals:{index}");
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
+    public const uint DefaultMaxDuration = 60u * 60 * 24 * 7 / 16; // 1 week period as second/ block duration as second
     public DAOContract(ISmartContractState state, uint minVotingDuration)
         : base(state)
     {
+
+
+        Assert(DefaultMaxDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({DefaultMaxDuration})");
+
         Owner = Message.Sender;
         LastProposalId = 1;
         MinVotingDuration = minVotingDuration;
+        MaxVotingDuration = DefaultMaxDuration;
     }
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
-        Assert(votingDuration > MinVotingDuration, $"Voting duration should be higher than {MinVotingDuration}.");
+        Assert(votingDuration > MinVotingDuration && votingDuration < MaxVotingDuration, $"Voting duration should be between {MinVotingDuration} and {MaxVotingDuration}.");
 
         var length = description?.Length ?? 0;
         Assert(length <= 200, "The description length can be up to 200 characters.");
@@ -231,7 +243,17 @@ public class DAOContract : SmartContract
     {
         EnsureOwnerOnly();
 
+        Assert(minVotingDuration < MaxVotingDuration, "MinVotingDuration should be lower than MaxVotingDuration.");
+
         MinVotingDuration = minVotingDuration;
+    }
+
+    public void UpdateMaxVotingDuration(uint maxVotingDuration)
+    {
+        EnsureOwnerOnly();
+        Assert(maxVotingDuration > MinVotingDuration, "MaxVotingDuration should be higher than MinVotingDuration.");
+
+        MaxVotingDuration = maxVotingDuration;
     }
 
     public enum Votes : uint
