@@ -43,6 +43,8 @@ public class DAOContract : SmartContract
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
 
+    public void SetVote(uint proposalId, Address address, Votes vote)=> State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
+
     public Proposal GetProposal(uint index) => State.GetStruct<Proposal>($"Proposals:{index}");
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
@@ -92,10 +94,10 @@ public class DAOContract : SmartContract
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
-        SetVote(proposalId, Message.Sender, ToVote(vote));
+        SetVoteInner(proposalId, Message.Sender, ToVote(vote));
     }
 
-    private void SetVote(uint proposalId, Address address, Votes vote)
+    private void SetVoteInner(uint proposalId, Address address, Votes vote)
     {
         var currentVote = (Votes)GetVote(proposalId, address);
 
@@ -105,7 +107,7 @@ public class DAOContract : SmartContract
         }
 
         Unvote(proposalId, currentVote);
-        State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
+        SetVote(proposalId, address, vote);
 
         if (vote == Votes.Yes)
         {

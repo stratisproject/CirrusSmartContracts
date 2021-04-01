@@ -50,7 +50,7 @@ namespace DAOContractTests
             contract.MinQuorum.Should().Be(1);
             contract.Owner.Should().Be(owner);
             contract.LastProposalId.Should().Be(1);
-            contract.MinVotingDuration.Should().Be(1);
+            contract.MinVotingDuration.Should().Be(minVotingDuration);
         }
 
         [Fact]
@@ -77,6 +77,26 @@ namespace DAOContractTests
             contract.UpdateMinVotingDuration(100);
 
             contract.MinVotingDuration.Should().Be(100);
+        }
+
+        [Fact]
+        public void MinQuorum_Success()
+        {
+            SetupMessage();
+
+            var contract = CreateContract();
+
+            contract.WhitelistAddress(voter);
+
+            contract.MinQuorum
+                    .Should()
+                    .Be(1);
+
+            contract.WhitelistAddress(owner);
+
+            contract.MinQuorum
+                    .Should()
+                    .Be(2);
         }
 
         [Fact]
