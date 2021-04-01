@@ -86,6 +86,10 @@ namespace DAOContractTests
 
             var contract = CreateContract();
 
+            contract.MinQuorum
+                    .Should()
+                    .Be(1);
+
             contract.WhitelistAddress(voter);
 
             contract.MinQuorum

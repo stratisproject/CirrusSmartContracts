@@ -17,6 +17,7 @@ public class DAOContract : SmartContract
         get => State.GetUInt32(nameof(WhitelistedCount));
         private set => State.SetUInt32(nameof(WhitelistedCount), value);
     }
+
     public uint MinVotingDuration
     {
         get => State.GetUInt32(nameof(MinVotingDuration));
@@ -43,7 +44,7 @@ public class DAOContract : SmartContract
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
 
-    public void SetVote(uint proposalId, Address address, Votes vote)=> State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
+    private void SetVote(uint proposalId, Address address, Votes vote)=> State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
 
     public Proposal GetProposal(uint index) => State.GetStruct<Proposal>($"Proposals:{index}");
 
