@@ -22,7 +22,7 @@ namespace DAOContractTests
         private readonly Address recipent;
         private readonly Address proposalOwner;
         private readonly Address voter;
-
+        private uint minVotingDuration;
         public DAOContractTests()
         {
             state = new InMemoryState();
@@ -37,6 +37,7 @@ namespace DAOContractTests
             recipent = "0x0000000000000000000000000000000000000003".HexToAddress();
             proposalOwner = "0x0000000000000000000000000000000000000004".HexToAddress();
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
+            minVotingDuration = 1;
         }
 
         [Fact]
@@ -44,20 +45,46 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object);
+            var contract = CreateContract();
 
             contract.MinQuorum.Should().Be(1);
             contract.Owner.Should().Be(owner);
             contract.LastProposalId.Should().Be(1);
+            contract.MinVotingDuration.Should().Be(1);
         }
 
+        [Fact]
+        public void UpdateMinVotingDuration_Called_By_None_Owner_fails()
+        {
+            SetupMessage();
+
+            var contract = CreateContract();
+
+            SetupMessage(voter);
+            contract.Invoking(c => c.UpdateMinVotingDuration(100))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("The method is owner only.");
+        }
+
+        [Fact]
+        public void UpdateMinVotingDuration_Called_By_Owner_Success()
+        {
+            SetupMessage();
+
+            var contract = CreateContract();
+
+            contract.UpdateMinVotingDuration(100);
+
+            contract.MinVotingDuration.Should().Be(100);
+        }
 
         [Fact]
         public void WhitelistAddress_Success()
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object);
+            var contract = CreateContract();
 
             contract.WhitelistAddress(voter);
 
@@ -71,7 +98,7 @@ namespace DAOContractTests
         {
             SetupMessage();
 
-            var contract = new DAOContract(mContractState.Object);
+            var contract = CreateContract();
 
             contract.WhitelistAddress(voter);
 
@@ -80,6 +107,33 @@ namespace DAOContractTests
             contract.IsWhitelisted(voter)
                     .Should()
                     .BeFalse();
+        }
+
+        [Fact]
+        public void CreateProposal_VotingDuration_Lower_Than_MinVotingDuration_Fails()
+        {
+            minVotingDuration = 100;
+            var contract = CreateContract();
+            SetupMessage(proposalOwner);
+
+            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, Description))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("Voting duration should be higher than 100.");
+        }
+
+        [Fact]
+        public void CreateProposal_Description_Higher_Than_200_length_Fails()
+        {
+            var contract = CreateContract();
+            SetupMessage(proposalOwner);
+
+            var description = new string('a', 201);
+
+            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, description))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("The description length can be up to 200 characters.");
         }
 
         [Fact]
@@ -448,7 +502,7 @@ namespace DAOContractTests
             SetupMessage();
             SetupBlock();
 
-            return new DAOContract(mContractState.Object);
+            return new DAOContract(mContractState.Object, minVotingDuration);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct

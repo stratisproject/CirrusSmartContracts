@@ -17,6 +17,11 @@ public class DAOContract : SmartContract
         get => State.GetUInt32(nameof(WhitelistedCount));
         private set => State.SetUInt32(nameof(WhitelistedCount), value);
     }
+    public uint MinVotingDuration
+    {
+        get => State.GetUInt32(nameof(MinVotingDuration));
+        private set => State.SetUInt32(nameof(MinVotingDuration), value);
+    }
 
     public uint LastProposalId
     {
@@ -42,15 +47,18 @@ public class DAOContract : SmartContract
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
-    public DAOContract(ISmartContractState state)
+    public DAOContract(ISmartContractState state, uint minVotingDuration)
         : base(state)
     {
-        this.Owner = Message.Sender;
-        this.LastProposalId = 1;
+        Owner = Message.Sender;
+        LastProposalId = 1;
+        MinVotingDuration = minVotingDuration;
     }
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
+        Assert(votingDuration > MinVotingDuration, $"Voting duration should be higher than {MinVotingDuration}.");
+
         var length = description?.Length ?? 0;
         Assert(length <= 200, "The description length can be up to 200 characters.");
 
@@ -131,7 +139,7 @@ public class DAOContract : SmartContract
         var noVotes = GetNoVotes(proposalId);
 
         Assert(yesVotes > noVotes, "The proposal voting is not passed.");
-        
+
         Assert(yesVotes >= MinQuorum, "Min quorum for proposal is not reached.");
 
         Assert(!proposal.Executed, "The proposal is already executed.");
@@ -208,10 +216,19 @@ public class DAOContract : SmartContract
         Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
     }
 
+    public override void Receive() => Deposit();
+
     public void TransferOwnership(Address newOwner)
     {
         EnsureOwnerOnly();
         this.Owner = newOwner;
+    }
+
+    public void UpdateMinVotingDuration(uint minVotingDuration)
+    {
+        EnsureOwnerOnly();
+
+        MinVotingDuration = minVotingDuration;
     }
 
     public enum Votes : uint
