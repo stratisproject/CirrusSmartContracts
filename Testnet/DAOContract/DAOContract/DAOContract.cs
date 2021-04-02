@@ -49,7 +49,6 @@ public class DAOContract : SmartContract
     private void SetNoVotes(uint proposalId, uint value) => State.SetUInt32($"NoVotes:{proposalId}", value);
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
-
     private void SetVote(uint proposalId, Address address, Votes vote) => State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
 
     public Proposal GetProposal(uint index) => State.GetStruct<Proposal>($"Proposals:{index}");
@@ -60,8 +59,6 @@ public class DAOContract : SmartContract
     public DAOContract(ISmartContractState state, uint minVotingDuration)
         : base(state)
     {
-
-
         Assert(DefaultMaxDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({DefaultMaxDuration})");
 
         Owner = Message.Sender;
@@ -180,9 +177,7 @@ public class DAOContract : SmartContract
 
         SetIsWhitelisted(address, false);
         WhitelistedCount--;
-
     }
-
     public void BlacklistAddresses(byte[] addresses)
     {
         EnsureOwnerOnly();
