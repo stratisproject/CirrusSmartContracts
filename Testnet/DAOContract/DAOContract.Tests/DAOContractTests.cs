@@ -369,31 +369,6 @@ namespace DAOContractTests
         }
 
         [Fact]
-        public void ExecuteProposal_Called_By_None_Proposal_Owner_Fails()
-        {
-            var duration = 10u;
-
-            var contract = CreateContract();
-            contract.WhitelistAddress(voter);
-
-            SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
-
-            SetupMessage(voter);
-            contract.Vote(proposalId, true);
-
-            SetupMessage(voter);
-            SetupBlock(12);
-            mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
-
-            contract.Invoking(m => m.ExecuteProposal(proposalId))
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("The proposal can be executed by proposal creator.");
-        }
-
-        [Fact]
         public void ExecuteProposal_Proposal_Voted_As_No_Fails()
         {
             var duration = 10u;

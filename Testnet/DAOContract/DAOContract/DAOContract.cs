@@ -145,8 +145,6 @@ public class DAOContract : SmartContract
     {
         var proposal = GetProposal(proposalId);
 
-        Assert(proposal.Owner == Message.Sender, "The proposal can be executed by proposal creator.");
-
         var yesVotes = GetYesVotes(proposalId);
         var noVotes = GetNoVotes(proposalId);
 
