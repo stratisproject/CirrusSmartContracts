@@ -216,9 +216,6 @@ public class DAOContract : SmartContract
 
     private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
 
-    /// <summary>
-    /// Public method for allow deposits. 
-    /// </summary>
     public void Deposit()
     {
         EnsureOwnerOnly();
@@ -230,7 +227,7 @@ public class DAOContract : SmartContract
     public void TransferOwnership(Address newOwner)
     {
         EnsureOwnerOnly();
-        this.Owner = newOwner;
+        Owner = newOwner;
     }
 
     public void UpdateMinVotingDuration(uint minVotingDuration)
