@@ -104,10 +104,10 @@ public class DAOContract : SmartContract
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
-        SetVoteInner(proposalId, Message.Sender, ToVote(vote));
+        VoteProposal(proposalId, Message.Sender, ToVote(vote));
     }
 
-    private void SetVoteInner(uint proposalId, Address address, Votes vote)
+    private void VoteProposal(uint proposalId, Address address, Votes vote)
     {
         var currentVote = (Votes)GetVote(proposalId, address);
 
@@ -118,6 +118,8 @@ public class DAOContract : SmartContract
 
         Unvote(proposalId, currentVote);
         SetVote(proposalId, address, vote);
+
+        Log(new ProposalVotedLog { ProposalId = proposalId, Vote = vote == Votes.Yes });
 
         if (vote == Votes.Yes)
         {
@@ -273,6 +275,12 @@ public class DAOContract : SmartContract
     {
         public Address Sender;
         public ulong Amount;
+    }
+
+    public struct ProposalVotedLog
+    {
+        public uint ProposalId;
+        public bool Vote;
     }
 
     public struct Proposal

@@ -311,6 +311,16 @@ namespace DAOContractTests
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
+
+            VerifyLog(new ProposalVotedLog { ProposalId = proposalId, Vote = true });
+
+            contract.GetNoVotes(proposalId)
+                    .Should()
+                    .Be(0);
+
+            contract.GetYesVotes(proposalId)
+                    .Should()
+                    .Be(1);
         }
 
         [Fact]
@@ -356,7 +366,6 @@ namespace DAOContractTests
             contract.Vote(proposalId, true);
 
             contract.Vote(proposalId, false);
-
 
             contract.GetNoVotes(proposalId)
                     .Should()
