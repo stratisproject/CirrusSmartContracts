@@ -552,6 +552,19 @@ namespace DAOContractTests
         }
 
         [Fact]
+        public void Deposit_Called_By_None_Owner_Fails()
+        {
+            var amount = 1200000ul;
+            var contract = CreateContract();
+
+            SetupMessage(voter, amount);
+            contract.Invoking(c=>c.Deposit())
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("The method is owner only.");
+        }
+
+        [Fact]
         public void Deposit_Success()
         {
             var amount = 1200000ul;
