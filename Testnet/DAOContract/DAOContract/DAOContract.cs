@@ -107,12 +107,12 @@ public class DAOContract : SmartContract
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
-        VoteProposal(proposalId, Message.Sender, ToVote(vote));
+        VoteProposal(proposalId, ToVote(vote));
     }
 
-    private void VoteProposal(uint proposalId, Address address, Votes vote)
+    private void VoteProposal(uint proposalId, Votes vote)
     {
-        var currentVote = (Votes)GetVote(proposalId, address);
+        var currentVote = (Votes)GetVote(proposalId, Message.Sender);
 
         if (currentVote == vote)
         {
@@ -120,9 +120,9 @@ public class DAOContract : SmartContract
         }
 
         Unvote(proposalId, currentVote);
-        SetVote(proposalId, address, vote);
+        SetVote(proposalId, Message.Sender, vote);
 
-        Log(new ProposalVotedLog { ProposalId = proposalId, Vote = vote == Votes.Yes });
+        Log(new ProposalVotedLog { ProposalId = proposalId, Voter = Message.Sender, Vote = vote == Votes.Yes });
 
         if (vote == Votes.Yes)
         {
@@ -235,7 +235,7 @@ public class DAOContract : SmartContract
         EnsureOwnerOnly();
         Owner = newOwner;
     }
-    
+
     public void UpdateMinVotingDuration(uint minVotingDuration)
     {
         EnsureOwnerOnly();
@@ -267,40 +267,40 @@ public class DAOContract : SmartContract
     {
         [Index]
         public Address Recipent;
+        [Index]
         public uint ProposalId;
         public ulong Amount;
         public string Description;
     }
-
     public struct ProposalExecutedLog
     {
         [Index]
         public Address Recipent;
+        [Index]
         public uint ProposalId;
         public ulong Amount;
     }
-
     public struct FundRaisedLog
     {
         [Index]
         public Address Sender;
         public ulong Amount;
     }
-
     public struct ProposalVotedLog
     {
+        [Index]
         public uint ProposalId;
+        [Index]
+        public Address Voter;
         public bool Vote;
     }
 
     public struct Proposal
     {
-        [Index]
         public Address Owner;
 
-        [Index]
         public Address Recipient;
-        
+
         public ulong RequestedAmount;
 
 
