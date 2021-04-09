@@ -163,9 +163,18 @@ namespace DAOContractTests
                     .Should()
                     .Be(1);
 
+
+            contract.WhitelistedCount
+                    .Should()
+                    .Be(1);
+
             contract.WhitelistAddress(owner);
 
             contract.MinQuorum
+                    .Should()
+                    .Be(2);
+
+            contract.WhitelistedCount
                     .Should()
                     .Be(2);
         }
