@@ -265,6 +265,7 @@ public class DAOContract : SmartContract
 
     public struct ProposalAddedLog
     {
+        [Index]
         public Address Recipent;
         public uint ProposalId;
         public ulong Amount;
@@ -273,6 +274,7 @@ public class DAOContract : SmartContract
 
     public struct ProposalExecutedLog
     {
+        [Index]
         public Address Recipent;
         public uint ProposalId;
         public ulong Amount;
@@ -280,6 +282,7 @@ public class DAOContract : SmartContract
 
     public struct FundRaisedLog
     {
+        [Index]
         public Address Sender;
         public ulong Amount;
     }
@@ -292,9 +295,14 @@ public class DAOContract : SmartContract
 
     public struct Proposal
     {
+        [Index]
+        public Address Owner;
+
+        [Index]
+        public Address Recipient;
+        
         public ulong RequestedAmount;
 
-        public Address Recipient;
 
         public string Description;
 
@@ -302,7 +310,5 @@ public class DAOContract : SmartContract
         /// True if proposal executed and the requested fund is transferred
         /// </summary>
         public bool Executed;
-
-        public Address Owner;
     }
 }
