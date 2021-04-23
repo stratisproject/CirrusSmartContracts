@@ -51,7 +51,14 @@ public class AddressMapper : SmartContract
     }
 
     public string GetStatus(Address secondary) => GetMappingInfo(secondary).Status.ToString();
-    public Address GetPrimaryAddress(Address secondary) => GetMappingInfo(secondary).Primary;
+    public Address GetPrimaryAddress(Address secondary)
+    {
+        var mapping = GetMappingInfo(secondary);
+
+        Assert(mapping.Status == (int)Status.Approved, "The mapping is not approved.");
+
+        return mapping.Primary;
+    }
 
     public void ChangeOwner(Address owner)
     {

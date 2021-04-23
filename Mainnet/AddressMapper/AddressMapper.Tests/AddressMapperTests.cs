@@ -1,10 +1,10 @@
+using AddressMapperTests;
 using Moq;
-using Stratis.SmartContracts.CLR;
 using Stratis.SmartContracts;
 using Xunit;
 using static AddressMapper;
 
-namespace Tests
+namespace AddressMapperTests
 {
     public class AddressMapperTests
     {
@@ -138,6 +138,32 @@ namespace Tests
             contract.Reject(secondaryAddress);
 
             Assert.Equal(default(MappingInfo), persistentState.GetStruct<MappingInfo>($"MappingInfo:{secondaryAddress}"));
+        }
+
+        [Fact]
+        public void GetPrimaryAddress_Get_None_Approved_PrimaryAddres_Fails()
+        {
+            persistentState.SetStruct($"MappingInfo:{secondaryAddress}", new MappingInfo { Primary = primaryAddress, Status = (int)Status.Pending });
+
+            mContractState.Setup(x => x.Message).Returns(new Message(contractAddress, ownerAddress, 0));
+
+            var contract = new AddressMapper(mContractState.Object, ownerAddress);
+
+            Assert.Throws<SmartContractAssertException>(()=> contract.GetPrimaryAddress(secondaryAddress));
+        }
+
+        [Fact]
+        public void GetPrimaryAddress_Get_Approved_PrimaryAddres_Success()
+        {
+            persistentState.SetStruct($"MappingInfo:{secondaryAddress}", new MappingInfo { Primary = primaryAddress, Status = (int)Status.Approved });
+
+            mContractState.Setup(x => x.Message).Returns(new Message(contractAddress, ownerAddress, 0));
+
+            var contract = new AddressMapper(mContractState.Object, ownerAddress);
+
+            var result = contract.GetPrimaryAddress(secondaryAddress);
+
+            Assert.Equal(primaryAddress, result);
         }
     }
 }
