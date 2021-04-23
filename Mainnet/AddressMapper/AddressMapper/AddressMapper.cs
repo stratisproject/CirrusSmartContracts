@@ -3,18 +3,18 @@ using Stratis.SmartContracts;
 
 public class AddressMapper : SmartContract
 {
-    public Address GetSecondaryAddress(Address primary) => PersistentState.GetAddress($"SecondaryAddress:{primary}");
-    private void SetSecondaryAddress(Address primary, Address secondary) => PersistentState.SetAddress($"SecondaryAddress:{primary}", secondary);
+    public Address GetSecondaryAddress(Address primary) => State.GetAddress($"SecondaryAddress:{primary}");
+    private void SetSecondaryAddress(Address primary, Address secondary) => State.SetAddress($"SecondaryAddress:{primary}", secondary);
 
-    private MappingInfo GetMappingInfo(Address secondary) => PersistentState.GetStruct<MappingInfo>($"MappingInfo:{secondary}");
-    private void SetMappingInfo(Address secondary, MappingInfo value) => PersistentState.SetStruct($"MappingInfo:{secondary}", value);
+    private MappingInfo GetMappingInfo(Address secondary) => State.GetStruct<MappingInfo>($"MappingInfo:{secondary}");
+    private void SetMappingInfo(Address secondary, MappingInfo value) => State.SetStruct($"MappingInfo:{secondary}", value);
 
-    private void ClearMappingInfo(Address secondary) => PersistentState.Clear($"MappingInfo:{secondary}");
+    private void ClearMappingInfo(Address secondary) => State.Clear($"MappingInfo:{secondary}");
 
     public Address Owner
     {
-        get => PersistentState.GetAddress(nameof(Owner));
-        private set => PersistentState.SetAddress(nameof(Owner), value);
+        get => State.GetAddress(nameof(Owner));
+        private set => State.SetAddress(nameof(Owner), value);
     }
 
     public AddressMapper(ISmartContractState smartContractState, Address owner) : base(smartContractState)
