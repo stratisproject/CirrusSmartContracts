@@ -8,14 +8,8 @@ public class IdentityProvider : SmartContract
 {
     private Address Owner
     {
-        get
-        {
-            return this.PersistentState.GetAddress(nameof(Owner));
-        }
-        set
-        {
-            this.PersistentState.SetAddress(nameof(Owner), value);
-        }
+        get => this.PersistentState.GetAddress(nameof(Owner));
+        set => this.PersistentState.SetAddress(nameof(Owner), value);
     }
 
     public IdentityProvider(ISmartContractState state) : base(state)
@@ -33,33 +27,14 @@ public class IdentityProvider : SmartContract
     {
         Assert(this.Owner == Message.Sender);
 
-        byte[] oldData = this.GetClaim(issuedTo, topic);
-        bool exists = oldData != null;
-
-        // This exact claim value is stored already. Nothing to change.
-        if (exists && ByteArrayCompare(oldData, data))
-            return;
-
         this.SetClaim(issuedTo, topic, data);
 
-        if (exists)
+        this.Log(new ClaimChanged
         {
-            this.Log(new ClaimChanged
-            {
-                IssuedTo = issuedTo,
-                Topic = topic,
-                Data = data
-            });
-        }
-        else
-        {
-            this.Log(new ClaimAdded
-            {
-                IssuedTo = issuedTo,
-                Topic = topic,
-                Data = data
-            });
-        }
+            IssuedTo = issuedTo,
+            Topic = topic,
+            Data = data
+        });
     }
 
     public void RemoveClaim(Address issuedTo, uint topic)
@@ -68,12 +43,13 @@ public class IdentityProvider : SmartContract
 
         // Nothing to delete.
         byte[] oldData = this.GetClaim(issuedTo, topic);
-        if (oldData == null)
+
+        if (oldData.Length == 0)
         {
             return;
         }
 
-        this.PersistentState.Clear($"Claim[{issuedTo}][{topic}]");
+        ClearClaim(issuedTo, topic);
 
         this.Log(new ClaimRemoved
         {
@@ -82,6 +58,8 @@ public class IdentityProvider : SmartContract
             Data = oldData
         });
     }
+
+
 
     public byte[] GetClaim(Address issuedTo, uint topic)
     {
@@ -93,32 +71,11 @@ public class IdentityProvider : SmartContract
         this.PersistentState.SetBytes($"Claim[{issuedTo}][{topic}]", data);
     }
 
-    #region Utils
-
-    static bool ByteArrayCompare(byte[] a1, byte[] a2)
+    private void ClearClaim(Address issuedTo, uint topic)
     {
-        if (a1.Length != a2.Length)
-            return false;
-
-        for (int i = 0; i < a1.Length; i++)
-            if (a1[i] != a2[i])
-                return false;
-
-        return true;
+        this.PersistentState.Clear($"Claim[{issuedTo}][{topic}]");
     }
-
-    #endregion
-
     #region Events
-
-    public struct ClaimAdded
-    {
-        [Index]
-        public Address IssuedTo;
-        [Index]
-        public uint Topic;
-        public byte[] Data;
-    }
 
     public struct ClaimRemoved
     {
