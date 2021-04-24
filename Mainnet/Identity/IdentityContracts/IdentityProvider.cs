@@ -19,13 +19,18 @@ public class IdentityProvider : SmartContract
 
     public void ChangeOwner(Address newOwner)
     {
-        Assert(Owner == Message.Sender);
+        EnsureOwnerOnly();
         Owner = newOwner;
+    }
+
+    private void EnsureOwnerOnly()
+    {
+        Assert(Owner == Message.Sender,"The method can be called by only owner.");
     }
 
     public void AddClaim(Address issuedTo, uint topic, byte[] data)
     {
-        Assert(Owner == Message.Sender);
+        EnsureOwnerOnly();
 
         SetClaim(issuedTo, topic, data);
 
@@ -39,7 +44,7 @@ public class IdentityProvider : SmartContract
 
     public void RemoveClaim(Address issuedTo, uint topic)
     {
-        Assert(Owner == Message.Sender);
+        EnsureOwnerOnly();
 
         // Nothing to delete.
         byte[] oldData = GetClaim(issuedTo, topic);
