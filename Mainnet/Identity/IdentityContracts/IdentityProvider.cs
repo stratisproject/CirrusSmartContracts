@@ -64,8 +64,6 @@ public class IdentityProvider : SmartContract
         });
     }
 
-
-
     public byte[] GetClaim(Address issuedTo, uint topic)
     {
         return PersistentState.GetBytes($"Claim[{issuedTo}][{topic}]");
@@ -99,7 +97,6 @@ public class IdentityProvider : SmartContract
         public uint Topic;
         public byte[] Data;
     }
-
 
     #endregion
 }
