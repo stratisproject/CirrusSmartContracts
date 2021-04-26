@@ -42,6 +42,10 @@ namespace AddressMapperTests
 
         public ulong GetUInt64(string key) => GetValue<ulong>(key);
 
+        public UInt128 GetUInt128(string key) => GetValue<UInt128>(key);
+
+        public UInt256 GetUInt256(string key) => GetValue<UInt256>(key);
+
         public bool IsContract(Address address) => IsContractResult;
 
         public void SetAddress(string key, Address value) => AddOrReplace(key, value);
@@ -71,5 +75,9 @@ namespace AddressMapperTests
         public void SetUInt32(string key, uint value) => AddOrReplace(key, value);
 
         public void SetUInt64(string key, ulong value) => AddOrReplace(key, value);
+
+        public void SetUInt128(string key, UInt128 value) => AddOrReplace(key, value);
+
+        public void SetUInt256(string key, UInt256 value) => AddOrReplace(key, value);
     }
 }
