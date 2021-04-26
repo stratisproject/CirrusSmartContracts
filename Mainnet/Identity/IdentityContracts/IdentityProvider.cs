@@ -8,8 +8,8 @@ public class IdentityProvider : SmartContract
 {
     private Address Owner
     {
-        get => PersistentState.GetAddress(nameof(Owner));
-        set => PersistentState.SetAddress(nameof(Owner), value);
+        get => State.GetAddress(nameof(Owner));
+        set => State.SetAddress(nameof(Owner), value);
     }
 
     public IdentityProvider(ISmartContractState state) : base(state)
@@ -66,17 +66,17 @@ public class IdentityProvider : SmartContract
 
     public byte[] GetClaim(Address issuedTo, uint topic)
     {
-        return PersistentState.GetBytes($"Claim[{issuedTo}][{topic}]");
+        return State.GetBytes($"Claim[{issuedTo}][{topic}]");
     }
 
     private void SetClaim(Address issuedTo, uint topic, byte[] data)
     {
-        PersistentState.SetBytes($"Claim[{issuedTo}][{topic}]", data);
+        State.SetBytes($"Claim[{issuedTo}][{topic}]", data);
     }
 
     private void ClearClaim(Address issuedTo, uint topic)
     {
-        PersistentState.Clear($"Claim[{issuedTo}][{topic}]");
+        State.Clear($"Claim[{issuedTo}][{topic}]");
     }
     #region Events
 
