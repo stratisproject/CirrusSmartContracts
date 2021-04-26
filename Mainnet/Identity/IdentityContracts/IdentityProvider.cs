@@ -32,13 +32,16 @@ public class IdentityProvider : SmartContract
     {
         EnsureOwnerOnly();
 
+        byte[] oldData = GetClaim(issuedTo, topic);
+
         SetClaim(issuedTo, topic, data);
 
         Log(new ClaimChanged
         {
             IssuedTo = issuedTo,
             Topic = topic,
-            Data = data
+            Data = data,
+            OldData = oldData
         });
     }
 
@@ -96,6 +99,7 @@ public class IdentityProvider : SmartContract
         [Index]
         public uint Topic;
         public byte[] Data;
+        public byte[] OldData;
     }
 
     #endregion
