@@ -50,7 +50,11 @@ public class AddressMapper : SmartContract
         ClearMappingInfo(secondary); // same address can be mapped again. 
     }
 
-    public string GetStatus(Address secondary) => GetMappingInfo(secondary).Status.ToString();
+    public MappingInfo GetMapping(Address secondary)
+    {
+        return GetMappingInfo(secondary);
+    }
+
     public Address GetPrimaryAddress(Address secondary)
     {
         var mapping = GetMappingInfo(secondary);
@@ -80,6 +84,7 @@ public class AddressMapper : SmartContract
 
     public struct MappingInfo
     {
+        [Index]
         public Address Primary;
         public int Status;
     }
