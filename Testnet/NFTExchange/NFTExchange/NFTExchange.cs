@@ -5,8 +5,8 @@ using System;
 [Deploy]
 public class NFTExchange : SmartContract
 {
-    public ulong GetPrice(Address contract, ulong tokenId) => State.SetUInt64($"contract:{contract}:{tokenId}");
-    public ulong SetPrice(Address contract, ulong tokenId, ulong price) => State.SetUInt64($"contract:{contract}:{tokenId}", price);
+    public ulong GetPrice(Address contract, ulong tokenId) => State.GetUInt64($"contract:{contract}:{tokenId}");
+    public void SetPrice(Address contract, ulong tokenId, ulong price) => State.SetUInt64($"contract:{contract}:{tokenId}", price);
 
     public NFTExchange(ISmartContractState state)
         : base(state)
