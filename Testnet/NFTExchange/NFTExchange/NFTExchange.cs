@@ -47,7 +47,7 @@ public class NFTExchange : SmartContract
 
         Assert(Message.Value == saleInfo.Price, "Transferred amount is not matching exact price of the token.");
 
-        TransferToken(contract, tokenId, Address, Message.Sender);
+        SafeTransferToken(contract, tokenId, Address, Message.Sender);
 
         ClearSaleInfo(contract, tokenId);
 
@@ -66,7 +66,7 @@ public class NFTExchange : SmartContract
 
         EnsureCallerCanOperate(contract, saleInfo.Seller);
 
-        TransferToken(contract, tokenId, Address, saleInfo.Seller);
+        SafeTransferToken(contract, tokenId, Address, saleInfo.Seller);
 
         ClearSaleInfo(contract, tokenId);
 
@@ -86,7 +86,14 @@ public class NFTExchange : SmartContract
     {
         var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
 
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure the contract is approved to transfer token.");
+        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
+    }
+
+    private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
+    {
+        var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
+
+        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
     }
 
     private Address GetOwner(Address contract, ulong tokenId)
