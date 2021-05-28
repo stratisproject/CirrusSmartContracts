@@ -5,35 +5,68 @@ using System;
 [Deploy]
 public class NFTExchange : SmartContract
 {
-    public ulong GetPrice(Address contract, ulong tokenId) => State.GetUInt64($"contract:{contract}:{tokenId}");
-    public void SetPrice(Address contract, ulong tokenId, ulong price) => State.SetUInt64($"contract:{contract}:{tokenId}", price);
+    public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"contract:{contract}:{tokenId}");
+    private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct<SaleInfo>($"contract:{contract}:{tokenId}", value);
+
+    public void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"contract:{contract}:{tokenId}");
 
     public NFTExchange(ISmartContractState state)
         : base(state)
     {
     }
 
-
-    public void Place(Address contract, ulong tokenId, ulong price)
+    public void Sale(Address contract, ulong tokenId, ulong price)
     {
-        var owner = GetOwner(contract, tokenId);
-
-        Assert(owner == Address, "The token is already on sale.");
-
-        Assert(Message.Sender == owner || IsApprovedForAll(contract, owner), "The caller is not owner of the token nor approved for all.");
-
-        TransferToken(contract, tokenId, owner, Address);
-
         Assert(price > 0, "Price should be higher than zero.");
 
-        SetPrice(contract, tokenId, price);
+        var tokenOwner = GetOwner(contract, tokenId);
 
-        Log(new TokenOnSale { Contract = contract, TokenId = tokenId, Price = price });
+        Assert(tokenOwner == Address, "The token is already on sale.");
+
+        EnsureCallerCanOperate(contract, tokenOwner);
+
+        TransferToken(contract, tokenId, tokenOwner, Address);
+
+        SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = tokenOwner });
+
+        Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner });
     }
 
-    private bool IsApprovedForAll(Address contract, Address owner)
+    public void Buy(Address contract, ulong tokenId)
     {
-        var result = Call(contract, 0, "IsApprovedForAll", new object[] { owner, Message.Sender });
+        var saleInfo = GetSaleInfo(contract, tokenId);
+
+        Assert(Message.Value == saleInfo.Price, "Transferred amount is not matching exact price of the token.");
+
+        TransferToken(contract, tokenId, Address, Message.Sender);
+
+        ClearSaleInfo(contract, tokenId);
+
+        var result = Transfer(saleInfo.Seller, saleInfo.Price);
+
+        Assert(result.Success, "Transfer failed.");
+
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Purchaser = Message.Sender, Seller = GetOwner(contract, tokenId) });
+    }
+
+    public void CancelSale(Address contract, ulong tokenId)
+    {
+        var saleInfo = GetSaleInfo(contract, tokenId);
+
+        Assert(saleInfo.Seller != Address.Zero, "The token is not on sale");
+
+        EnsureCallerCanOperate(contract, saleInfo.Seller);
+
+        TransferToken(contract, tokenId, Address, saleInfo.Seller);
+
+        ClearSaleInfo(contract, tokenId);
+
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId });
+    }
+
+    private bool IsApprovedForAll(Address contract, Address tokenOwner)
+    {
+        var result = Call(contract, 0, "IsApprovedForAll", new object[] { tokenOwner, Message.Sender });
 
         Assert(result.Success, "IsApprovedForAll method call failed.");
 
@@ -56,10 +89,38 @@ public class NFTExchange : SmartContract
         return (Address)result.ReturnValue;
     }
 
-    private struct TokenOnSale
+    private void EnsureCallerCanOperate(Address contract, Address tokenOwner)
+    {
+        Assert(Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner), "The caller is not owner of the token nor approved for all.");
+    }
+
+    private struct TokenOnSaleLog
     {
         public Address Contract;
+        internal Address Seller;
         public ulong TokenId;
         public ulong Price;
     }
+
+    public struct TokenPurchasedLog
+    {
+        public Address Contract;
+        public ulong TokenId;
+        public Address Purchaser;
+
+        public Address Seller { get; set; }
+    }
+
+    public struct TokenSaleCanceledLog
+    {
+        public Address Contract;
+        public ulong TokenId;
+    }
+
+    public struct SaleInfo
+    {
+        public ulong Price;
+        public Address Seller;
+    }
 }
+
