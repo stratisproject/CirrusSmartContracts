@@ -5,14 +5,23 @@ using System;
 [Deploy]
 public class NFTExchange : SmartContract
 {
-    public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"contract:{contract}:{tokenId}");
-    private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct<SaleInfo>($"contract:{contract}:{tokenId}", value);
+    public Address Owner
+    {
+        get => State.GetAddress(nameof(Owner));
+        private set => State.SetAddress(nameof(Owner), value);
+    }
 
-    public void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"contract:{contract}:{tokenId}");
+    public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
+    private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}", value);
 
+    public void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
+
+    public bool IsWhitelistedToken(Address address) => State.GetBool($"WhitelistedToken:{address}");
+    private void SetIsWhitelistedToken(Address address, bool allowed) => State.SetBool($"WhitelistedToken:{address}", allowed);
     public NFTExchange(ISmartContractState state)
         : base(state)
     {
+        Owner = Message.Sender;
     }
 
     public void Sale(Address contract, ulong tokenId, ulong price)
@@ -93,6 +102,57 @@ public class NFTExchange : SmartContract
     {
         Assert(Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner), "The caller is not owner of the token nor approved for all.");
     }
+
+    public void BlacklistToken(Address address)
+    {
+        EnsureOwnerOnly();
+
+        if (State.IsContract(address))
+        {
+            SetIsWhitelistedToken(address, false);
+        }
+    }
+
+    public void BlacklistTokens(byte[] addresses)
+    {
+        EnsureOwnerOnly();
+        foreach (var address in Serializer.ToArray<Address>(addresses))
+        {
+            if (State.IsContract(address))
+            {
+                BlacklistToken(address);
+            }
+        }
+    }
+
+    public void WhitelistToken(Address address)
+    {
+        EnsureOwnerOnly();
+
+        if (State.IsContract(address))
+        {
+            SetIsWhitelistedToken(address, true);
+        }
+    }
+
+    public void WhitelistTokens(byte[] addresses)
+    {
+        EnsureOwnerOnly();
+        foreach (var address in Serializer.ToArray<Address>(addresses))
+        {
+            if (State.IsContract(address))
+            {
+                WhitelistToken(address);
+            }
+        }
+    }
+    public void TransferOwnership(Address newOwner)
+    {
+        EnsureOwnerOnly();
+        Owner = newOwner;
+    }
+
+    private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
 
     private struct TokenOnSaleLog
     {
