@@ -1,12 +1,11 @@
 ﻿using Moq;
-using NFTExchangeContract.Tests;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
 using Xunit;
 
-namespace NFTExchangeTestsContract.Tests
+namespace NFTStore.Tests
 {
-    public class NFTExchangeTests
+    public class NFTAuctionStoreTests
     {
         private readonly IPersistentState persistentState;
 
@@ -21,7 +20,7 @@ namespace NFTExchangeTestsContract.Tests
         private readonly string symbol;
         private readonly uint decimals;
 
-        public NFTExchangeTests()
+        public NFTAuctionStoreTests()
         {
             this.persistentState = new InMemoryState();
             this.mContractState = new Mock<ISmartContractState>();

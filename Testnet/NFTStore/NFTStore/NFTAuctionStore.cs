@@ -3,7 +3,7 @@ using Stratis.SmartContracts.Standards;
 using System;
 
 [Deploy]
-public class NFTExchange : SmartContract
+public class NFTAuctionStore : SmartContract
 {
     public Address Owner
     {
@@ -18,7 +18,7 @@ public class NFTExchange : SmartContract
 
     public bool IsWhitelistedToken(Address address) => State.GetBool($"WhitelistedToken:{address}");
     private void SetIsWhitelistedToken(Address address, bool allowed) => State.SetBool($"WhitelistedToken:{address}", allowed);
-    public NFTExchange(ISmartContractState state)
+    public NFTAuctionStore(ISmartContractState state)
         : base(state)
     {
         EnsureNotPayable();
@@ -217,7 +217,7 @@ public class NFTExchange : SmartContract
         };
 
         SetAuctionInfo(contract, tokenId, auction);
-        Log(new AuctionCreatedLog { EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
+        Log(new AuctionStartedLog { EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
     }
 
     public void Bid(Address contract, ulong tokenId)
@@ -281,7 +281,7 @@ public class NFTExchange : SmartContract
         Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
 
-    public struct AuctionCreatedLog
+    public struct AuctionStartedLog
     {
         public ulong EndBlock;
         public ulong startingPrice;

@@ -3,7 +3,7 @@ using Stratis.SmartContracts;
 using System;
 using System.Collections.Generic;
 
-namespace NFTExchangeContract.Tests
+namespace NFTStore.Tests
 {
     public class InMemoryState : IPersistentState
     {

@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTExchange", "NFTExchange\NFTExchange.csproj", "{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTStore", "NFTStore\NFTStore.csproj", "{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTExchange.Tests", "NFTExchange.Tests\NFTExchange.Tests.csproj", "{3B5AF108-6986-4E17-9A01-EB297D6F0C15}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTStore.Tests", "NFTStore.Tests\NFTStore.Tests.csproj", "{3B5AF108-6986-4E17-9A01-EB297D6F0C15}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

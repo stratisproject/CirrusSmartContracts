@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>NFTExchangeTests.Tests</RootNamespace>
+    <RootNamespace>NFTStore.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
@@ -16,6 +16,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NFTExchange\NFTExchange.csproj" />
+    <ProjectReference Include="..\NFTStore\NFTStore.csproj" />
   </ItemGroup>
 </Project>
