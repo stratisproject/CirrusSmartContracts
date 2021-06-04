@@ -122,7 +122,7 @@ namespace NFTStore.Tests
 
             SetupMessage(attacker, 0);
 
-            SetupIsApprovedForAll(tokenOwner, operatorAddress, false);
+            SetupIsApprovedForAll(tokenOwner, attacker, false);
 
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
