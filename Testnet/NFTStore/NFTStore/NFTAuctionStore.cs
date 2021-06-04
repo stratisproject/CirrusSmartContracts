@@ -5,21 +5,6 @@ using System;
 [Deploy]
 public class NFTAuctionStore : SmartContract
 {
-    public Address Owner
-    {
-        get => State.GetAddress(nameof(Owner));
-        private set => State.SetAddress(nameof(Owner), value);
-    }
-
-    public bool IsWhitelistedToken(Address address) => State.GetBool($"WhitelistedToken:{address}");
-    private void SetIsWhitelistedToken(Address address, bool allowed) => State.SetBool($"WhitelistedToken:{address}", allowed);
-    public NFTAuctionStore(ISmartContractState state)
-        : base(state)
-    {
-        EnsureNotPayable();
-        Owner = Message.Sender;
-    }
-
     private void SetAuctionInfo(Address contract, ulong tokenId, AuctionInfo auctionInfo)
     {
         State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
@@ -34,12 +19,18 @@ public class NFTAuctionStore : SmartContract
     public ulong GetBalance(Address address)
     {
         EnsureNotPayable();
-        return State.GetUInt64($"Balances[{address}]");
+        return State.GetUInt64($"Balances:{address}");
     }
 
     private void SetBalance(Address address, ulong balance)
     {
-        State.SetUInt64($"Balances[{address}]", balance);
+        State.SetUInt64($"Balances:{address}", balance);
+    }
+
+    public NFTAuctionStore(ISmartContractState state)
+        : base(state)
+    {
+        EnsureNotPayable();
     }
 
     public void Auction(Address contract, ulong tokenId, ulong startingPrice, ulong duration)
@@ -98,12 +89,12 @@ public class NFTAuctionStore : SmartContract
 
         SetBalance(Message.Sender, 0);
 
-        var transferResult = Transfer(this.Message.Sender, amount);
+        var transfer = Transfer(this.Message.Sender, amount);
 
-        if (!transferResult.Success)
-            SetBalance(this.Message.Sender, amount);
+        if (!transfer.Success)
+            SetBalance(Message.Sender, amount);
 
-        return transferResult.Success;
+        return transfer.Success;
     }
 
     public void AuctionEnd(Address contract, ulong tokenId)
@@ -117,12 +108,20 @@ public class NFTAuctionStore : SmartContract
         Assert(!auction.Ended);
 
         auction.Ended = true;
+        SetAuctionInfo(contract, tokenId, auction);
 
-        var result = Transfer(this.Owner, auction.HighestBid);
+        if (auction.HighestBid > 0)
+        {
+            var result = Transfer(auction.Seller, auction.HighestBid);
 
-        Assert(result.Success, "Transfer failed.");
+            Assert(result.Success, "Transfer failed.");
 
-        SafeTransferToken(contract, tokenId, Address, auction.HighestBidder);
+            SafeTransferToken(contract, tokenId, Address, auction.HighestBidder);
+        }
+        else
+        {
+            SafeTransferToken(contract, tokenId, Address, auction.Seller);
+        }
 
         Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
@@ -164,59 +163,6 @@ public class NFTAuctionStore : SmartContract
         Assert(Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner), "The caller is not owner of the token nor approved for all.");
     }
 
-    public void BlacklistToken(Address address)
-    {
-        EnsureNotPayable();
-        EnsureOwnerOnly();
-
-        if (State.IsContract(address))
-        {
-            SetIsWhitelistedToken(address, false);
-        }
-    }
-
-    public void BlacklistTokens(byte[] addresses)
-    {
-        EnsureOwnerOnly();
-        foreach (var address in Serializer.ToArray<Address>(addresses))
-        {
-            if (State.IsContract(address))
-            {
-                BlacklistToken(address);
-            }
-        }
-    }
-
-    public void WhitelistToken(Address address)
-    {
-        EnsureNotPayable();
-        EnsureOwnerOnly();
-
-        if (State.IsContract(address))
-        {
-            SetIsWhitelistedToken(address, true);
-        }
-    }
-
-    public void WhitelistTokens(byte[] addresses)
-    {
-        EnsureNotPayable();
-        EnsureOwnerOnly();
-        foreach (var address in Serializer.ToArray<Address>(addresses))
-        {
-            if (State.IsContract(address))
-            {
-                WhitelistToken(address);
-            }
-        }
-    }
-    public void TransferOwnership(Address newOwner)
-    {
-        EnsureOwnerOnly();
-        Owner = newOwner;
-    }
-
-    private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
     private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
 
     public struct AuctionStartedLog
