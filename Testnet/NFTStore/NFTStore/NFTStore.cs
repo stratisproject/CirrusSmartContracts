@@ -34,7 +34,7 @@ namespace NFTStore
 
             var tokenOwner = GetOwner(contract, tokenId);
 
-            Assert(tokenOwner == Address, "The token is already on sale.");
+            Assert(tokenOwner != Address, "The token is already on sale.");
 
             EnsureCallerCanOperate(contract, tokenOwner);
 
@@ -91,7 +91,7 @@ namespace NFTStore
         {
             var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
 
-            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
+            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure contract is approved to transfer token.");
         }
 
         private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
@@ -117,10 +117,10 @@ namespace NFTStore
 
         private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
 
-        private struct TokenOnSaleLog
+        public struct TokenOnSaleLog
         {
             public Address Contract;
-            internal Address Seller;
+            public Address Seller;
             public ulong TokenId;
             public ulong Price;
         }
