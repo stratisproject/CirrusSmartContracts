@@ -21,7 +21,6 @@ namespace NFTStore
             : base(state)
         {
             EnsureNotPayable();
-            Owner = Message.Sender;
         }
 
         /// <summary>
