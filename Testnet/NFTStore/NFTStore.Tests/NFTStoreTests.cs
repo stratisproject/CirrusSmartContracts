@@ -284,6 +284,10 @@ namespace NFTStore.Tests
             store.Buy(tokenContract, tokenId);
 
             VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(default(SaleInfo));
         }
 
         private void SetSaleInfo(SaleInfo saleInfo)
