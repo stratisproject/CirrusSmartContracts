@@ -13,7 +13,7 @@ namespace NFTStore
     {
 
         public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
-        private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}", value);
+        protected void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
 
         public void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
@@ -49,6 +49,8 @@ namespace NFTStore
         {
             var saleInfo = GetSaleInfo(contract, tokenId);
 
+            EnsureTokenIsOnSale(saleInfo);
+
             Assert(Message.Value == saleInfo.Price, "Transferred amount is not matching exact price of the token.");
 
             SafeTransferToken(contract, tokenId, Address, Message.Sender);
@@ -59,7 +61,7 @@ namespace NFTStore
 
             Assert(result.Success, "Transfer failed.");
 
-            Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Purchaser = Message.Sender, Seller = GetOwner(contract, tokenId) });
+            Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
         }
 
         public void CancelSale(Address contract, ulong tokenId)
@@ -67,7 +69,7 @@ namespace NFTStore
             EnsureNotPayable();
             var saleInfo = GetSaleInfo(contract, tokenId);
 
-            Assert(saleInfo.Seller != Address.Zero, "The token is not on sale");
+            EnsureTokenIsOnSale(saleInfo);
 
             EnsureCallerCanOperate(contract, saleInfo.Seller);
 
@@ -98,7 +100,7 @@ namespace NFTStore
         {
             var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
-            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
+            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
         }
 
         private Address GetOwner(Address contract, ulong tokenId)
@@ -110,9 +112,16 @@ namespace NFTStore
             return (Address)result.ReturnValue;
         }
 
+        private void EnsureTokenIsOnSale(SaleInfo saleInfo)
+        {
+            Assert(saleInfo.Price > 0, "The token is not on sale.");
+        }
+
         private void EnsureCallerCanOperate(Address contract, Address tokenOwner)
         {
-            Assert(Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner), "The caller is not owner of the token nor approved for all.");
+            var isOwnerOrOperator = Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner);
+
+            Assert(isOwnerOrOperator, "The caller is not owner of the token nor approved for all.");
         }
 
         private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
@@ -141,7 +150,7 @@ namespace NFTStore
             public Address Contract;
             public ulong TokenId;
             [Index]
-            public Address Purchaser;
+            public Address Buyer;
             [Index]
             public Address Seller;
         }
