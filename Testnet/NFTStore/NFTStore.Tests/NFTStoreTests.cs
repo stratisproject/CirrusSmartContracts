@@ -290,6 +290,113 @@ namespace NFTStore.Tests
                  .Be(default(SaleInfo));
         }
 
+        [Fact]
+        public void CancelSale_Sending_Coins_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            SetupMessage(tokenOwner, 100);
+
+            store.Invoking(s => s.CancelSale(tokenContract, tokenId))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The method is not payable.");
+        }
+
+        [Fact]
+        public void CancelSale_Token_Is_Not_On_Sale_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            SetupMessage(tokenOwner, 0);
+
+            store.Invoking(s => s.CancelSale(tokenContract, tokenId))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The token is not on sale.");
+        }
+
+        [Fact]
+        public void CancelSale_Called_By_None_Token_Owner_Or_Operator_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            var saleInfo = new SaleInfo
+            {
+                Price = 100,
+                Seller = tokenOwner
+            };
+
+            SetSaleInfo(saleInfo);
+
+            SetupMessage(attacker, 0);
+            SetupIsApprovedForAll(tokenOwner, attacker, false);
+
+            store.Invoking(s => s.CancelSale(tokenContract, tokenId))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The caller is not owner of the token nor approved for all.");
+        }
+
+        [Fact]
+        public void CancelSale_SafeTokenTransfer_Returns_False_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            var saleInfo = new SaleInfo
+            {
+                Price = 100,
+                Seller = tokenOwner
+            };
+
+            SetSaleInfo(saleInfo);
+
+            SetupMessage(tokenOwner, 0);
+
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, false);
+
+            store.Invoking(s => s.CancelSale(tokenContract, tokenId))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The token transfer failed.");
+        }
+
+        [Fact]
+        public void CancelSale_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            var saleInfo = new SaleInfo
+            {
+                Price = 100,
+                Seller = tokenOwner
+            };
+
+            SetSaleInfo(saleInfo);
+
+            SetupMessage(tokenOwner, 0);
+
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, true);
+
+            store.CancelSale(tokenContract, tokenId);
+
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(default(SaleInfo));
+
+            VerifyLog(new TokenSaleCanceledLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner });
+        }
+
         private void SetSaleInfo(SaleInfo saleInfo)
         {
             inMemoryState.SetStruct($"SaleInfo:{tokenContract}:{tokenId}", saleInfo);
