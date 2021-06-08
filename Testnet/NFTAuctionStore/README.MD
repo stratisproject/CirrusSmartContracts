@@ -1,8 +1,8 @@
-﻿# DAO Smart Contract
+﻿# NFT Auction Store Contract
 
 **Compiler Version**
 ```
-:\User
+v2.0.0
 ```
 **Contract Hash**
 ```
