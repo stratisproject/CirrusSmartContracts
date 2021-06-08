@@ -12,19 +12,17 @@ public class NFTAuctionStore : SmartContract
 
     public AuctionInfo GetAuctionInfo(Address contract, ulong tokenId)
     {
-        EnsureNotPayable();
         return State.GetStruct<AuctionInfo>($"AuctionInfo:{contract}:{tokenId}");
     }
 
-    public ulong GetBalance(Address address)
+    public ulong GetRefund(Address address)
     {
-        EnsureNotPayable();
-        return State.GetUInt64($"Balances:{address}");
+        return State.GetUInt64($"Refund:{address}");
     }
 
-    private void SetBalance(Address address, ulong balance)
+    private void SetRefund(Address address, ulong balance)
     {
-        State.SetUInt64($"Balances:{address}", balance);
+        State.SetUInt64($"Refund:{address}", balance);
     }
 
     public NFTAuctionStore(ISmartContractState state)
@@ -39,7 +37,7 @@ public class NFTAuctionStore : SmartContract
 
         var tokenOwner = GetOwner(contract, tokenId);
 
-        Assert(tokenOwner == Address, "The token is already on sale.");
+        Assert(tokenOwner != Address, "The token is already on sale.");
 
         EnsureCallerCanOperate(contract, tokenOwner);
 
@@ -54,21 +52,23 @@ public class NFTAuctionStore : SmartContract
         };
 
         SetAuctionInfo(contract, tokenId, auction);
-        Log(new AuctionStartedLog { EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
+        Log(new AuctionStartedLog { Contract = contract, TokenId = tokenId, EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
     }
 
     public void Bid(Address contract, ulong tokenId)
     {
         var auction = GetAuctionInfo(contract, tokenId);
 
-        Assert(Block.Number < auction.EndBlock);
-        Assert(Message.Value > auction.HighestBid && Message.Value >= auction.StartingPrice);
+        Assert(Block.Number < auction.EndBlock, "Auction ended.");
+
+        Assert(Message.Value > auction.HighestBid && Message.Value >= auction.StartingPrice, "The amount is not higher than highest bidder or starting price.");
 
         if (auction.HighestBid > 0)
         {
-            var balance = GetBalance(auction.HighestBidder);
+            //refund for previous bidder
+            var balance = GetRefund(auction.HighestBidder);
 
-            SetBalance(auction.HighestBidder, balance + auction.HighestBid);
+            SetRefund(auction.HighestBidder, balance + auction.HighestBid);
         }
 
         auction.HighestBidder = Message.Sender;
@@ -76,23 +76,23 @@ public class NFTAuctionStore : SmartContract
 
         SetAuctionInfo(contract, tokenId, auction);
 
-        Log(new HighestBidUpdatedLog { Bidder = auction.HighestBidder, Bid = auction.HighestBid });
+        Log(new HighestBidUpdatedLog { Contract = contract, TokenId = tokenId, Bidder = auction.HighestBidder, Bid = auction.HighestBid });
     }
 
-    public bool Withdraw()
+    public bool Refund()
     {
         EnsureNotPayable();
 
-        var amount = GetBalance(Message.Sender);
+        var amount = GetRefund(Message.Sender);
 
         Assert(amount > 0);
 
-        SetBalance(Message.Sender, 0);
+        SetRefund(Message.Sender, 0);
 
         var transfer = Transfer(this.Message.Sender, amount);
 
         if (!transfer.Success)
-            SetBalance(Message.Sender, amount);
+            SetRefund(Message.Sender, amount);
 
         return transfer.Success;
     }
@@ -103,9 +103,9 @@ public class NFTAuctionStore : SmartContract
 
         var auction = GetAuctionInfo(contract, tokenId);
 
-        Assert(Block.Number >= auction.EndBlock);
+        Assert(Block.Number >= auction.EndBlock, "Auction is not ended yet.");
 
-        Assert(!auction.Ended);
+        Assert(!auction.Ended,"Auction end already executed.");
 
         auction.Ended = true;
         SetAuctionInfo(contract, tokenId, auction);
@@ -146,7 +146,7 @@ public class NFTAuctionStore : SmartContract
     {
         var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
+        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
     }
 
     private Address GetOwner(Address contract, ulong tokenId)
@@ -167,6 +167,8 @@ public class NFTAuctionStore : SmartContract
 
     public struct AuctionStartedLog
     {
+        public Address Contract;
+        public ulong TokenId;
         public ulong EndBlock;
         public ulong startingPrice;
         public Address Seller;
@@ -174,6 +176,8 @@ public class NFTAuctionStore : SmartContract
 
     public struct HighestBidUpdatedLog
     {
+        public Address Contract;
+        public ulong TokenId;
         public Address Bidder;
         public ulong Bid;
     }
@@ -192,6 +196,6 @@ public class NFTAuctionStore : SmartContract
         public Address HighestBidder;
         public ulong EndBlock;
         public bool Ended;
-        internal ulong StartingPrice;
+        public ulong StartingPrice;
     }
 }

@@ -56,18 +56,6 @@ namespace NFTStore.Tests
         }
 
         [Fact]
-        public void Constructor_Success()
-        {
-            SetupMessage(creator, 0);
-
-            Action action = () => new NFTStore(mContractState.Object);
-
-            action.Invoking(c => c())
-                  .Should()
-                  .NotThrow();
-        }
-
-        [Fact]
         public void Sale_Sending_Coins_Fails()
         {
             SetupMessage(creator, 0);
@@ -87,7 +75,7 @@ namespace NFTStore.Tests
         {
             SetupMessage(creator, 0);
 
-            SetupGetOwnerOfTokenFails();
+            SetupGetOwnerOfToken(TransferResult.Failed());
 
             var store = new NFTStore(mContractState.Object);
 
@@ -105,7 +93,7 @@ namespace NFTStore.Tests
             var store = new NFTStore(mContractState.Object);
 
             SetupMessage(tokenOwner, 0);
-            SetupGetOwnerOfToken(contract);
+            SetupGetOwnerOfToken(TransferResult.Succeed(contract));
 
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
@@ -114,17 +102,17 @@ namespace NFTStore.Tests
         }
 
         [Fact]
-        public void Sale_Called_By_None_Owner_Of_Token_Fails()
+        public void Sale_Called_By_None_Owner_Or_Operator_Of_Token_Fails()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(tokenOwner);
+            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
 
             SetupMessage(attacker, 0);
 
-            SetupIsApprovedForAll(tokenOwner, attacker, false);
+            SetupIsApprovedForAll(tokenOwner, attacker, TransferResult.Succeed(false));
 
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
@@ -139,11 +127,11 @@ namespace NFTStore.Tests
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(tokenOwner);
+            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
 
             SetupMessage(tokenOwner, 0);
 
-            SetupTransferToken(tokenOwner, contract, tokenId, false);
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(false));
 
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
@@ -159,11 +147,11 @@ namespace NFTStore.Tests
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(tokenOwner);
+            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
 
             SetupMessage(tokenOwner, 0);
 
-            SetupTransferToken(tokenOwner, contract, tokenId, true);
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(true));
 
             store.Sale(tokenContract, tokenId, 100);
 
@@ -181,13 +169,13 @@ namespace NFTStore.Tests
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(tokenOwner);
+            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
 
             SetupMessage(operatorAddress, 0);
 
-            SetupIsApprovedForAll(tokenOwner, operatorAddress, true);
+            SetupIsApprovedForAll(tokenOwner, operatorAddress, TransferResult.Succeed(true));
 
-            SetupTransferToken(tokenOwner, contract, tokenId, true);
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(true));
 
             store.Sale(tokenContract, tokenId, 100);
 
@@ -336,7 +324,7 @@ namespace NFTStore.Tests
             SetSaleInfo(saleInfo);
 
             SetupMessage(attacker, 0);
-            SetupIsApprovedForAll(tokenOwner, attacker, false);
+            SetupIsApprovedForAll(tokenOwner, attacker, TransferResult.Succeed(false));
 
             store.Invoking(s => s.CancelSale(tokenContract, tokenId))
                  .Should()
@@ -407,10 +395,10 @@ namespace NFTStore.Tests
             mContractLogger.Verify(x => x.Log(mContractState.Object, expectedLog), Times.Once());
         }
 
-        private void SetupTransferToken(Address from, Address to, ulong tokenId, bool result)
+        private void SetupTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "TransferFrom", new object[] { from, to, tokenId }, 0))
-                                .Returns(TransferResult.Succeed(result));
+                                .Returns(result);
         }
 
         private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, bool result)
@@ -430,28 +418,17 @@ namespace NFTStore.Tests
             mContractState.Setup(s => s.Message).Returns(new Message(contract, caller, amount));
         }
 
-        private void SetupGetOwnerOfToken(Address owner)
+        private void SetupGetOwnerOfToken(TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "GetOwner", new object[] { tokenId }, 0))
-                                .Returns(TransferResult.Succeed(owner));
+                                .Returns(result);
         }
 
-        private void SetupGetOwnerOfTokenFails()
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "GetOwner", new object[] { tokenId }, 0))
-                                .Returns(TransferResult.Failed());
-        }
 
-        private void SetupIsApprovedForAll(Address owner, Address delegator, bool returnValue)
+        private void SetupIsApprovedForAll(Address owner, Address delegator, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "IsApprovedForAll", new object[] { owner, delegator }, 0))
-                                .Returns(TransferResult.Succeed(returnValue));
-        }
-
-        private void SetupIsApprovedForAllFails(Address owner, Address delegator)
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "IsApprovedForAll", new object[] { owner, delegator }, 0))
-                                .Returns(TransferResult.Failed());
+                                .Returns(result);
         }
     }
 }
