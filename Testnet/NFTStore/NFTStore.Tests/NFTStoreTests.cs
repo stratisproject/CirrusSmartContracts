@@ -3,9 +3,9 @@ using Stratis.SmartContracts;
 using FluentAssertions;
 using Xunit;
 using System;
-using static NFTStore.NFTStore;
+using static NFTStore;
 
-namespace NFTStore.Tests
+namespace NFTStoreTests
 {
     public class NFTStoreTests
     {

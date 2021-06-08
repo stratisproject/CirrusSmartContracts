@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace NFTStore.Tests
+namespace NFTStoreTests
 {
     public class InMemoryState : IPersistentState
     {

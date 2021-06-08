@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace NFTStore.Tests
+namespace NFTStoreTests
 {
     public static class AddressExtensions
     {

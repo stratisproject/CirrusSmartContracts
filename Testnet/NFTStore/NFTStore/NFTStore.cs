@@ -1,162 +1,155 @@
-﻿using System;
+﻿using Stratis.SmartContracts;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace NFTStore
+[Deploy]
+public class NFTStore : SmartContract
 {
-    using Stratis.SmartContracts;
-    using Stratis.SmartContracts.Standards;
-    using System;
+    public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
+    private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
+    private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
-    [Deploy]
-    public class NFTStore : SmartContract
+    public NFTStore(ISmartContractState state)
+        : base(state)
     {
+        EnsureNotPayable();
+    }
 
-        public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
-        private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
-        private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
+    /// <summary>
+    /// Ensure the token is approved on the non fungible contract for store contract as pre-condition.
+    /// </summary>
+    public void Sale(Address contract, ulong tokenId, ulong price)
+    {
+        EnsureNotPayable();
 
-        public NFTStore(ISmartContractState state)
-            : base(state)
-        {
-            EnsureNotPayable();
-        }
+        Assert(price > 0, "Price should be higher than zero.");
 
-        /// <summary>
-        /// Ensure the token is approved on the non fungible contract for store contract as pre-condition.
-        /// </summary>
-        public void Sale(Address contract, ulong tokenId, ulong price)
-        {
-            EnsureNotPayable();
+        var tokenOwner = GetOwner(contract, tokenId);
 
-            Assert(price > 0, "Price should be higher than zero.");
+        Assert(tokenOwner != Address, "The token is already on sale.");
 
-            var tokenOwner = GetOwner(contract, tokenId);
+        EnsureCallerCanOperate(contract, tokenOwner);
 
-            Assert(tokenOwner != Address, "The token is already on sale.");
+        TransferToken(contract, tokenId, tokenOwner, Address);
 
-            EnsureCallerCanOperate(contract, tokenOwner);
+        SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = tokenOwner });
 
-            TransferToken(contract, tokenId, tokenOwner, Address);
+        Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner });
+    }
 
-            SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = tokenOwner });
+    public void Buy(Address contract, ulong tokenId)
+    {
+        var saleInfo = GetSaleInfo(contract, tokenId);
 
-            Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner });
-        }
+        EnsureTokenIsOnSale(saleInfo);
 
-        public void Buy(Address contract, ulong tokenId)
-        {
-            var saleInfo = GetSaleInfo(contract, tokenId);
+        Assert(Message.Value == saleInfo.Price, "Transferred amount is not matching exact price of the token.");
 
-            EnsureTokenIsOnSale(saleInfo);
+        SafeTransferToken(contract, tokenId, Address, Message.Sender);
 
-            Assert(Message.Value == saleInfo.Price, "Transferred amount is not matching exact price of the token.");
+        ClearSaleInfo(contract, tokenId);
 
-            SafeTransferToken(contract, tokenId, Address, Message.Sender);
+        var result = Transfer(saleInfo.Seller, saleInfo.Price);
 
-            ClearSaleInfo(contract, tokenId);
+        Assert(result.Success, "Transfer failed.");
 
-            var result = Transfer(saleInfo.Seller, saleInfo.Price);
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
+    }
 
-            Assert(result.Success, "Transfer failed.");
+    public void CancelSale(Address contract, ulong tokenId)
+    {
+        EnsureNotPayable();
+        var saleInfo = GetSaleInfo(contract, tokenId);
 
-            Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
-        }
+        EnsureTokenIsOnSale(saleInfo);
 
-        public void CancelSale(Address contract, ulong tokenId)
-        {
-            EnsureNotPayable();
-            var saleInfo = GetSaleInfo(contract, tokenId);
+        EnsureCallerCanOperate(contract, saleInfo.Seller);
 
-            EnsureTokenIsOnSale(saleInfo);
+        SafeTransferToken(contract, tokenId, Address, saleInfo.Seller);
 
-            EnsureCallerCanOperate(contract, saleInfo.Seller);
+        ClearSaleInfo(contract, tokenId);
 
-            SafeTransferToken(contract, tokenId, Address, saleInfo.Seller);
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
+    }
 
-            ClearSaleInfo(contract, tokenId);
+    private bool IsApprovedForAll(Address contract, Address tokenOwner)
+    {
+        var result = Call(contract, 0, "IsApprovedForAll", new object[] { tokenOwner, Message.Sender });
 
-            Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
-        }
+        Assert(result.Success, "IsApprovedForAll method call failed.");
 
-        private bool IsApprovedForAll(Address contract, Address tokenOwner)
-        {
-            var result = Call(contract, 0, "IsApprovedForAll", new object[] { tokenOwner, Message.Sender });
+        return result.ReturnValue is bool success && success;
+    }
 
-            Assert(result.Success, "IsApprovedForAll method call failed.");
+    private void TransferToken(Address contract, ulong tokenId, Address from, Address to)
+    {
+        var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
 
-            return result.ReturnValue is bool success && success;
-        }
+        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure contract is approved to transfer token.");
+    }
 
-        private void TransferToken(Address contract, ulong tokenId, Address from, Address to)
-        {
-            var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
+    private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
+    {
+        var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
-            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure contract is approved to transfer token.");
-        }
+        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
+    }
 
-        private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
-        {
-            var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
+    private Address GetOwner(Address contract, ulong tokenId)
+    {
+        var result = Call(contract, 0, "GetOwner", new object[] { tokenId });
 
-            Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
-        }
+        Assert(result.Success && result.ReturnValue is Address, "GetOwner method call failed.");
 
-        private Address GetOwner(Address contract, ulong tokenId)
-        {
-            var result = Call(contract, 0, "GetOwner", new object[] { tokenId });
+        return (Address)result.ReturnValue;
+    }
 
-            Assert(result.Success && result.ReturnValue is Address, "GetOwner method call failed.");
+    private void EnsureTokenIsOnSale(SaleInfo saleInfo)
+    {
+        Assert(saleInfo.Price > 0, "The token is not on sale.");
+    }
 
-            return (Address)result.ReturnValue;
-        }
+    private void EnsureCallerCanOperate(Address contract, Address tokenOwner)
+    {
+        var isOwnerOrOperator = Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner);
 
-        private void EnsureTokenIsOnSale(SaleInfo saleInfo)
-        {
-            Assert(saleInfo.Price > 0, "The token is not on sale.");
-        }
+        Assert(isOwnerOrOperator, "The caller is not owner of the token nor approved for all.");
+    }
 
-        private void EnsureCallerCanOperate(Address contract, Address tokenOwner)
-        {
-            var isOwnerOrOperator = Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner);
+    private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
 
-            Assert(isOwnerOrOperator, "The caller is not owner of the token nor approved for all.");
-        }
+    public struct TokenOnSaleLog
+    {
+        public Address Contract;
+        public Address Seller;
+        public ulong TokenId;
+        public ulong Price;
+    }
 
-        private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
+    public struct TokenSaleCanceledLog
+    {
+        [Index]
+        public Address Contract;
+        [Index]
+        public ulong TokenId;
+        [Index]
+        public Address Seller;
+    }
 
-        public struct TokenOnSaleLog
-        {
-            public Address Contract;
-            public Address Seller;
-            public ulong TokenId;
-            public ulong Price;
-        }
-
-        public struct TokenSaleCanceledLog
-        {
-            [Index]
-            public Address Contract;
-            [Index]
-            public ulong TokenId;
-            [Index]
-            public Address Seller;
-        }
-
-        public struct TokenPurchasedLog
-        {
-            [Index]
-            public Address Contract;
-            public ulong TokenId;
-            [Index]
-            public Address Buyer;
-            [Index]
-            public Address Seller;
-        }
-        public struct SaleInfo
-        {
-            public ulong Price;
-            public Address Seller;
-        }
+    public struct TokenPurchasedLog
+    {
+        [Index]
+        public Address Contract;
+        public ulong TokenId;
+        [Index]
+        public Address Buyer;
+        [Index]
+        public Address Seller;
+    }
+    public struct SaleInfo
+    {
+        public ulong Price;
+        public Address Seller;
     }
 }
