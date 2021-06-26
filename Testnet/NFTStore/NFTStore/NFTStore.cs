@@ -98,9 +98,9 @@ public class NFTStore : SmartContract
 
     private Address GetOwner(Address contract, ulong tokenId)
     {
-        var result = Call(contract, 0, "GetOwner", new object[] { tokenId });
+        var result = Call(contract, 0, "OwnerOf", new object[] { tokenId });
 
-        Assert(result.Success && result.ReturnValue is Address, "GetOwner method call failed.");
+        Assert(result.Success && result.ReturnValue is Address, "OwnerOf method call failed.");
 
         return (Address)result.ReturnValue;
     }

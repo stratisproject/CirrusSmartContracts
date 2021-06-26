@@ -82,7 +82,7 @@ namespace NFTStoreTests
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
                  .Throw<SmartContractAssertException>()
-                 .WithMessage("GetOwner method call failed.");
+                 .WithMessage("OwnerOf method call failed.");
         }
 
         [Fact]
@@ -420,7 +420,7 @@ namespace NFTStoreTests
 
         private void SetupGetOwnerOfToken(TransferResult result)
         {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "GetOwner", new object[] { tokenId }, 0))
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "OwnerOf", new object[] { tokenId }, 0))
                                 .Returns(result);
         }
 
