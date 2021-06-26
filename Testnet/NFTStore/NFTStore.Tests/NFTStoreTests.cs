@@ -131,7 +131,7 @@ namespace NFTStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(false));
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Failed());
 
             store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
                  .Should()
@@ -151,7 +151,7 @@ namespace NFTStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(true));
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed());
 
             store.Sale(tokenContract, tokenId, 100);
 
@@ -175,7 +175,7 @@ namespace NFTStoreTests
 
             SetupIsApprovedForAll(tokenOwner, operatorAddress, TransferResult.Succeed(true));
 
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(true));
+            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed());
 
             store.Sale(tokenContract, tokenId, 100);
 
@@ -238,7 +238,7 @@ namespace NFTStoreTests
             SetSaleInfo(saleInfo);
 
             SetupMessage(buyer, 100);
-            SetupSafeTransferToken(contract, buyer, tokenId, true);
+            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
 
             SetupTransfer(tokenOwner, 100, TransferResult.Failed());
 
@@ -265,7 +265,7 @@ namespace NFTStoreTests
 
             SetupMessage(buyer, 100);
 
-            SetupSafeTransferToken(contract, buyer, tokenId, true);
+            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
 
             SetupTransfer(tokenOwner, 100, TransferResult.Succeed());
 
@@ -349,7 +349,7 @@ namespace NFTStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetupSafeTransferToken(contract, tokenOwner, tokenId, false);
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, TransferResult.Failed());
 
             store.Invoking(s => s.CancelSale(tokenContract, tokenId))
                  .Should()
@@ -374,7 +374,7 @@ namespace NFTStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetupSafeTransferToken(contract, tokenOwner, tokenId, true);
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, TransferResult.Succeed());
 
             store.CancelSale(tokenContract, tokenId);
 
@@ -401,10 +401,10 @@ namespace NFTStoreTests
                                 .Returns(result);
         }
 
-        private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, bool result)
+        private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SafeTransferFrom", new object[] { from, to, tokenId }, 0))
-                                .Returns(TransferResult.Succeed(result));
+                                .Returns(result);
         }
 
         private void SetupTransfer(Address to, ulong amount, TransferResult result)

@@ -86,14 +86,14 @@ public class NFTStore : SmartContract
     {
         var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
 
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure contract is approved to transfer token.");
+        Assert(result.Success, "The token transfer failed. Be sure contract is approved to transfer token.");
     }
 
     private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
     {
         var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
+        Assert(result.Success, "The token transfer failed.");
     }
 
     private Address GetOwner(Address contract, ulong tokenId)
