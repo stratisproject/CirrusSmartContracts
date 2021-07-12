@@ -10,10 +10,18 @@ public class NFTStore : SmartContract
     private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
-    public NFTStore(ISmartContractState state)
-        : base(state)
+    public ulong NextId { get; set; }
+    public ulong CreatedAt
+    {
+        get => State.GetUInt64(nameof(CreatedAt));
+        private set => State.SetUInt64(nameof(CreatedAt), value);
+    }
+
+    public NFTStore(ISmartContractState state) : base(state)
     {
         EnsureNotPayable();
+
+        CreatedAt = Block.Number;
     }
 
     /// <summary>
@@ -147,6 +155,7 @@ public class NFTStore : SmartContract
         [Index]
         public Address Seller;
     }
+
     public struct SaleInfo
     {
         public ulong Price;
