@@ -9,6 +9,13 @@ public class NFTStore : SmartContract
     public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
     private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
+
+    public ulong NextId
+    {
+        get => State.GetUInt64(nameof(NextId));
+        private set => State.SetUInt64(nameof(NextId), value);
+    }
+
     public ulong CreatedAt
     {
         get => State.GetUInt64(nameof(CreatedAt));
@@ -41,7 +48,7 @@ public class NFTStore : SmartContract
 
         SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = tokenOwner });
 
-        Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner });
+        Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner, Order = NextId++ });
     }
 
     public void Buy(Address contract, ulong tokenId)
@@ -60,7 +67,7 @@ public class NFTStore : SmartContract
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller, Order = NextId++ });
     }
 
     public void CancelSale(Address contract, ulong tokenId)
@@ -76,7 +83,7 @@ public class NFTStore : SmartContract
 
         ClearSaleInfo(contract, tokenId);
 
-        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller, Order = NextId++ });
     }
 
     private bool IsApprovedForAll(Address contract, Address tokenOwner)
@@ -131,6 +138,7 @@ public class NFTStore : SmartContract
         public Address Seller;
         public ulong TokenId;
         public ulong Price;
+        internal ulong Order;
     }
 
     public struct TokenSaleCanceledLog
