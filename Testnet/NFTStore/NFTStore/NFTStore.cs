@@ -138,7 +138,7 @@ public class NFTStore : SmartContract
         public Address Seller;
         public ulong TokenId;
         public ulong Price;
-        internal ulong Order;
+        public ulong Order;
     }
 
     public struct TokenSaleCanceledLog
@@ -149,6 +149,8 @@ public class NFTStore : SmartContract
         public ulong TokenId;
         [Index]
         public Address Seller;
+
+        public ulong Order;
     }
 
     public struct TokenPurchasedLog
@@ -160,6 +162,7 @@ public class NFTStore : SmartContract
         public Address Buyer;
         [Index]
         public Address Seller;
+        public ulong Order;
     }
 
     public struct SaleInfo
