@@ -134,8 +134,11 @@ public class NFTStore : SmartContract
 
     public struct TokenOnSaleLog
     {
+        [Index]
         public Address Contract;
+        [Index]
         public Address Seller;
+        [Index]
         public ulong TokenId;
         public ulong Price;
         public ulong Order;
