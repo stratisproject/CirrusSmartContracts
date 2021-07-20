@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30204.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTStore", "NFTStore\NFTStore.csproj", "{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFTStore.Tests", "NFTStore.Tests\NFTStore.Tests.csproj", "{3B5AF108-6986-4E17-9A01-EB297D6F0C15}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AD529F2-7163-4BBE-80BB-F2D7D54B2DFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B5AF108-6986-4E17-9A01-EB297D6F0C15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B5AF108-6986-4E17-9A01-EB297D6F0C15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B5AF108-6986-4E17-9A01-EB297D6F0C15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B5AF108-6986-4E17-9A01-EB297D6F0C15}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BA15305F-3348-4660-BF5B-3D0CD51F0FFD}
+	EndGlobalSection
+EndGlobal
