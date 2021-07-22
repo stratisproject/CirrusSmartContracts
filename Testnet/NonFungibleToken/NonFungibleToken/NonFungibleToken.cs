@@ -1,6 +1,4 @@
 ﻿using Stratis.SmartContracts;
-using System;
-
 /// <summary>
 /// A non fungible token contract.
 /// </summary>
@@ -36,138 +34,13 @@ public class NonFungibleToken : SmartContract
         public bool Approved;
     }
 
-    /// <summary>
-    /// Get a value indicacting if the interface is supported.
-    /// </summary>
-    /// <param name="interfaceId">The id of the interface to support.</param>
-    /// <returns>A value indicating if the interface is supported.</returns>
-    private bool GetSupportedInterfaces(uint interfaceId)
+    public struct OwnershipTransferedLog
     {
-        return this.PersistentState.GetBool($"SupportedInterface:{interfaceId}");
-    }
+        [Index]
+        public Address PreviousOwner;
 
-    /// <summary>
-    /// Sets the supported interface value.
-    /// </summary>
-    /// <param name="interfaceId">The interface id.</param>
-    /// <param name="value">A value indicating if the interface id is supported.</param>
-    private void SetSupportedInterfaces(uint interfaceId, bool value)
-    {
-        this.PersistentState.SetBool($"SupportedInterface:{interfaceId}", value);
-    }
-
-    /// <summary>
-    /// Gets the key to the persistent state for the owner by NFT ID.
-    /// </summary>
-    /// <param name="id">The NFT ID.</param>
-    /// <returns>The persistent storage key to get or set the NFT owner.</returns>
-    private string GetIdToOwnerKey(ulong id)
-    {
-        return $"IdToOwner:{id}";
-    }
-
-    ///<summary>
-    /// Gets the address of the owner of the NFT ID. 
-    ///</summary>
-    /// <param name="id">The ID of the NFT</param>
-    ///<returns>The owner address.</returns>
-    private Address GetIdToOwner(ulong id)
-    {
-        return this.PersistentState.GetAddress(GetIdToOwnerKey(id));
-    }
-
-    /// <summary>
-    /// Sets the owner to the NFT ID.
-    /// </summary>
-    /// <param name="id">The ID of the NFT</param>
-    /// <param name="value">The address of the owner.</param>
-    private void SetIdToOwner(ulong id, Address value)
-    {
-        this.PersistentState.SetAddress(GetIdToOwnerKey(id), value);
-    }
-
-    /// <summary>
-    /// Gets the key to the persistent state for the approval address by NFT ID.
-    /// </summary>
-    /// <param name="id">The NFT ID.</param>
-    /// <returns>The persistent storage key to get or set the NFT approval.</returns>
-    private string GetIdToApprovalKey(ulong id)
-    {
-        return $"IdToApproval:{id}";
-    }
-
-    /// <summary>
-    /// Getting from NFT ID the approval address.
-    /// </summary>
-    /// <param name="id">The ID of the NFT</param>
-    /// <returns>Address of the approval.</returns>
-    private Address GetIdToApproval(ulong id)
-    {
-        return this.PersistentState.GetAddress(GetIdToApprovalKey(id));
-    }
-
-    /// <summary>
-    /// Setting to NFT ID to approval address.
-    /// </summary>
-    /// <param name="id">The ID of the NFT</param>
-    /// <param name="value">The address of the approval.</param>
-    private void SetIdToApproval(ulong id, Address value)
-    {
-        this.PersistentState.SetAddress(GetIdToApprovalKey(id), value);
-    }
-
-    /// <summary>
-    /// Gets the amount of non fungible tokens the owner has.
-    /// </summary>
-    /// <param name="address">The address of the owner.</param>
-    /// <returns>The amount of non fungible tokens.</returns>
-    private ulong GetOwnerToNFTokenCount(Address address)
-    {
-        return this.PersistentState.GetUInt64($"OwnerToNFTokenCount:{address}");
-    }
-
-    /// <summary>
-    /// Sets the owner count of this non fungible tokens.
-    /// </summary>
-    /// <param name="address">The address of the owner.</param>
-    /// <param name="value">The amount of tokens.</param>
-    private void SetOwnerToNFTokenCount(Address address, ulong value)
-    {
-        this.PersistentState.SetUInt64($"OwnerToNFTokenCount:{address}", value);
-    }
-
-    /// <summary>
-    /// Gets the permission value of the operator authorization to perform actions on behalf of the owner.
-    /// </summary>
-    /// <param name="owner">The owner address of the NFT.</param>
-    /// <param name="operatorAddress">>Address of the authorized operators</param>
-    /// <returns>A value indicating if the operator has permissions to act on behalf of the owner.</returns>
-    private bool GetOwnerToOperator(Address owner, Address operatorAddress)
-    {
-        return this.PersistentState.GetBool($"OwnerToOperator:{owner}:{operatorAddress}");
-    }
-
-    /// <summary>
-    /// Sets the owner to operator permission.
-    /// </summary>
-    /// <param name="owner">The owner address of the NFT.</param>
-    /// <param name="operatorAddress">>Address to add to the set of authorized operators.</param>
-    /// <param name="value">The permission value.</param>
-    private void SetOwnerToOperator(Address owner, Address operatorAddress, bool value)
-    {
-        this.PersistentState.SetBool($"OwnerToOperator:{owner}:{operatorAddress}", value);
-    }
-
-    /// <summary>
-    /// Constructor. Initializes the supported interfaces.
-    /// </summary>
-    /// <param name="state">The smart contract state.</param>
-    public NonFungibleToken(ISmartContractState state) : base(state)
-    {
-        // todo: discuss callback handling and supported interface numbering with community.
-        this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
-        this.SetSupportedInterfaces((uint)0x00000002, true); // (ERC721) - INonFungibleToken,
-        this.SetSupportedInterfaces((uint)0x00000003, false); // (ERC721) - INonFungibleTokenReceiver
+        [Index]
+        public Address NewOwner;
     }
 
     /// <summary>
@@ -177,8 +50,195 @@ public class NonFungibleToken : SmartContract
     /// <returns>True if <see cref="interfaceID"/> is supported, false otherwise.</returns>
     public bool SupportsInterface(uint interfaceID)
     {
-        return GetSupportedInterfaces(interfaceID);
+        return State.GetBool($"SupportedInterface:{interfaceID}");
     }
+
+    /// <summary>
+    /// Sets the supported interface value.
+    /// </summary>
+    /// <param name="interfaceId">The interface id.</param>
+    /// <param name="value">A value indicating if the interface id is supported.</param>
+    private void SetSupportedInterfaces(uint interfaceId, bool value) => State.SetBool($"SupportedInterface:{interfaceId}", value);
+
+    /// <summary>
+    /// Gets the key to the persistent state for the owner by NFT ID.
+    /// </summary>
+    /// <param name="id">The NFT ID.</param>
+    /// <returns>The persistent storage key to get or set the NFT owner.</returns>
+    private string GetIdToOwnerKey(ulong id) => $"IdToOwner:{id}";
+
+    ///<summary>
+    /// Gets the address of the owner of the NFT ID. 
+    ///</summary>
+    /// <param name="id">The ID of the NFT</param>
+    ///<returns>The owner address.</returns>
+    private Address GetIdToOwner(ulong id) => State.GetAddress(GetIdToOwnerKey(id));
+
+    /// <summary>
+    /// Sets the owner to the NFT ID.
+    /// </summary>
+    /// <param name="id">The ID of the NFT</param>
+    /// <param name="value">The address of the owner.</param>
+    private void SetIdToOwner(ulong id, Address value) => State.SetAddress(GetIdToOwnerKey(id), value);
+
+    /// <summary>
+    /// Gets the key to the persistent state for the approval address by NFT ID.
+    /// </summary>
+    /// <param name="id">The NFT ID.</param>
+    /// <returns>The persistent storage key to get or set the NFT approval.</returns>
+    private string GetIdToApprovalKey(ulong id) => $"IdToApproval:{id}";
+
+    /// <summary>
+    /// Getting from NFT ID the approval address.
+    /// </summary>
+    /// <param name="id">The ID of the NFT</param>
+    /// <returns>Address of the approval.</returns>
+    private Address GetIdToApproval(ulong id) => State.GetAddress(GetIdToApprovalKey(id));
+
+    /// <summary>
+    /// Setting to NFT ID to approval address.
+    /// </summary>
+    /// <param name="id">The ID of the NFT</param>
+    /// <param name="value">The address of the approval.</param>
+    private void SetIdToApproval(ulong id, Address value) => State.SetAddress(GetIdToApprovalKey(id), value);
+
+    /// <summary>
+    /// Gets the amount of non fungible tokens the owner has.
+    /// </summary>
+    /// <param name="address">The address of the owner.</param>
+    /// <returns>The amount of non fungible tokens.</returns>
+    private ulong GetOwnerToNFTokenCount(Address address) => State.GetUInt64($"OwnerToNFTokenCount:{address}");
+
+    /// <summary>
+    /// Sets the owner count of this non fungible tokens.
+    /// </summary>
+    /// <param name="address">The address of the owner.</param>
+    /// <param name="value">The amount of tokens.</param>
+    private void SetOwnerToNFTokenCount(Address address, ulong value) => State.SetUInt64($"OwnerToNFTokenCount:{address}", value);
+
+    /// <summary>
+    /// Gets the permission value of the operator authorization to perform actions on behalf of the owner.
+    /// </summary>
+    /// <param name="owner">The owner address of the NFT.</param>
+    /// <param name="operatorAddress">>Address of the authorized operators</param>
+    /// <returns>A value indicating if the operator has permissions to act on behalf of the owner.</returns>
+    private bool GetOwnerToOperator(Address owner, Address operatorAddress) => State.GetBool($"OwnerToOperator:{owner}:{operatorAddress}");
+
+    /// <summary>
+    /// Sets the owner to operator permission.
+    /// </summary>
+    /// <param name="owner">The owner address of the NFT.</param>
+    /// <param name="operatorAddress">>Address to add to the set of authorized operators.</param>
+    /// <param name="value">The permission value.</param>
+    private void SetOwnerToOperator(Address owner, Address operatorAddress, bool value) => State.SetBool($"OwnerToOperator:{owner}:{operatorAddress}", value);
+
+    /// <summary>
+    /// Owner of the contract is responsible to for minting/burning 
+    /// </summary>
+    public Address Owner
+    {
+        get => State.GetAddress(nameof(Owner));
+        private set => State.SetAddress(nameof(Owner), value);
+    }
+
+    /// <summary>
+    /// Name for non-fungible token contract
+    /// </summary>
+    public string Name
+    {
+        get => State.GetString(nameof(Name));
+        private set => State.SetString(nameof(Name), value);
+    }
+
+    /// <summary>
+    /// Symbol for non-fungible token contract
+    /// </summary>
+    public string Symbol
+    {
+        get => State.GetString(nameof(Symbol));
+        private set => State.SetString(nameof(Symbol), value);
+    }
+
+    public string BaseTokenURI
+    {
+        get => State.GetString(nameof(BaseTokenURI));
+        private set => State.SetString(nameof(BaseTokenURI), value);
+    }
+
+    /// <summary>
+    /// The next token index which is going to be minted
+    /// </summary>
+    private ulong NextTokenId
+    {
+        get => State.GetUInt64(nameof(NextTokenId));
+        set => State.SetUInt64(nameof(NextTokenId), value);
+    }
+
+    private string GetTokenByIndexKey(ulong index) => $"TokenByIndex:{index}";
+
+    private ulong GetTokenByIndex(ulong index) => State.GetUInt64(GetTokenByIndexKey(index));
+
+    private void SetTokenByIndex(ulong index, ulong token) => State.SetUInt64(GetTokenByIndexKey(index), token);
+
+    private void ClearTokenByIndex(ulong index) => State.Clear(GetTokenByIndexKey(index));
+
+    private string GetIndexByTokenKey(ulong token) => $"IndexByToken:{token}";
+
+    private ulong GetIndexByToken(ulong token) => State.GetUInt64(GetIndexByTokenKey(token));
+
+    private void SetIndexByToken(ulong token, ulong index) => State.SetUInt64(GetIndexByTokenKey(token), index);
+
+    private void ClearIndexByToken(ulong token) => State.Clear(GetIndexByTokenKey(token));
+
+    private string GetTokenOfOwnerByIndexKey(Address address, ulong index) => $"TokenOfOwnerByIndex:{address}:{index}";
+
+    private ulong GetTokenOfOwnerByIndex(Address address, ulong index) => State.GetUInt64(GetTokenOfOwnerByIndexKey(address, index));
+
+    private void SetTokenOfOwnerByIndex(Address owner, ulong index, ulong tokenId) => State.SetUInt64(GetTokenOfOwnerByIndexKey(owner, index), tokenId);
+
+    private void ClearTokenOfOwnerByIndex(Address owner, ulong index) => State.Clear(GetTokenOfOwnerByIndexKey(owner, index));
+
+    private string IndexOfOwnerByTokenKey(Address owner, ulong tokenId) => $"IndexOfOwnerByToken:{owner}:{tokenId}";
+    private ulong GetIndexOfOwnerByToken(Address owner, ulong tokenId) => State.GetUInt64(IndexOfOwnerByTokenKey(owner, tokenId));
+    private void SetIndexOfOwnerByToken(Address owner, ulong tokenId, ulong index) => State.SetUInt64(IndexOfOwnerByTokenKey(owner, tokenId), index);
+    private void ClearIndexOfOwnerByToken(Address owner, ulong tokenId) => State.Clear(IndexOfOwnerByTokenKey(owner, tokenId));
+    public ulong TotalSupply
+    {
+        get => State.GetUInt64(nameof(TotalSupply));
+        private set => State.SetUInt64(nameof(TotalSupply), value);
+    }
+
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, string baseTokenURI) : base(state)
+    {
+        // todo: discuss callback handling and supported interface numbering with community.
+        this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
+        this.SetSupportedInterfaces((uint)0x00000002, true); // (ERC721) - INonFungibleToken,
+        this.SetSupportedInterfaces((uint)0x00000003, false); // (ERC721) - INonFungibleTokenReceiver
+        this.SetSupportedInterfaces((uint)0x00000004, true); // (ERC721) - INonFungibleTokenMetadata
+        this.SetSupportedInterfaces((uint)0x00000005, true); // (ERC721) - IERC721Enumerable
+
+        this.Name = name;
+        this.Symbol = symbol;
+        this.Owner = Message.Sender;
+        this.BaseTokenURI = baseTokenURI;
+        this.NextTokenId = 1;
+    }
+
+    public ulong TokenByIndex(ulong index)
+    {
+        Assert(index < TotalSupply, "The index is invalid.");
+
+        return GetTokenByIndex(index);
+    }
+
+    public ulong TokenOfOwnerByIndex(Address owner, ulong index)
+    {
+        Assert(index < GetOwnerToNFTokenCount(owner), "The index is invalid.");
+
+        return GetTokenOfOwnerByIndex(owner, index);
+    }
+
+
 
     /// <summary>
     /// Transfers the ownership of an NFT from one address to another address. This function can
@@ -225,11 +285,11 @@ public class NonFungibleToken : SmartContract
     public void TransferFrom(Address from, Address to, ulong tokenId)
     {
         CanTransfer(tokenId);
-        ValidNFToken(tokenId);
 
         Address tokenOwner = GetIdToOwner(tokenId);
+        EnsureAddressIsNotEmpty(tokenOwner);
+        EnsureAddressIsNotEmpty(to);
         Assert(tokenOwner == from);
-        Assert(to != Address.Zero);
 
         TransferInternal(to, tokenId);
     }
@@ -264,8 +324,8 @@ public class NonFungibleToken : SmartContract
     /// <param name="approved">True if the operators is approved, false to revoke approval.</param>
     public void SetApprovalForAll(Address operatorAddress, bool approved)
     {
-        SetOwnerToOperator(this.Message.Sender, operatorAddress, approved);
-        LogApprovalForAll(this.Message.Sender, operatorAddress, approved);
+        SetOwnerToOperator(Message.Sender, operatorAddress, approved);
+        LogApprovalForAll(Message.Sender, operatorAddress, approved);
     }
 
     /// <summary>
@@ -276,7 +336,7 @@ public class NonFungibleToken : SmartContract
     /// <returns>Balance of owner.</returns>
     public ulong BalanceOf(Address owner)
     {
-        Assert(owner != Address.Zero);
+        EnsureAddressIsNotEmpty(owner);
         return GetOwnerToNFTokenCount(owner);
     }
 
@@ -288,7 +348,7 @@ public class NonFungibleToken : SmartContract
     public Address OwnerOf(ulong tokenId)
     {
         Address owner = GetIdToOwner(tokenId);
-        Assert(owner != Address.Zero);
+        EnsureAddressIsNotEmpty(owner);
         return owner;
     }
 
@@ -342,8 +402,22 @@ public class NonFungibleToken : SmartContract
     private void RemoveNFToken(Address from, ulong tokenId)
     {
         Assert(GetIdToOwner(tokenId) == from);
-        SetOwnerToNFTokenCount(from, checked(GetOwnerToNFTokenCount(from) - 1));
-        this.PersistentState.Clear(GetIdToOwnerKey(tokenId));
+        var tokenCount = GetOwnerToNFTokenCount(from);
+        SetOwnerToNFTokenCount(from, checked(tokenCount - 1));
+        State.Clear(GetIdToOwnerKey(tokenId));
+
+        ulong index = GetIndexOfOwnerByToken(from, tokenId);
+        ulong lastIndex = tokenCount - 1;
+
+        if (index != lastIndex)
+        {
+            ulong lastToken = GetTokenOfOwnerByIndex(from, lastIndex);
+            SetIndexOfOwnerByToken(from, lastToken, index);
+            SetTokenOfOwnerByIndex(from, index, lastToken);
+        }
+
+        ClearTokenOfOwnerByIndex(from, lastIndex);
+        ClearIndexOfOwnerByToken(from, tokenId);
     }
 
     /// <summary>
@@ -359,6 +433,10 @@ public class NonFungibleToken : SmartContract
         SetIdToOwner(tokenId, to);
         ulong currentTokenAmount = GetOwnerToNFTokenCount(to);
         SetOwnerToNFTokenCount(to, checked(currentTokenAmount + 1));
+
+        var index = currentTokenAmount;
+        SetIndexOfOwnerByToken(to, tokenId, index);
+        SetTokenOfOwnerByIndex(to, index, tokenId);
     }
 
     /// <summary>
@@ -375,13 +453,13 @@ public class NonFungibleToken : SmartContract
 
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(tokenOwner == from);
-        Assert(to != Address.Zero);
+        EnsureAddressIsNotEmpty(to);
 
         TransferInternal(to, tokenId);
 
-        if (this.PersistentState.IsContract(to))
+        if (State.IsContract(to))
         {
-            ITransferResult result = this.Call(to, 0, "OnNonFungibleTokenReceived", new object[] { this.Message.Sender, from, tokenId, data }, 0);
+            ITransferResult result = Call(to, 0, "OnNonFungibleTokenReceived", new object[] { Message.Sender, from, tokenId, data }, 0);
             Assert((bool)result.ReturnValue);
         }
     }
@@ -394,7 +472,7 @@ public class NonFungibleToken : SmartContract
     {
         if (GetIdToApproval(tokenId) != Address.Zero)
         {
-            this.PersistentState.Clear(GetIdToApprovalKey(tokenId));
+            State.Clear(GetIdToApprovalKey(tokenId));
         }
     }
 
@@ -419,7 +497,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="owner">The owner address.</param>
     /// <param name="operatorAddress">The approved address.</param>
-    /// <param name="tokenId">The NFT ID.</param>
+    /// <param name="tokenId">The NFT ID.</ >
     private void LogApproval(Address owner, Address approved, ulong tokenId)
     {
         Log(new ApprovalLog() { Owner = owner, Approved = approved, TokenId = tokenId });
@@ -444,7 +522,7 @@ public class NonFungibleToken : SmartContract
     private void CanOperate(ulong tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
-        Assert(tokenOwner == this.Message.Sender || GetOwnerToOperator(tokenOwner, this.Message.Sender));
+        Assert(tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender));
     }
 
     /// <summary>
@@ -455,7 +533,7 @@ public class NonFungibleToken : SmartContract
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(
-          tokenOwner == this.Message.Sender
+          tokenOwner == Message.Sender
           || GetIdToApproval(tokenId) == Message.Sender
           || GetOwnerToOperator(tokenOwner, Message.Sender)
         );
@@ -467,6 +545,92 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">ID of the NFT to validate.</param>
     private void ValidNFToken(ulong tokenId)
     {
-        Assert(GetIdToOwner(tokenId) != Address.Zero);
+        Address tokenOwner = GetIdToOwner(tokenId);
+        EnsureAddressIsNotEmpty(tokenOwner);
+    }
+
+    /// <summary>
+    /// Sets the contract owner who can mint/bur
+    /// </summary>
+    /// <param name="owner"></param>
+    public void TransferOwnership(Address owner)
+    {
+        EnsureOwnerOnly();
+        EnsureAddressIsNotEmpty(owner);
+
+        Log(new OwnershipTransferedLog { PreviousOwner = Owner, NewOwner = owner });
+
+        Owner = owner;
+    }
+
+    private void EnsureOwnerOnly()
+    {
+        Assert(Message.Sender == Owner, "Only owner of the contract can set new owner.");
+    }
+
+    /// <summary>
+    /// Mints new tokens
+    /// </summary>
+    /// <param name="address">The address that will own the minted NFT</param>
+    /// <param name="amount">Number of tokens will be created</param>
+    public void MintAll(Address address, ulong amount)
+    {
+        EnsureOwnerOnly();
+        EnsureAddressIsNotEmpty(address);
+        Assert(amount > 0, "the amount should be higher than zero");
+
+        var index = TotalSupply;
+        var lastIndex = checked(index + amount);
+        var tokenId = NextTokenId;
+
+        while (index < lastIndex)
+        {
+            AddNFToken(address, tokenId);
+            SetTokenByIndex(index, tokenId);
+            SetIndexByToken(tokenId, index);
+
+            LogTransfer(Address.Zero, address, tokenId);
+
+            checked
+            {
+                index++;
+                tokenId++;
+            }
+        }
+
+        TotalSupply = checked(TotalSupply + amount);
+        NextTokenId = tokenId;
+    }
+
+    public void Burn(ulong tokenId)
+    {
+        Address tokenOwner = GetIdToOwner(tokenId);
+
+        Assert(tokenOwner == Message.Sender, "Only token owner can burn the token.");
+
+        ClearApproval(tokenId);
+        RemoveNFToken(tokenOwner, tokenId);
+
+        //move last token to removed token and delete last token info
+        var index = GetIndexByToken(tokenId);
+        var lastTokenIndex = checked(--TotalSupply);
+        var lastToken = GetTokenByIndex(lastTokenIndex);
+
+        SetTokenByIndex(index, lastToken);
+        SetIndexByToken(lastToken, index);
+
+        ClearTokenByIndex(lastTokenIndex);
+        ClearIndexByToken(tokenId);
+
+        LogTransfer(tokenOwner, Address.Zero, tokenId);
+    }
+
+    public string GetTokenURI(ulong tokenId)
+    {
+        return BaseTokenURI + tokenId;
+    }
+    public void EnsureAddressIsNotEmpty(Address address)
+    {
+        Assert(address != Address.Zero, "The address can not be zero.");
     }
 }
