@@ -230,7 +230,6 @@ public class NonFungibleToken : SmartContract
         this.Symbol = symbol;
         this.Owner = Message.Sender;
         this.TokenURIFormat = tokenURIFormat;
-        this.NextTokenId = 1;
     }
 
     public ulong TokenByIndex(ulong index)
@@ -581,34 +580,21 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="address">The address that will own the minted NFT</param>
-    /// <param name="amount">Number of tokens will be created</param>
-    public void MintAll(Address address, ulong amount)
+    public void Mint(Address address)
     {
         EnsureOwnerOnly();
         EnsureAddressIsNotEmpty(address);
-        Assert(amount > 0, "the amount should be higher than zero");
 
         var index = TotalSupply;
-        var lastIndex = checked(index + amount);
-        var tokenId = NextTokenId;
+        var tokenId = ++NextTokenId;
 
-        while (index < lastIndex)
-        {
-            AddNFToken(address, tokenId);
-            SetTokenByIndex(index, tokenId);
-            SetIndexByToken(tokenId, index);
+        AddNFToken(address, tokenId);
+        SetTokenByIndex(index, tokenId);
+        SetIndexByToken(tokenId, index);
 
-            LogTransfer(Address.Zero, address, tokenId);
+        LogTransfer(Address.Zero, address, tokenId);
 
-            checked
-            {
-                index++;
-                tokenId++;
-            }
-        }
-
-        TotalSupply = checked(TotalSupply + amount);
-        NextTokenId = tokenId;
+        TotalSupply = checked(TotalSupply + 1);
     }
 
     public void Burn(ulong tokenId)

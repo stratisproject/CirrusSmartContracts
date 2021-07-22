@@ -1298,7 +1298,7 @@ public class NonFungibleTokenTests
 
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(userAddress);
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.MintAll(userAddress, 1));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, 1));
     }
 
     [Fact]
@@ -1308,7 +1308,7 @@ public class NonFungibleTokenTests
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.MintAll(Address.Zero, 1));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, 1));
     }
 
     [Fact]
@@ -1318,7 +1318,7 @@ public class NonFungibleTokenTests
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.MintAll(ownerAddress, 0));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(ownerAddress, 0));
     }
 
     [Fact]
@@ -1330,7 +1330,7 @@ public class NonFungibleTokenTests
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        nonFungibleToken.MintAll(targetAddress, 1);
+        nonFungibleToken.Mint(targetAddress, 1);
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"OwnerToNFTokenCount:{targetAddress}"));
@@ -1355,7 +1355,7 @@ public class NonFungibleTokenTests
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        nonFungibleToken.MintAll(targetAddress, 2);
+        nonFungibleToken.Mint(targetAddress, 2);
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(2ul, this.state.GetUInt64($"OwnerToNFTokenCount:{targetAddress}"));
