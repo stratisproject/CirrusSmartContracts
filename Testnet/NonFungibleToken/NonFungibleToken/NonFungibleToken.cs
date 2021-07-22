@@ -165,6 +165,12 @@ public class NonFungibleToken : SmartContract
         set => State.SetString(nameof(TokenURIFormat), value);
     }
 
+    private bool OwnerOnlyMinting
+    {
+        get => State.GetBool(nameof(OwnerOnlyMinting));
+        set => State.SetBool(nameof(OwnerOnlyMinting), value);
+    }
+
     /// <summary>
     /// The next token id which is going to be minted
     /// </summary>
@@ -189,7 +195,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenURIFormat">Format takes tokenId as parameter.
     /// Example: https://example.com/token/{0}/metadata or https://example.com/token/{0}
     /// </param>
-    public NonFungibleToken(ISmartContractState state, string name, string symbol, string tokenURIFormat) : base(state)
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, string tokenURIFormat, bool ownerOnlyMinting) : base(state)
     {
         // todo: discuss callback handling and supported interface numbering with community.
         this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
@@ -202,6 +208,7 @@ public class NonFungibleToken : SmartContract
         this.Symbol = symbol;
         this.Owner = Message.Sender;
         this.TokenURIFormat = tokenURIFormat;
+        this.OwnerOnlyMinting = ownerOnlyMinting;
     }
 
     /// <summary>
@@ -521,7 +528,11 @@ public class NonFungibleToken : SmartContract
     /// <param name="address">The address that will own the minted NFT</param>
     public void Mint(Address address)
     {
-        EnsureOwnerOnly();
+        if (OwnerOnlyMinting)
+        {
+            EnsureOwnerOnly();
+        }
+
         EnsureAddressIsNotEmpty(address);
 
         var tokenId = checked(++NextTokenId);
@@ -551,7 +562,7 @@ public class NonFungibleToken : SmartContract
     {
         return string.Format(TokenURIFormat, tokenId);
     }
-    public void EnsureAddressIsNotEmpty(Address address)
+    private void EnsureAddressIsNotEmpty(Address address)
     {
         Assert(address != Address.Zero, "The address can not be zero.");
     }

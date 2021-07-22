@@ -15,6 +15,7 @@ public class NonFungibleTokenTests
     private string name;
     private string symbol;
     private string tokenURIFormat;
+    private bool ownerOnlyMinting;
 
     public NonFungibleTokenTests()
     {
@@ -29,6 +30,7 @@ public class NonFungibleTokenTests
         this.name = "Non-Fungible Token";
         this.symbol = "NFT";
         this.tokenURIFormat = "https://example.com/api/tokens/{0}/meta";
+        this.ownerOnlyMinting = true;
     }
 
     [Fact]
@@ -43,10 +45,11 @@ public class NonFungibleTokenTests
         Assert.True(this.state.GetBool("SupportedInterface:2"));
         Assert.False(this.state.GetBool("SupportedInterface:3"));
         Assert.True(this.state.GetBool("SupportedInterface:4"));
-        Assert.True(this.state.GetBool("SupportedInterface:5"));
+        Assert.False(this.state.GetBool("SupportedInterface:5"));
         Assert.Equal(this.name, nonFungibleToken.Name);
         Assert.Equal(this.symbol, nonFungibleToken.Symbol);
         Assert.Equal(owner, nonFungibleToken.Owner);
+        Assert.Equal(this.ownerOnlyMinting ,this.state.GetBool("OwnerOnlyMinting"));
         Assert.Equal(this.tokenURIFormat, this.state.GetString("TokenURIFormat"));
     }
 
@@ -1180,6 +1183,28 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
+    public void Mint_MintingNewToken_By_None_Owner_When_OwnerOnlyMintingFalse_Success()
+    {
+        this.ownerOnlyMinting = false;
+
+        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
+        
+        var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
+        this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
+
+        var nonFungibleToken = this.CreateNonFungibleToken();
+
+        this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(targetAddress);
+        nonFungibleToken.Mint(targetAddress);
+
+        Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
+        Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
+        Assert.Equal(1ul, this.state.GetUInt64("NextTokenId"));
+        Assert.Equal(1ul, this.state.GetUInt64("TotalSupply"));
+
+        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
+    }
+    [Fact]
     public void Mint_MintingNewToken_Success()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
@@ -1243,6 +1268,6 @@ public class NonFungibleTokenTests
 
     private NonFungibleToken CreateNonFungibleToken()
     {
-        return new NonFungibleToken(this.smartContractStateMock.Object, this.name, this.symbol, this.tokenURIFormat);
+        return new NonFungibleToken(this.smartContractStateMock.Object, this.name, this.symbol, this.tokenURIFormat, this.ownerOnlyMinting);
     }
 }
