@@ -196,7 +196,7 @@ public class NonFungibleToken : SmartContract
         this.SetSupportedInterfaces((uint)0x00000002, true); // (ERC721) - INonFungibleToken,
         this.SetSupportedInterfaces((uint)0x00000003, false); // (ERC721) - INonFungibleTokenReceiver
         this.SetSupportedInterfaces((uint)0x00000004, true); // (ERC721) - INonFungibleTokenMetadata
-        this.SetSupportedInterfaces((uint)0x00000005, true); // (ERC721) - IERC721Enumerable
+        this.SetSupportedInterfaces((uint)0x00000005, false); // (ERC721) - IERC721Enumerable
 
         this.Name = name;
         this.Symbol = symbol;
