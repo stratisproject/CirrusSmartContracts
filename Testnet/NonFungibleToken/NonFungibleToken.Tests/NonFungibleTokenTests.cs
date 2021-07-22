@@ -14,6 +14,7 @@ public class NonFungibleTokenTests
     private Address contractAddress;
     private string name;
     private string symbol;
+    private string tokenURIFormat;
 
     public NonFungibleTokenTests()
     {
@@ -27,6 +28,7 @@ public class NonFungibleTokenTests
         this.contractAddress = "0x0000000000000000000000000000000000000001".HexToAddress();
         this.name = "Non-Fungible Token";
         this.symbol = "NFT";
+        this.tokenURIFormat = "https://example.com/api/tokens/{0}/meta";
     }
 
     [Fact]
@@ -45,7 +47,7 @@ public class NonFungibleTokenTests
         Assert.Equal(this.name, nonFungibleToken.Name);
         Assert.Equal(this.symbol, nonFungibleToken.Symbol);
         Assert.Equal(owner, nonFungibleToken.Owner);
-        Assert.Equal(1ul, this.state.GetUInt64("NextTokenId"));
+        Assert.Equal(this.tokenURIFormat, this.state.GetString("TokenURIFormat"));
     }
 
     [Fact]
@@ -1288,7 +1290,7 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
-    public void MintAll_CalledByNonOwner_ThrowsException()
+    public void Mint_CalledByNonOwner_ThrowsException()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
         var userAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
@@ -1298,31 +1300,21 @@ public class NonFungibleTokenTests
 
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(userAddress);
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, 1));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress));
     }
 
     [Fact]
-    public void MintAll_ToAdressZero_ThrowsException()
+    public void Mint_ToAdressZero_ThrowsException()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, 1));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero));
     }
 
     [Fact]
-    public void MintAll_AmountIsZero_ThrowsException()
-    {
-        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
-        this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
-        var nonFungibleToken = this.CreateNonFungibleToken();
-
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(ownerAddress, 0));
-    }
-
-    [Fact]
-    public void MintAll_MintingNewToken_Success()
+    public void Mint_MintingNewToken_Success()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
         var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
@@ -1330,7 +1322,7 @@ public class NonFungibleTokenTests
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        nonFungibleToken.Mint(targetAddress, 1);
+        nonFungibleToken.Mint(targetAddress);
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"OwnerToNFTokenCount:{targetAddress}"));
@@ -1340,44 +1332,10 @@ public class NonFungibleTokenTests
         Assert.True(this.state.ContainsKey($"IndexOfOwnerByToken:{targetAddress}:1"));
         Assert.Equal(0ul, this.state.GetUInt64($"IndexOfOwnerByToken:{targetAddress}:1"));
         Assert.Equal(1ul, this.state.GetUInt64("TokenByIndex:0"));
-        Assert.Equal(2ul, this.state.GetUInt64("NextTokenId"));
+        Assert.Equal(1ul, this.state.GetUInt64("NextTokenId"));
         Assert.Equal(1ul, this.state.GetUInt64("TotalSupply"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
-    }
-
-    [Fact]
-    public void MintAll_MintingAtLeast2NewToken_Success()
-    {
-        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
-        var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
-        this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
-
-        var nonFungibleToken = this.CreateNonFungibleToken();
-
-        nonFungibleToken.Mint(targetAddress, 2);
-
-        Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
-        Assert.Equal(2ul, this.state.GetUInt64($"OwnerToNFTokenCount:{targetAddress}"));
-        Assert.True(this.state.ContainsKey("IndexByToken:1"));
-        Assert.Equal(0ul, this.state.GetUInt64("IndexByToken:1"));
-        Assert.Equal(1ul, this.state.GetUInt64($"TokenOfOwnerByIndex:{targetAddress}:0"));
-        Assert.True(this.state.ContainsKey($"IndexOfOwnerByToken:{targetAddress}:1"));
-        Assert.Equal(0ul, this.state.GetUInt64($"IndexOfOwnerByToken:{targetAddress}:1"));
-        Assert.Equal(1ul, this.state.GetUInt64("TokenByIndex:0"));
-        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }), Times.Once);
-
-        Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:2"));
-        Assert.True(this.state.ContainsKey("IndexByToken:2"));
-        Assert.Equal(1ul, this.state.GetUInt64("IndexByToken:2"));
-        Assert.Equal(2ul, this.state.GetUInt64($"TokenOfOwnerByIndex:{targetAddress}:1"));
-        Assert.True(this.state.ContainsKey($"IndexOfOwnerByToken:{targetAddress}:2"));
-        Assert.Equal(1ul, this.state.GetUInt64($"IndexOfOwnerByToken:{targetAddress}:2"));
-        Assert.Equal(2ul, this.state.GetUInt64("TokenByIndex:1"));
-
-        Assert.Equal(3ul, this.state.GetUInt64("NextTokenId"));
-        Assert.Equal(2ul, this.state.GetUInt64("TotalSupply"));
-        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 2 }), Times.Once);
     }
 
     [Fact]
@@ -1475,6 +1433,6 @@ public class NonFungibleTokenTests
 
     private NonFungibleToken CreateNonFungibleToken()
     {
-        return new NonFungibleToken(this.smartContractStateMock.Object, this.name, this.symbol);
+        return new NonFungibleToken(this.smartContractStateMock.Object, this.name, this.symbol, this.tokenURIFormat);
     }
 }

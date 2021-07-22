@@ -159,14 +159,14 @@ public class NonFungibleToken : SmartContract
         private set => State.SetString(nameof(Symbol), value);
     }
 
-    public string TokenURIFormat
+    private string TokenURIFormat
     {
         get => State.GetString(nameof(TokenURIFormat));
-        private set => State.SetString(nameof(TokenURIFormat), value);
+        set => State.SetString(nameof(TokenURIFormat), value);
     }
 
     /// <summary>
-    /// The next token index which is going to be minted
+    /// The next token id which is going to be minted
     /// </summary>
     private ulong NextTokenId
     {
