@@ -174,34 +174,6 @@ public class NonFungibleToken : SmartContract
         set => State.SetUInt64(nameof(NextTokenId), value);
     }
 
-    private string GetTokenByIndexKey(ulong index) => $"TokenByIndex:{index}";
-
-    private ulong GetTokenByIndex(ulong index) => State.GetUInt64(GetTokenByIndexKey(index));
-
-    private void SetTokenByIndex(ulong index, ulong token) => State.SetUInt64(GetTokenByIndexKey(index), token);
-
-    private void ClearTokenByIndex(ulong index) => State.Clear(GetTokenByIndexKey(index));
-
-    private string GetIndexByTokenKey(ulong token) => $"IndexByToken:{token}";
-
-    private ulong GetIndexByToken(ulong token) => State.GetUInt64(GetIndexByTokenKey(token));
-
-    private void SetIndexByToken(ulong token, ulong index) => State.SetUInt64(GetIndexByTokenKey(token), index);
-
-    private void ClearIndexByToken(ulong token) => State.Clear(GetIndexByTokenKey(token));
-
-    private string GetTokenOfOwnerByIndexKey(Address address, ulong index) => $"TokenOfOwnerByIndex:{address}:{index}";
-
-    private ulong GetTokenOfOwnerByIndex(Address address, ulong index) => State.GetUInt64(GetTokenOfOwnerByIndexKey(address, index));
-
-    private void SetTokenOfOwnerByIndex(Address owner, ulong index, ulong tokenId) => State.SetUInt64(GetTokenOfOwnerByIndexKey(owner, index), tokenId);
-
-    private void ClearTokenOfOwnerByIndex(Address owner, ulong index) => State.Clear(GetTokenOfOwnerByIndexKey(owner, index));
-
-    private string IndexOfOwnerByTokenKey(Address owner, ulong tokenId) => $"IndexOfOwnerByToken:{owner}:{tokenId}";
-    private ulong GetIndexOfOwnerByToken(Address owner, ulong tokenId) => State.GetUInt64(IndexOfOwnerByTokenKey(owner, tokenId));
-    private void SetIndexOfOwnerByToken(Address owner, ulong tokenId, ulong index) => State.SetUInt64(IndexOfOwnerByTokenKey(owner, tokenId), index);
-    private void ClearIndexOfOwnerByToken(Address owner, ulong tokenId) => State.Clear(IndexOfOwnerByTokenKey(owner, tokenId));
     public ulong TotalSupply
     {
         get => State.GetUInt64(nameof(TotalSupply));
@@ -231,22 +203,6 @@ public class NonFungibleToken : SmartContract
         this.Owner = Message.Sender;
         this.TokenURIFormat = tokenURIFormat;
     }
-
-    public ulong TokenByIndex(ulong index)
-    {
-        Assert(index < TotalSupply, "The index is invalid.");
-
-        return GetTokenByIndex(index);
-    }
-
-    public ulong TokenOfOwnerByIndex(Address owner, ulong index)
-    {
-        Assert(index < GetOwnerToNFTokenCount(owner), "The index is invalid.");
-
-        return GetTokenOfOwnerByIndex(owner, index);
-    }
-
-
 
     /// <summary>
     /// Transfers the ownership of an NFT from one address to another address. This function can
@@ -413,19 +369,6 @@ public class NonFungibleToken : SmartContract
         var tokenCount = GetOwnerToNFTokenCount(from);
         SetOwnerToNFTokenCount(from, checked(tokenCount - 1));
         State.Clear(GetIdToOwnerKey(tokenId));
-
-        ulong index = GetIndexOfOwnerByToken(from, tokenId);
-        ulong lastIndex = tokenCount - 1;
-
-        if (index != lastIndex)
-        {
-            ulong lastToken = GetTokenOfOwnerByIndex(from, lastIndex);
-            SetIndexOfOwnerByToken(from, lastToken, index);
-            SetTokenOfOwnerByIndex(from, index, lastToken);
-        }
-
-        ClearTokenOfOwnerByIndex(from, lastIndex);
-        ClearIndexOfOwnerByToken(from, tokenId);
     }
 
     /// <summary>
@@ -441,10 +384,6 @@ public class NonFungibleToken : SmartContract
         SetIdToOwner(tokenId, to);
         ulong currentTokenAmount = GetOwnerToNFTokenCount(to);
         SetOwnerToNFTokenCount(to, checked(currentTokenAmount + 1));
-
-        var index = currentTokenAmount;
-        SetIndexOfOwnerByToken(to, tokenId, index);
-        SetTokenOfOwnerByIndex(to, index, tokenId);
     }
 
     /// <summary>
@@ -585,12 +524,9 @@ public class NonFungibleToken : SmartContract
         EnsureOwnerOnly();
         EnsureAddressIsNotEmpty(address);
 
-        var index = TotalSupply;
-        var tokenId = ++NextTokenId;
+        var tokenId = checked(++NextTokenId);
 
         AddNFToken(address, tokenId);
-        SetTokenByIndex(index, tokenId);
-        SetIndexByToken(tokenId, index);
 
         LogTransfer(Address.Zero, address, tokenId);
 
@@ -606,18 +542,9 @@ public class NonFungibleToken : SmartContract
         ClearApproval(tokenId);
         RemoveNFToken(tokenOwner, tokenId);
 
-        //move last token to removed token and delete last token info
-        var index = GetIndexByToken(tokenId);
-        var lastTokenIndex = checked(--TotalSupply);
-        var lastToken = GetTokenByIndex(lastTokenIndex);
-
-        SetTokenByIndex(index, lastToken);
-        SetIndexByToken(lastToken, index);
-
-        ClearTokenByIndex(lastTokenIndex);
-        ClearIndexByToken(tokenId);
-
         LogTransfer(tokenOwner, Address.Zero, tokenId);
+
+        TotalSupply = checked(TotalSupply - 1);
     }
 
     public string TokenURI(ulong tokenId)
