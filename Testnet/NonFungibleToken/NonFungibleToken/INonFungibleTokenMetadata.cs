@@ -8,5 +8,7 @@ namespace NonFungibleTokenContract
     {
         string Name { get; }
         string Symbol { get; }
+
+        string TokenURI(ulong tokenId);
     }
 }

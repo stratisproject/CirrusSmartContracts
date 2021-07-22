@@ -159,10 +159,10 @@ public class NonFungibleToken : SmartContract
         private set => State.SetString(nameof(Symbol), value);
     }
 
-    public string BaseTokenURI
+    public string TokenURIFormat
     {
-        get => State.GetString(nameof(BaseTokenURI));
-        private set => State.SetString(nameof(BaseTokenURI), value);
+        get => State.GetString(nameof(TokenURIFormat));
+        private set => State.SetString(nameof(TokenURIFormat), value);
     }
 
     /// <summary>
@@ -208,7 +208,16 @@ public class NonFungibleToken : SmartContract
         private set => State.SetUInt64(nameof(TotalSupply), value);
     }
 
-    public NonFungibleToken(ISmartContractState state, string name, string symbol, string baseTokenURI) : base(state)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="state"></param>
+    /// <param name="name"></param>
+    /// <param name="symbol"></param>
+    /// <param name="tokenURIFormat">Format takes tokenId as parameter.
+    /// Example: https://example.com/token/{0}/metadata or https://example.com/token/{0}
+    /// </param>
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, string tokenURIFormat) : base(state)
     {
         // todo: discuss callback handling and supported interface numbering with community.
         this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
@@ -220,7 +229,7 @@ public class NonFungibleToken : SmartContract
         this.Name = name;
         this.Symbol = symbol;
         this.Owner = Message.Sender;
-        this.BaseTokenURI = baseTokenURI;
+        this.TokenURIFormat = tokenURIFormat;
         this.NextTokenId = 1;
     }
 
@@ -625,9 +634,9 @@ public class NonFungibleToken : SmartContract
         LogTransfer(tokenOwner, Address.Zero, tokenId);
     }
 
-    public string GetTokenURI(ulong tokenId)
+    public string TokenURI(ulong tokenId)
     {
-        return BaseTokenURI + tokenId;
+        return string.Format(TokenURIFormat, tokenId);
     }
     public void EnsureAddressIsNotEmpty(Address address)
     {
