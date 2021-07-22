@@ -107,14 +107,14 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="address">The address of the owner.</param>
     /// <returns>The amount of non fungible tokens.</returns>
-    private ulong GetOwnerToNFTokenCount(Address address) => State.GetUInt64($"OwnerToNFTokenCount:{address}");
+    private ulong GetBalance(Address address) => State.GetUInt64($"Balance:{address}");
 
     /// <summary>
     /// Sets the owner count of this non fungible tokens.
     /// </summary>
     /// <param name="address">The address of the owner.</param>
     /// <param name="value">The amount of tokens.</param>
-    private void SetOwnerToNFTokenCount(Address address, ulong value) => State.SetUInt64($"OwnerToNFTokenCount:{address}", value);
+    private void SetBalance(Address address, ulong value) => State.SetUInt64($"Balance:{address}", value);
 
     /// <summary>
     /// Gets the permission value of the operator authorization to perform actions on behalf of the owner.
@@ -301,7 +301,7 @@ public class NonFungibleToken : SmartContract
     public ulong BalanceOf(Address owner)
     {
         EnsureAddressIsNotEmpty(owner);
-        return GetOwnerToNFTokenCount(owner);
+        return GetBalance(owner);
     }
 
     /// <summary>
@@ -366,8 +366,8 @@ public class NonFungibleToken : SmartContract
     private void RemoveNFToken(Address from, ulong tokenId)
     {
         Assert(GetIdToOwner(tokenId) == from);
-        var tokenCount = GetOwnerToNFTokenCount(from);
-        SetOwnerToNFTokenCount(from, checked(tokenCount - 1));
+        var tokenCount = GetBalance(from);
+        SetBalance(from, checked(tokenCount - 1));
         State.Clear(GetIdToOwnerKey(tokenId));
     }
 
@@ -382,8 +382,8 @@ public class NonFungibleToken : SmartContract
         Assert(GetIdToOwner(tokenId) == Address.Zero);
 
         SetIdToOwner(tokenId, to);
-        ulong currentTokenAmount = GetOwnerToNFTokenCount(to);
-        SetOwnerToNFTokenCount(to, checked(currentTokenAmount + 1));
+        ulong currentTokenAmount = GetBalance(to);
+        SetBalance(to, checked(currentTokenAmount + 1));
     }
 
     /// <summary>
