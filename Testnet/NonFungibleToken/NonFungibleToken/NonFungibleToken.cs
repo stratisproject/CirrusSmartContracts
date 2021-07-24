@@ -180,12 +180,6 @@ public class NonFungibleToken : SmartContract
         set => State.SetUInt64(nameof(TokenIdCounter), value);
     }
 
-    public ulong TotalSupply
-    {
-        get => State.GetUInt64(nameof(TotalSupply));
-        private set => State.SetUInt64(nameof(TotalSupply), value);
-    }
-
     /// <summary>
     /// 
     /// </summary>
@@ -555,8 +549,6 @@ public class NonFungibleToken : SmartContract
         AddNFToken(to, tokenId);
 
         LogTransfer(Address.Zero, to, tokenId);
-
-        TotalSupply = checked(TotalSupply + 1);
     }
 
     /// <summary>
@@ -586,8 +578,6 @@ public class NonFungibleToken : SmartContract
         RemoveNFToken(tokenOwner, tokenId);
 
         LogTransfer(tokenOwner, Address.Zero, tokenId);
-
-        TotalSupply = checked(TotalSupply - 1);
     }
 
     public string TokenURI(ulong tokenId)

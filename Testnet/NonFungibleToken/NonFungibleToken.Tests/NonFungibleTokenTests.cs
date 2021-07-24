@@ -1060,7 +1060,6 @@ public class NonFungibleTokenTests
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
-        Assert.Equal(1ul, this.state.GetUInt64("TotalSupply"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
     }
@@ -1079,7 +1078,6 @@ public class NonFungibleTokenTests
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
-        Assert.Equal(1ul, this.state.GetUInt64("TotalSupply"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
     }
@@ -1104,7 +1102,6 @@ public class NonFungibleTokenTests
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
-        Assert.Equal(1ul, nonFungibleToken.TotalSupply);
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
     }
@@ -1139,7 +1136,6 @@ public class NonFungibleTokenTests
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         this.state.SetAddress("IdToOwner:1", ownerAddress);
         this.state.SetUInt64($"Balance:{ownerAddress}", 1);
-        this.state.SetUInt64("TotalSupply", 1);
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
@@ -1147,7 +1143,6 @@ public class NonFungibleTokenTests
 
         Assert.False(this.state.ContainsKey("IdToOwner:1"));
         Assert.Equal(0ul, this.state.GetUInt64($"Balance:{ownerAddress}"));
-        Assert.Equal(0ul, this.state.GetUInt64("TotalSupply"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = Address.Zero, TokenId = 1 }));
     }
