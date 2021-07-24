@@ -174,10 +174,10 @@ public class NonFungibleToken : SmartContract
     /// <summary>
     /// The next token id which is going to be minted
     /// </summary>
-    private ulong NextTokenId
+    private ulong TokenIdCounter
     {
-        get => State.GetUInt64(nameof(NextTokenId));
-        set => State.SetUInt64(nameof(NextTokenId), value);
+        get => State.GetUInt64(nameof(TokenIdCounter));
+        set => State.SetUInt64(nameof(TokenIdCounter), value);
     }
 
     public ulong TotalSupply
@@ -411,11 +411,7 @@ public class NonFungibleToken : SmartContract
 
         TransferInternal(to, tokenId);
 
-        if (State.IsContract(to))
-        {
-            ITransferResult result = Call(to, 0, "OnNonFungibleTokenReceived", new object[] { Message.Sender, from, tokenId, data }, 0);
-            Assert((bool)result.ReturnValue);
-        }
+        EnsureContractReceivedToken(from, to, tokenId, data);
     }
 
     /// <summary>
@@ -525,23 +521,59 @@ public class NonFungibleToken : SmartContract
     /// <summary>
     /// Mints new tokens
     /// </summary>
-    /// <param name="address">The address that will own the minted NFT</param>
-    public void Mint(Address address)
+    /// <param name="to">The address that will own the minted NFT</param>
+    public void Mint(Address to)
+    {
+        var tokenId = checked(++TokenIdCounter);
+
+        Mint(to, tokenId);
+    }
+
+    /// <summary>
+    /// Mints new tokens
+    /// </summary>
+    /// <param name="to">The address that will own the minted NFT</param>
+    /// <param name="data">the data param will passed destination contract</param>
+    public void SafeMint(Address to, byte[] data)
+    {
+        var tokenId = checked(++TokenIdCounter);
+
+        Mint(to, tokenId);
+
+        EnsureContractReceivedToken(Address.Zero, to, tokenId, data);
+    }
+
+    private void Mint(Address to, ulong tokenId)
     {
         if (OwnerOnlyMinting)
         {
             EnsureOwnerOnly();
         }
 
-        EnsureAddressIsNotEmpty(address);
+        EnsureAddressIsNotEmpty(to);
 
-        var tokenId = checked(++NextTokenId);
+        AddNFToken(to, tokenId);
 
-        AddNFToken(address, tokenId);
-
-        LogTransfer(Address.Zero, address, tokenId);
+        LogTransfer(Address.Zero, to, tokenId);
 
         TotalSupply = checked(TotalSupply + 1);
+    }
+
+    /// <summary>
+    /// Notify contract for received token if destination(to) address is a contract.
+    /// Raise exception if notification fails. 
+    /// </summary>
+    /// <param name="from">The address which previously owned the token.</param>
+    /// <param name="to">Destination address that will receive the token</param>
+    /// <param name="tokenId">The token identifier which is being transferred.</param>
+    /// <param name="data">Additional data with no specified format.</param>
+    private void EnsureContractReceivedToken(Address from, Address to, ulong tokenId, byte[] data)
+    {
+        if (State.IsContract(to))
+        {
+            var result = Call(to, 0, "OnNonFungibleTokenReceived", new object[] { Message.Sender, from, tokenId, data }, 0);
+            Assert((bool)result.ReturnValue);
+        }
     }
 
     public void Burn(ulong tokenId)
