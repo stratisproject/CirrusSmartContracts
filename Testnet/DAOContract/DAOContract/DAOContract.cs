@@ -69,8 +69,6 @@ public class DAOContract : SmartContract
 
     public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
-        EnsureNotPayable();
-
         Assert(votingDuration > MinVotingDuration && votingDuration < MaxVotingDuration, $"Voting duration should be between {MinVotingDuration} and {MaxVotingDuration}.");
 
         var length = description?.Length ?? 0;
@@ -102,7 +100,6 @@ public class DAOContract : SmartContract
 
     public void Vote(uint proposalId, bool vote)
     {
-        EnsureNotPayable();
         Assert(IsWhitelisted(Message.Sender), "The caller is not whitelisted.");
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
@@ -148,8 +145,6 @@ public class DAOContract : SmartContract
 
     public void ExecuteProposal(uint proposalId)
     {
-        EnsureNotPayable();
-
         var proposal = GetProposal(proposalId);
 
         var yesVotes = GetYesVotes(proposalId);
@@ -183,7 +178,6 @@ public class DAOContract : SmartContract
         SetIsWhitelisted(address, false);
         WhitelistedCount--;
     }
-
     public void BlacklistAddresses(byte[] addresses)
     {
         EnsureOwnerOnly();
@@ -222,6 +216,8 @@ public class DAOContract : SmartContract
         }
     }
 
+    private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
+
     public void Deposit()
     {
         EnsureOwnerOnly();
@@ -252,9 +248,6 @@ public class DAOContract : SmartContract
 
         MaxVotingDuration = maxVotingDuration;
     }
-
-    private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
-    private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
 
     public enum Votes : uint
     {
