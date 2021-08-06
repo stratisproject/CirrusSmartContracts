@@ -224,7 +224,6 @@ public class DAOContract : SmartContract
 
     public void Deposit()
     {
-        EnsureOwnerOnly();
         Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
     }
 

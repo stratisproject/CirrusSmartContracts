@@ -346,7 +346,7 @@ namespace DAOContractTests
             SetupMessage(voter);
             contract.Vote(proposalId, true);
 
-            VerifyLog(new ProposalVotedLog { ProposalId = proposalId, Vote = true });
+            VerifyLog(new ProposalVotedLog { ProposalId = proposalId, Voter = voter, Vote = true });
 
             contract.GetNoVotes(proposalId)
                     .Should()
@@ -604,19 +604,6 @@ namespace DAOContractTests
                     .BeTrue();
 
             VerifyLog(new ProposalExecutedLog { ProposalId = proposalId, Recipent = recipent, Amount = 100 });
-        }
-
-        [Fact]
-        public void Deposit_Called_By_None_Owner_Fails()
-        {
-            var amount = 1200000ul;
-            var contract = CreateContract();
-
-            SetupMessage(voter, amount);
-            contract.Invoking(c=>c.Deposit())
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("The method is owner only.");
         }
 
         [Fact]
