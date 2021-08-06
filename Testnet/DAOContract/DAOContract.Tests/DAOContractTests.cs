@@ -210,6 +210,18 @@ namespace DAOContractTests
         }
 
         [Fact]
+        public void CreateProposal_Caller_Send_Funds_Failss()
+        {
+            var contract = CreateContract();
+            SetupMessage(proposalOwner,20);
+
+            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, Description))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage($"The method is not payable.");
+        }
+
+        [Fact]
         public void CreateProposal_VotingDuration_Lower_Than_MinVotingDuration_Fails()
         {
             minVotingDuration = 100;
@@ -267,6 +279,19 @@ namespace DAOContractTests
             };
 
             VerifyLog(log);
+        }
+
+        [Fact]
+        public void Vote_Caller_Send_Funds_Fails()
+        {
+            var contract = CreateContract();
+
+            SetupMessage(voter, 20);
+            contract.Invoking(c => c.Vote(1, true))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("The method is not payable.");
+
         }
 
         [Fact]
@@ -384,6 +409,18 @@ namespace DAOContractTests
                     .Should()
                     .Be(0);
 
+        }
+
+        [Fact]
+        public void ExecuteProposal_Caller_Send_Funds_Fails()
+        {
+            var contract = CreateContract();
+
+            SetupMessage(proposalOwner,20);
+            contract.Invoking(m => m.ExecuteProposal(1))
+                    .Should()
+                    .Throw<SmartContractAssertException>()
+                    .WithMessage("The method is not payable.");
         }
 
         [Fact]
