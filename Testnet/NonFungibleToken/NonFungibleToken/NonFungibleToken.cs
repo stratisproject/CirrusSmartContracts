@@ -186,8 +186,12 @@ public class NonFungibleToken : SmartContract
     /// <param name="state"></param>
     /// <param name="name"></param>
     /// <param name="symbol"></param>
-    /// <param name="tokenURIFormat">Format takes tokenId as parameter.
-    /// Example: https://example.com/token/{0}/metadata or https://example.com/token/{0}
+    /// <param name="tokenURIFormat">Format takes tokenId and contractAddress as parameter.
+    /// <para>string.Format(tokenUriFormat,tokenId,contractAddress)</para>
+    /// <para>{0} for tokenId and {1} is for contract address in hex format</para>
+    /// <para>Examples</para>
+    /// <para>https://example.com/tokens/{0} => https://example.com/tokens/20 </para>
+    /// <para>https://example.com/contracts/{1}/tokens/{0}/metadata => https://example.com/contracts/0x0000000000000000000000000000000000000002/token/125/metadata </para>
     /// </param>
     public NonFungibleToken(ISmartContractState state, string name, string symbol, string tokenURIFormat, bool ownerOnlyMinting) : base(state)
     {
@@ -582,7 +586,7 @@ public class NonFungibleToken : SmartContract
 
     public string TokenURI(ulong tokenId)
     {
-        return string.Format(TokenURIFormat, tokenId);
+        return string.Format(TokenURIFormat, tokenId, Address);
     }
     private void EnsureAddressIsNotEmpty(Address address)
     {
