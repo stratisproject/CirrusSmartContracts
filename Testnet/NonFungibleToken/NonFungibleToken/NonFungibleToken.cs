@@ -271,7 +271,7 @@ public class NonFungibleToken : SmartContract
     public void Approve(Address approved, ulong tokenId)
     {
         CanOperate(tokenId);
-        ValidNFToken(tokenId);
+        ValidateToken(tokenId);
 
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(approved != tokenOwner);
@@ -325,7 +325,7 @@ public class NonFungibleToken : SmartContract
     /// <returns>Address that tokenId is approved for. </returns>
     public Address GetApproved(ulong tokenId)
     {
-        ValidNFToken(tokenId);
+        ValidateToken(tokenId);
 
         return GetIdToApproval(tokenId);
     }
@@ -352,8 +352,8 @@ public class NonFungibleToken : SmartContract
         Address from = GetIdToOwner(tokenId);
         ClearApproval(tokenId);
 
-        RemoveNFToken(from, tokenId);
-        AddNFToken(to, tokenId);
+        RemoveToken(from, tokenId);
+        AddToken(to, tokenId);
 
         LogTransfer(from, to, tokenId);
     }
@@ -364,7 +364,7 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Use and override this function with caution. Wrong usage can have serious consequences.</remarks>
     /// <param name="from">Address from wich we want to remove the NFT.</param>
     /// <param name="tokenId">Which NFT we want to remove.</param>
-    private void RemoveNFToken(Address from, ulong tokenId)
+    private void RemoveToken(Address from, ulong tokenId)
     {
         Assert(GetIdToOwner(tokenId) == from);
         var tokenCount = GetBalance(from);
@@ -378,7 +378,7 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Use and override this function with caution. Wrong usage can have serious consequences.</remarks>
     /// <param name="to">Address to which we want to add the NFT.</param>
     /// <param name="tokenId">Which NFT we want to add.</param>
-    private void AddNFToken(Address to, ulong tokenId)
+    private void AddToken(Address to, ulong tokenId)
     {
         Assert(GetIdToOwner(tokenId) == Address.Zero);
 
@@ -397,7 +397,7 @@ public class NonFungibleToken : SmartContract
     private void SafeTransferFromInternal(Address from, Address to, ulong tokenId, byte[] data)
     {
         CanTransfer(tokenId);
-        ValidNFToken(tokenId);
+        ValidateToken(tokenId);
 
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(tokenOwner == from);
@@ -487,7 +487,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that tokenId is a valid Token.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void ValidNFToken(ulong tokenId)
+    private void ValidateToken(ulong tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         EnsureAddressIsNotEmpty(tokenOwner);
@@ -546,7 +546,7 @@ public class NonFungibleToken : SmartContract
 
         EnsureAddressIsNotEmpty(to);
 
-        AddNFToken(to, tokenId);
+        AddToken(to, tokenId);
 
         LogTransfer(Address.Zero, to, tokenId);
     }
@@ -575,7 +575,7 @@ public class NonFungibleToken : SmartContract
         Assert(tokenOwner == Message.Sender, "Only token owner can burn the token.");
 
         ClearApproval(tokenId);
-        RemoveNFToken(tokenOwner, tokenId);
+        RemoveToken(tokenOwner, tokenId);
 
         LogTransfer(tokenOwner, Address.Zero, tokenId);
     }

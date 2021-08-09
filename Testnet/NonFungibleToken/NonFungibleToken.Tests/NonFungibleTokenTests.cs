@@ -1141,7 +1141,7 @@ public class NonFungibleTokenTests
 
         nonFungibleToken.Burn(1);
 
-        Assert.False(this.state.ContainsKey("IdToOwner:1"));
+        Assert.Equal(Address.Zero, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(0ul, this.state.GetUInt64($"Balance:{ownerAddress}"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = Address.Zero, TokenId = 1 }));
