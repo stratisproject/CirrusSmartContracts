@@ -10,6 +10,12 @@ public class DAOContract : SmartContract
         private set => State.SetAddress(nameof(Owner), value);
     }
 
+    private Address ClaimedOwner
+    {
+        get => State.GetAddress(nameof(ClaimedOwner));
+        set => State.SetAddress(nameof(ClaimedOwner), value);
+    }
+
     public uint MinQuorum => WhitelistedCount / 2 + 1;
 
     public uint WhitelistedCount
@@ -232,7 +238,20 @@ public class DAOContract : SmartContract
     public void TransferOwnership(Address newOwner)
     {
         EnsureOwnerOnly();
+        ClaimedOwner = newOwner;
+    }
+
+    public void ClaimOwnership()
+    {
+        var newOwner = ClaimedOwner;
+
+        Assert(newOwner == Message.Sender, "Ownership must be claimed by the new owner.");
+
+        var oldOwner = Owner;
         Owner = newOwner;
+        ClaimedOwner = Address.Zero;
+
+        Log(new OwnerTransferredLog { From = oldOwner, To = newOwner });
     }
 
     public void UpdateMinVotingDuration(uint minVotingDuration)
@@ -310,4 +329,10 @@ public class DAOContract : SmartContract
         /// </summary>
         public bool Executed;
     }
+    public struct OwnerTransferredLog
+    {
+        public Address From { get; set; }
+        public Address To { get; set; }
+    }
 }
+

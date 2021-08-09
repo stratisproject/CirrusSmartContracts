@@ -213,7 +213,7 @@ namespace DAOContractTests
         public void CreateProposal_Caller_Send_Funds_Failss()
         {
             var contract = CreateContract();
-            SetupMessage(proposalOwner,20);
+            SetupMessage(proposalOwner, 20);
 
             contract.Invoking(c => c.CreateProposal(recipient, 100, 10, Description))
                     .Should()
@@ -416,7 +416,7 @@ namespace DAOContractTests
         {
             var contract = CreateContract();
 
-            SetupMessage(proposalOwner,20);
+            SetupMessage(proposalOwner, 20);
             contract.Invoking(m => m.ExecuteProposal(1))
                     .Should()
                     .Throw<SmartContractAssertException>()
@@ -616,6 +616,64 @@ namespace DAOContractTests
             contract.Deposit();
 
             VerifyLog(new FundRaisedLog { Sender = owner, Amount = amount });
+        }
+
+
+        [Fact]
+        public void TransferOwnership_Called_By_NonOnwer_Fails()
+        {
+            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
+            var contract = CreateContract();
+
+            SetupMessage(newOwner);
+
+            contract.Invoking(c => c.TransferOwnership(newOwner))
+                    .Should()
+                    .ThrowExactly<SmartContractAssertException>()
+                    .WithMessage("The method is owner only.");
+        }
+
+        [Fact]
+        public void ClaimOwnership_Not_Called_By_NewOwner_Fails()
+        {
+            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
+            var contract = CreateContract();
+
+            SetupMessage(owner);
+
+            contract.TransferOwnership(newOwner);
+
+            SetupMessage(owner);
+
+            contract.Invoking(c => c.ClaimOwnership())
+                    .Should()
+                    .ThrowExactly<SmartContractAssertException>()
+                    .WithMessage("Ownership must be claimed by the new owner.");
+        }
+
+        [Fact]
+        public void ClaimOwnership_Success()
+        {
+            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
+            var contract = CreateContract();
+
+            SetupMessage(owner);
+
+            contract.TransferOwnership(newOwner);
+
+            SetupMessage(newOwner);
+
+            contract.ClaimOwnership();
+
+            contract.Owner
+                    .Should()
+                    .Be(newOwner);
+
+            state.GetAddress("ClaimedOwner")
+                 .Should()
+                 .Be(Address.Zero);
+
+            VerifyLog(new OwnerTransferredLog { From = owner, To = newOwner });
         }
 
         private DAOContract CreateContract()
