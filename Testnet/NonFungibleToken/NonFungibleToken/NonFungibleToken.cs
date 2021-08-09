@@ -494,7 +494,7 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
-    /// Sets the contract owner who can mint/bur
+    /// Sets the contract owner who can mint/burn
     /// </summary>
     /// <param name="owner"></param>
     public void TransferOwnership(Address owner)
