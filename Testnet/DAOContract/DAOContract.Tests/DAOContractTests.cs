@@ -19,7 +19,7 @@ namespace DAOContractTests
 
         private readonly Address owner;
         private readonly Address contract;
-        private readonly Address recipent;
+        private readonly Address recipient;
         private readonly Address proposalOwner;
         private readonly Address voter;
         private uint minVotingDuration;
@@ -34,7 +34,7 @@ namespace DAOContractTests
             mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
             owner = "0x0000000000000000000000000000000000000001".HexToAddress();
             contract = "0x0000000000000000000000000000000000000002".HexToAddress();
-            recipent = "0x0000000000000000000000000000000000000003".HexToAddress();
+            recipient = "0x0000000000000000000000000000000000000003".HexToAddress();
             proposalOwner = "0x0000000000000000000000000000000000000004".HexToAddress();
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
             minVotingDuration = 1;
@@ -215,7 +215,7 @@ namespace DAOContractTests
             var contract = CreateContract();
             SetupMessage(proposalOwner,20);
 
-            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, Description))
+            contract.Invoking(c => c.CreateProposal(recipient, 100, 10, Description))
                     .Should()
                     .Throw<SmartContractAssertException>()
                     .WithMessage($"The method is not payable.");
@@ -228,7 +228,7 @@ namespace DAOContractTests
             var contract = CreateContract();
             SetupMessage(proposalOwner);
 
-            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, Description))
+            contract.Invoking(c => c.CreateProposal(recipient, 100, 10, Description))
                     .Should()
                     .Throw<SmartContractAssertException>()
                     .WithMessage($"Voting duration should be between 100 and {DAOContract.DefaultMaxDuration}.");
@@ -242,7 +242,7 @@ namespace DAOContractTests
 
             var description = new string('a', 201);
 
-            contract.Invoking(c => c.CreateProposal(recipent, 100, 10, description))
+            contract.Invoking(c => c.CreateProposal(recipient, 100, 10, description))
                     .Should()
                     .Throw<SmartContractAssertException>()
                     .WithMessage("The description length can be up to 200 characters.");
@@ -254,7 +254,7 @@ namespace DAOContractTests
             var contract = CreateContract();
             SetupMessage(proposalOwner);
 
-            contract.CreateProposal(recipent, 100, 10, Description)
+            contract.CreateProposal(recipient, 100, 10, Description)
                     .Should()
                     .Be(1);
 
@@ -262,7 +262,7 @@ namespace DAOContractTests
             {
                 RequestedAmount = 100,
                 Owner = proposalOwner,
-                Recipient = recipent,
+                Recipient = recipient,
                 Description = Description,
             };
 
@@ -274,7 +274,7 @@ namespace DAOContractTests
             {
                 ProposalId = 1,
                 Amount = 100,
-                Recipent = recipent,
+                Recipient = recipient,
                 Description = Description
             };
 
@@ -302,7 +302,7 @@ namespace DAOContractTests
 
             SetupMessage(proposalOwner);
 
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             contract.Invoking(c => c.Vote(proposalId, true))
                     .Should()
@@ -319,7 +319,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupBlock(duration + 1);
             SetupMessage(voter);
@@ -341,7 +341,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(10);
 
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -366,7 +366,7 @@ namespace DAOContractTests
 
             SetupBlock(10);
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, false);
@@ -394,7 +394,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(10);
 
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -432,7 +432,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, false);
@@ -440,7 +440,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
 
             contract.Invoking(m => m.ExecuteProposal(proposalId))
                     .Should()
@@ -457,7 +457,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
             contract.WhitelistAddress(owner);
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -465,7 +465,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
 
             contract.Invoking(m => m.ExecuteProposal(proposalId))
                     .Should()
@@ -482,7 +482,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -490,7 +490,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
             var proposal = contract.GetProposal(proposalId);
             proposal.Executed = true;
             state.SetStruct($"Proposals:{proposalId}", proposal);
@@ -510,7 +510,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -518,7 +518,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(10);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
 
             contract.Invoking(m => m.ExecuteProposal(proposalId))
                     .Should()
@@ -535,7 +535,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -543,7 +543,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 99);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
 
             contract.Invoking(m => m.ExecuteProposal(proposalId))
                     .Should()
@@ -560,7 +560,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -568,7 +568,7 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Failed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Failed());
 
             contract.Invoking(m => m.ExecuteProposal(proposalId))
                     .Should()
@@ -585,7 +585,7 @@ namespace DAOContractTests
             contract.WhitelistAddress(voter);
 
             SetupMessage(proposalOwner);
-            var proposalId = contract.CreateProposal(recipent, 100, duration, Description);
+            var proposalId = contract.CreateProposal(recipient, 100, duration, Description);
 
             SetupMessage(voter);
             contract.Vote(proposalId, true);
@@ -593,17 +593,17 @@ namespace DAOContractTests
             SetupMessage(proposalOwner);
             SetupBlock(12);
             mContractState.Setup(m => m.GetBalance).Returns(() => 100);
-            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipent, 100)).Returns(TransferResult.Succeed());
+            mTransactionExecutor.Setup(m => m.Transfer(mContractState.Object, recipient, 100)).Returns(TransferResult.Succeed());
 
             contract.ExecuteProposal(proposalId);
 
-            mTransactionExecutor.Verify(m => m.Transfer(mContractState.Object, recipent, 100), Times.Once());
+            mTransactionExecutor.Verify(m => m.Transfer(mContractState.Object, recipient, 100), Times.Once());
             contract.GetProposal(proposalId)
                     .Executed
                     .Should()
                     .BeTrue();
 
-            VerifyLog(new ProposalExecutedLog { ProposalId = proposalId, Recipent = recipent, Amount = 100 });
+            VerifyLog(new ProposalExecutedLog { ProposalId = proposalId, Recipient = recipient, Amount = 100 });
         }
 
         [Fact]

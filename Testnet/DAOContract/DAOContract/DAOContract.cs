@@ -67,7 +67,7 @@ public class DAOContract : SmartContract
         MaxVotingDuration = DefaultMaxDuration;
     }
 
-    public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
+    public uint CreateProposal(Address recipient, ulong amount, uint votingDuration, string description)
     {
         EnsureNotPayable();
 
@@ -80,7 +80,7 @@ public class DAOContract : SmartContract
         {
             RequestedAmount = amount,
             Description = description,
-            Recipient = recipent,
+            Recipient = recipient,
             Owner = Message.Sender
         };
 
@@ -90,7 +90,7 @@ public class DAOContract : SmartContract
         Log(new ProposalAddedLog
         {
             ProposalId = proposalId,
-            Recipent = recipent,
+            Recipient = recipient,
             Amount = amount,
             Description = description
         });
@@ -169,7 +169,7 @@ public class DAOContract : SmartContract
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new ProposalExecutedLog { ProposalId = proposalId, Amount = proposal.RequestedAmount, Recipent = proposal.Recipient });
+        Log(new ProposalExecutedLog { ProposalId = proposalId, Amount = proposal.RequestedAmount, Recipient = proposal.Recipient });
 
     }
 
@@ -265,7 +265,7 @@ public class DAOContract : SmartContract
     public struct ProposalAddedLog
     {
         [Index]
-        public Address Recipent;
+        public Address Recipient;
         [Index]
         public uint ProposalId;
         public ulong Amount;
@@ -274,7 +274,7 @@ public class DAOContract : SmartContract
     public struct ProposalExecutedLog
     {
         [Index]
-        public Address Recipent;
+        public Address Recipient;
         [Index]
         public uint ProposalId;
         public ulong Amount;
