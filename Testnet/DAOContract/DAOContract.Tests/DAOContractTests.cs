@@ -24,6 +24,7 @@ namespace DAOContractTests
         private readonly Address voter;
         private readonly Address newOwner;
         private uint minVotingDuration;
+        private uint maxVotingDuration;
         public DAOContractTests()
         {
             state = new InMemoryState();
@@ -40,6 +41,7 @@ namespace DAOContractTests
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
             newOwner = "0x0000000000000000000000000000000000000006".HexToAddress();
             minVotingDuration = 1;
+            maxVotingDuration = 1000;
         }
 
         [Fact]
@@ -59,97 +61,14 @@ namespace DAOContractTests
         public void Constructor_MinVotingDuration_Higher_Than_MaxVotingDuration_Fails()
         {
             SetupMessage();
-            minVotingDuration = 2 * DAOContract.DefaultMaxDuration;
+            minVotingDuration = 2 * maxVotingDuration;
 
             Func<DAOContract> contract = () => CreateContract();
 
             contract.Invoking(c => c())
                     .Should()
                     .Throw<SmartContractAssertException>()
-                    .WithMessage($"MinVotingDuration should be lower than maxVotingDuration({DAOContract.DefaultMaxDuration})");
-        }
-
-        [Fact]
-        public void UpdateMinVotingDuration_Called_By_None_Owner_Fails()
-        {
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            SetupMessage(voter);
-            contract.Invoking(c => c.UpdateMinVotingDuration(100))
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("The method is owner only.");
-        }
-
-        [Fact]
-        public void UpdateMinVotingDuration_MinVotingDuration_Lower_Than_MaxVotingDuration_Fails()
-        {
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            contract.Invoking(c => c.UpdateMinVotingDuration(2 * DAOContract.DefaultMaxDuration))
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("MinVotingDuration should be lower than MaxVotingDuration.");
-        }
-
-        [Fact]
-        public void UpdateMinVotingDuration_Called_By_Owner_Success()
-        {
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            contract.UpdateMinVotingDuration(100);
-
-            contract.MinVotingDuration.Should().Be(100);
-
-            VerifyLog(new MinVotingDurationUpdated { OldValue = minVotingDuration, NewValue = 100 });
-        }
-
-        [Fact]
-        public void UpdateMaxVotingDuration_Called_By_None_Owner_fails()
-        {
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            SetupMessage(voter);
-            contract.Invoking(c => c.UpdateMaxVotingDuration(100))
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("The method is owner only.");
-        }
-
-        [Fact]
-        public void UpdateMaxVotingDuration_Called_By_Owner_Success()
-        {
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            contract.UpdateMaxVotingDuration(100);
-
-            contract.MaxVotingDuration.Should().Be(100);
-
-            VerifyLog(new MaxVotingDurationUpdated { OldValue = DAOContract.DefaultMaxDuration, NewValue = 100 });
-        }
-
-        [Fact]
-        public void UpdateMaxVotingDuration_MaxVotingDuration_Higher_Than_MinVotingDuration_Fails()
-        {
-            minVotingDuration = 100;
-            SetupMessage();
-
-            var contract = CreateContract();
-
-            contract.Invoking(c => c.UpdateMaxVotingDuration(20))
-                    .Should()
-                    .Throw<SmartContractAssertException>()
-                    .WithMessage("MaxVotingDuration should be higher than MinVotingDuration.");
+                    .WithMessage($"MinVotingDuration should be lower than maxVotingDuration({maxVotingDuration})");
         }
 
         [Fact]
@@ -237,7 +156,7 @@ namespace DAOContractTests
             contract.Invoking(c => c.CreateProposal(recipient, 100, 10, Description))
                     .Should()
                     .Throw<SmartContractAssertException>()
-                    .WithMessage($"Voting duration should be between 100 and {DAOContract.DefaultMaxDuration}.");
+                    .WithMessage($"Voting duration should be between 100 and {maxVotingDuration}.");
         }
 
         [Fact]
@@ -683,7 +602,7 @@ namespace DAOContractTests
             SetupMessage();
             SetupBlock();
 
-            return new DAOContract(mContractState.Object, minVotingDuration);
+            return new DAOContract(mContractState.Object, minVotingDuration,maxVotingDuration);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct

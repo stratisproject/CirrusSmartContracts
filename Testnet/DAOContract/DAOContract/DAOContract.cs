@@ -62,16 +62,15 @@ public class DAOContract : SmartContract
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
-    public const uint DefaultMaxDuration = 60u * 60 * 24 * 7 / 16; // 1 week period as second/ block duration as second
-    public DAOContract(ISmartContractState state, uint minVotingDuration)
+    public DAOContract(ISmartContractState state, uint minVotingDuration, uint maxVotingDuration)
         : base(state)
     {
-        Assert(DefaultMaxDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({DefaultMaxDuration})");
+        Assert(maxVotingDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({maxVotingDuration})");
 
         Owner = Message.Sender;
         LastProposalId = 1;
         MinVotingDuration = minVotingDuration;
-        MaxVotingDuration = DefaultMaxDuration;
+        MaxVotingDuration = maxVotingDuration;
     }
 
     public uint CreateProposal(Address recipient, ulong amount, uint votingDuration, string description)
@@ -252,28 +251,6 @@ public class DAOContract : SmartContract
         ClaimedOwner = Address.Zero;
 
         Log(new OwnerTransferredLog { From = oldOwner, To = newOwner });
-    }
-
-    public void UpdateMinVotingDuration(uint minVotingDuration)
-    {
-        EnsureOwnerOnly();
-
-        Assert(minVotingDuration < MaxVotingDuration, "MinVotingDuration should be lower than MaxVotingDuration.");
-
-        Log(new MinVotingDurationUpdated { OldValue = MinVotingDuration, NewValue = minVotingDuration });
-
-        MinVotingDuration = minVotingDuration;
-
-    }
-
-    public void UpdateMaxVotingDuration(uint maxVotingDuration)
-    {
-        EnsureOwnerOnly();
-        Assert(maxVotingDuration > MinVotingDuration, "MaxVotingDuration should be higher than MinVotingDuration.");
-
-        Log(new MaxVotingDurationUpdated { OldValue = MaxVotingDuration, NewValue = maxVotingDuration });
-
-        MaxVotingDuration = maxVotingDuration;
     }
 
     private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
