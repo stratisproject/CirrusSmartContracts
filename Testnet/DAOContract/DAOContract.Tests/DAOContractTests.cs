@@ -22,6 +22,7 @@ namespace DAOContractTests
         private readonly Address recipient;
         private readonly Address proposalOwner;
         private readonly Address voter;
+        private readonly Address newOwner;
         private uint minVotingDuration;
         public DAOContractTests()
         {
@@ -37,6 +38,7 @@ namespace DAOContractTests
             recipient = "0x0000000000000000000000000000000000000003".HexToAddress();
             proposalOwner = "0x0000000000000000000000000000000000000004".HexToAddress();
             voter = "0x0000000000000000000000000000000000000005".HexToAddress();
+            newOwner = "0x0000000000000000000000000000000000000006".HexToAddress();
             minVotingDuration = 1;
         }
 
@@ -618,52 +620,48 @@ namespace DAOContractTests
             VerifyLog(new FundRaisedLog { Sender = owner, Amount = amount });
         }
 
-
         [Fact]
-        public void TransferOwnership_Called_By_NonOnwer_Fails()
+        public void TransferOwnership_Called_By_NonOwner_Fails()
         {
-            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
             var contract = CreateContract();
 
             SetupMessage(newOwner);
 
-            contract.Invoking(c => c.TransferOwnership(newOwner))
+            contract.Invoking(c => c.ClaimNewOwnership(newOwner))
                     .Should()
                     .ThrowExactly<SmartContractAssertException>()
                     .WithMessage("The method is owner only.");
         }
 
         [Fact]
-        public void ClaimOwnership_Not_Called_By_NewOwner_Fails()
+        public void ApproveOwnership_Not_Called_By_NewOwner_Fails()
         {
-            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
             var contract = CreateContract();
 
             SetupMessage(owner);
 
-            contract.TransferOwnership(newOwner);
+            contract.ClaimNewOwnership(newOwner);
 
             SetupMessage(owner);
 
-            contract.Invoking(c => c.ClaimOwnership())
+            contract.Invoking(c => c.ApproveOwnership())
                     .Should()
                     .ThrowExactly<SmartContractAssertException>()
-                    .WithMessage("Ownership must be claimed by the new owner.");
+                    .WithMessage("Ownership must be approved by the new owner.");
         }
 
         [Fact]
-        public void ClaimOwnership_Success()
+        public void ApproveOwnership_Success()
         {
-            var newOwner = "0x0000000000000000000000000000000000000020".HexToAddress();
             var contract = CreateContract();
 
             SetupMessage(owner);
 
-            contract.TransferOwnership(newOwner);
+            contract.ClaimNewOwnership(newOwner);
 
             SetupMessage(newOwner);
 
-            contract.ClaimOwnership();
+            contract.ApproveOwnership();
 
             contract.Owner
                     .Should()

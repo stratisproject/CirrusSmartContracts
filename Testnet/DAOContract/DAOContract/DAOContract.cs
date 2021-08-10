@@ -235,17 +235,17 @@ public class DAOContract : SmartContract
 
     public override void Receive() => Deposit();
 
-    public void TransferOwnership(Address newOwner)
+    public void ClaimNewOwnership(Address newOwner)
     {
         EnsureOwnerOnly();
         ClaimedOwner = newOwner;
     }
 
-    public void ClaimOwnership()
+    public void ApproveOwnership()
     {
         var newOwner = ClaimedOwner;
 
-        Assert(newOwner == Message.Sender, "Ownership must be claimed by the new owner.");
+        Assert(newOwner == Message.Sender, "Ownership must be approved by the new owner.");
 
         var oldOwner = Owner;
         Owner = newOwner;
