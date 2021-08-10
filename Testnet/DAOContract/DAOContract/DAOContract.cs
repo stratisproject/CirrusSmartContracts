@@ -48,11 +48,12 @@ public class DAOContract : SmartContract
     public ulong GetVotingDeadline(uint proposalId) => State.GetUInt64($"Deadline:{proposalId}");
     private void SetVotingDeadline(uint proposalId, ulong block) => State.SetUInt64($"Deadline:{proposalId}", block);
 
-    public uint GetYesVotes(uint proposalId) => State.GetUInt32($"YesVotes:{proposalId}");
-    private void SetYesVotes(uint proposalId, uint value) => State.SetUInt32($"YesVotes:{proposalId}", value);
+    public uint GetVotes(uint proposalId, bool vote) => State.GetUInt32($"Votes:{proposalId}:{vote}");
+    private void SetVotes(uint proposalId, bool vote, uint value) => State.SetUInt32($"Votes:{proposalId}:{vote}", value);
 
-    public uint GetNoVotes(uint proposalId) => State.GetUInt32($"NoVotes:{proposalId}");
-    private void SetNoVotes(uint proposalId, uint value) => State.SetUInt32($"NoVotes:{proposalId}", value);
+    public uint GetYesVotes(uint proposalId) => GetVotes(proposalId, true);
+
+    public uint GetNoVotes(uint proposalId) => GetVotes(proposalId, false);
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
     private void SetVote(uint proposalId, Address address, Votes vote) => State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
@@ -113,44 +114,43 @@ public class DAOContract : SmartContract
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
-        VoteProposal(proposalId, ToVote(vote));
+        VoteProposal(proposalId, vote);
     }
 
-    private void VoteProposal(uint proposalId, Votes vote)
+    private void VoteProposal(uint proposalId, bool vote)
     {
         var currentVote = (Votes)GetVote(proposalId, Message.Sender);
 
-        if (currentVote == vote)
+        var voteEnum = ToVoteEnum(vote);
+        if (currentVote == voteEnum)
         {
             return;
         }
 
         Unvote(proposalId, currentVote);
-        SetVote(proposalId, Message.Sender, vote);
 
-        Log(new ProposalVotedLog { ProposalId = proposalId, Voter = Message.Sender, Vote = vote == Votes.Yes });
+        SetVote(proposalId, Message.Sender, voteEnum);
 
-        if (vote == Votes.Yes)
-        {
-            SetYesVotes(proposalId, GetYesVotes(proposalId) + 1);
-        }
-        else
-        {
-            SetNoVotes(proposalId, GetNoVotes(proposalId) + 1);
-        }
+        Log(new ProposalVotedLog { ProposalId = proposalId, Voter = Message.Sender, Vote = vote });
+
+        var voteCount = GetVotes(proposalId, vote);
+
+        SetVotes(proposalId, vote, voteCount + 1);
     }
 
-    private void Unvote(uint proposalId, Votes currentVote)
+    private void Unvote(uint proposalId, Votes vote)
     {
-        switch (currentVote)
-        {
-            case Votes.Yes: SetYesVotes(proposalId, GetYesVotes(proposalId) - 1); break;
-            case Votes.No: SetNoVotes(proposalId, GetNoVotes(proposalId) - 1); break;
-            case Votes.None: break;
-        }
+        if (vote == Votes.None)
+            return;
+
+        var voteBool = ToVoteBool(vote);
+        var voteCount = GetVotes(proposalId, voteBool);
+
+        SetVotes(proposalId, voteBool, voteCount - 1);
     }
 
-    private Votes ToVote(bool vote) => vote ? Votes.Yes : Votes.No;
+    private Votes ToVoteEnum(bool vote) => vote ? Votes.Yes : Votes.No;
+    private bool ToVoteBool(Votes vote) => vote == Votes.Yes;
 
     public void ExecuteProposal(uint proposalId)
     {
@@ -260,13 +260,18 @@ public class DAOContract : SmartContract
 
         Assert(minVotingDuration < MaxVotingDuration, "MinVotingDuration should be lower than MaxVotingDuration.");
 
+        Log(new MinVotingDurationUpdated { OldValue = MinVotingDuration, NewValue = minVotingDuration });
+
         MinVotingDuration = minVotingDuration;
+
     }
 
     public void UpdateMaxVotingDuration(uint maxVotingDuration)
     {
         EnsureOwnerOnly();
         Assert(maxVotingDuration > MinVotingDuration, "MaxVotingDuration should be higher than MinVotingDuration.");
+
+        Log(new MaxVotingDurationUpdated { OldValue = MaxVotingDuration, NewValue = maxVotingDuration });
 
         MaxVotingDuration = maxVotingDuration;
     }
@@ -333,6 +338,18 @@ public class DAOContract : SmartContract
     {
         public Address From { get; set; }
         public Address To { get; set; }
+    }
+
+    public struct MinVotingDurationUpdated
+    {
+        public uint OldValue { get; set; }
+        public uint NewValue { get; set; }
+    }
+
+    public struct MaxVotingDurationUpdated
+    {
+        public uint OldValue { get; set; }
+        public uint NewValue { get; set; }
     }
 }
 

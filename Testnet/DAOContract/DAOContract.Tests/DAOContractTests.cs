@@ -106,6 +106,8 @@ namespace DAOContractTests
             contract.UpdateMinVotingDuration(100);
 
             contract.MinVotingDuration.Should().Be(100);
+
+            VerifyLog(new MinVotingDurationUpdated { OldValue = minVotingDuration, NewValue = 100 });
         }
 
         [Fact]
@@ -132,6 +134,8 @@ namespace DAOContractTests
             contract.UpdateMaxVotingDuration(100);
 
             contract.MaxVotingDuration.Should().Be(100);
+
+            VerifyLog(new MaxVotingDurationUpdated { OldValue = DAOContract.DefaultMaxDuration, NewValue = 100 });
         }
 
         [Fact]
