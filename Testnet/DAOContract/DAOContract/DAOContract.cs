@@ -313,20 +313,10 @@ public class DAOContract : SmartContract
     }
     public struct OwnerTransferredLog
     {
-        public Address From { get; set; }
-        public Address To { get; set; }
-    }
-
-    public struct MinVotingDurationUpdated
-    {
-        public uint OldValue { get; set; }
-        public uint NewValue { get; set; }
-    }
-
-    public struct MaxVotingDurationUpdated
-    {
-        public uint OldValue { get; set; }
-        public uint NewValue { get; set; }
+        [Index]
+        public Address From;
+        [Index]
+        public Address To;
     }
 }
 
