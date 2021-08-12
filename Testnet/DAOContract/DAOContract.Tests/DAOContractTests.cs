@@ -550,7 +550,7 @@ namespace DAOContractTests
 
             SetupMessage(newOwner);
 
-            contract.Invoking(c => c.ClaimNewOwnership(newOwner))
+            contract.Invoking(c => c.SetPendingOwner(newOwner))
                     .Should()
                     .ThrowExactly<SmartContractAssertException>()
                     .WithMessage("The method is owner only.");
@@ -563,14 +563,14 @@ namespace DAOContractTests
 
             SetupMessage(owner);
 
-            contract.ClaimNewOwnership(newOwner);
+            contract.SetPendingOwner(newOwner);
 
             SetupMessage(owner);
 
-            contract.Invoking(c => c.ApproveOwnership())
+            contract.Invoking(c => c.ClaimOwnership())
                     .Should()
                     .ThrowExactly<SmartContractAssertException>()
-                    .WithMessage("Ownership must be approved by the new owner.");
+                    .WithMessage("ClaimOwnership must be called by the new(pending) owner.");
         }
 
         [Fact]
@@ -580,11 +580,11 @@ namespace DAOContractTests
 
             SetupMessage(owner);
 
-            contract.ClaimNewOwnership(newOwner);
+            contract.SetPendingOwner(newOwner);
 
             SetupMessage(newOwner);
 
-            contract.ApproveOwnership();
+            contract.ClaimOwnership();
 
             contract.Owner
                     .Should()

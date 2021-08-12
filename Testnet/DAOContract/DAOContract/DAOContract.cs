@@ -10,10 +10,10 @@ public class DAOContract : SmartContract
         private set => State.SetAddress(nameof(Owner), value);
     }
 
-    private Address ClaimedOwner
+    private Address PendingOwner
     {
-        get => State.GetAddress(nameof(ClaimedOwner));
-        set => State.SetAddress(nameof(ClaimedOwner), value);
+        get => State.GetAddress(nameof(PendingOwner));
+        set => State.SetAddress(nameof(PendingOwner), value);
     }
 
     public uint MinQuorum => WhitelistedCount / 2 + 1;
@@ -234,21 +234,21 @@ public class DAOContract : SmartContract
 
     public override void Receive() => Deposit();
 
-    public void ClaimNewOwnership(Address newOwner)
+    public void SetPendingOwner(Address newOwner)
     {
         EnsureOwnerOnly();
-        ClaimedOwner = newOwner;
+        PendingOwner = newOwner;
     }
 
-    public void ApproveOwnership()
+    public void ClaimOwnership()
     {
-        var newOwner = ClaimedOwner;
+        var newOwner = PendingOwner;
 
-        Assert(newOwner == Message.Sender, "Ownership must be approved by the new owner.");
+        Assert(newOwner == Message.Sender, "ClaimOwnership must be called by the new(pending) owner.");
 
         var oldOwner = Owner;
         Owner = newOwner;
-        ClaimedOwner = Address.Zero;
+        PendingOwner = Address.Zero;
 
         Log(new OwnerTransferredLog { From = oldOwner, To = newOwner });
     }
@@ -302,7 +302,6 @@ public class DAOContract : SmartContract
         public Address Recipient;
 
         public ulong RequestedAmount;
-
 
         public string Description;
 
