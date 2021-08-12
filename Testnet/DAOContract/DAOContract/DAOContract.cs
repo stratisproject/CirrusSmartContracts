@@ -10,10 +10,10 @@ public class DAOContract : SmartContract
         private set => State.SetAddress(nameof(Owner), value);
     }
 
-    private Address PendingOwner
+    public Address PendingOwner
     {
         get => State.GetAddress(nameof(PendingOwner));
-        set => State.SetAddress(nameof(PendingOwner), value);
+        private set => State.SetAddress(nameof(PendingOwner), value);
     }
 
     public uint MinQuorum => WhitelistedCount / 2 + 1;
