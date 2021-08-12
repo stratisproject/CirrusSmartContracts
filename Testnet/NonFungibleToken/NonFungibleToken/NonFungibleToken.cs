@@ -4,44 +4,6 @@
 /// </summary>
 public class NonFungibleToken : SmartContract
 {
-    public struct TransferLog
-    {
-        [Index]
-        public Address From;
-        [Index]
-        public Address To;
-        [Index]
-        public ulong TokenId;
-    }
-
-    public struct ApprovalLog
-    {
-        [Index]
-        public Address Owner;
-        [Index]
-        public Address Approved;
-        [Index]
-        public ulong TokenId;
-    }
-
-    public struct ApprovalForAllLog
-    {
-        [Index]
-        public Address Owner;
-        [Index]
-        public Address Operator;
-
-        public bool Approved;
-    }
-
-    public struct OwnershipTransferedLog
-    {
-        [Index]
-        public Address PreviousOwner;
-
-        [Index]
-        public Address NewOwner;
-    }
 
     /// <summary>
     /// Function to check which interfaces are supported by this contract.
@@ -520,25 +482,29 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
-    public void Mint(Address to)
+    public ulong Mint(Address to)
     {
         var tokenId = checked(++TokenIdCounter);
 
         Mint(to, tokenId);
+
+        return tokenId;
     }
 
     /// <summary>
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
-    /// <param name="data">the data param will passed destination contract</param>
-    public void SafeMint(Address to, byte[] data)
+    /// <param name="data">The data param will passed destination contract</param>
+    public ulong SafeMint(Address to, byte[] data)
     {
         var tokenId = checked(++TokenIdCounter);
 
         Mint(to, tokenId);
 
         EnsureContractReceivedToken(Address.Zero, to, tokenId, data);
+
+        return tokenId;
     }
 
     private void Mint(Address to, ulong tokenId)
@@ -591,5 +557,44 @@ public class NonFungibleToken : SmartContract
     private void EnsureAddressIsNotEmpty(Address address)
     {
         Assert(address != Address.Zero, "The address can not be zero.");
+    }
+
+    public struct TransferLog
+    {
+        [Index]
+        public Address From;
+        [Index]
+        public Address To;
+        [Index]
+        public ulong TokenId;
+    }
+
+    public struct ApprovalLog
+    {
+        [Index]
+        public Address Owner;
+        [Index]
+        public Address Approved;
+        [Index]
+        public ulong TokenId;
+    }
+
+    public struct ApprovalForAllLog
+    {
+        [Index]
+        public Address Owner;
+        [Index]
+        public Address Operator;
+
+        public bool Approved;
+    }
+
+    public struct OwnershipTransferedLog
+    {
+        [Index]
+        public Address PreviousOwner;
+
+        [Index]
+        public Address NewOwner;
     }
 }
