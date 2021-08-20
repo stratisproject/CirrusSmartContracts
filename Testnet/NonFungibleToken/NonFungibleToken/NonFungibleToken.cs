@@ -407,7 +407,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="owner">The owner address.</param>
     /// <param name="operatorAddress">The approved address.</param>
-    /// <param name="tokenId">The NFT ID.</ >
+    /// <param name="tokenId">The NFT ID.</param>
     private void LogApproval(Address owner, Address approved, ulong tokenId)
     {
         Log(new ApprovalLog() { Owner = owner, Approved = approved, TokenId = tokenId });
