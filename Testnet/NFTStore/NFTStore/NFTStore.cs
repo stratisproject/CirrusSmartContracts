@@ -69,20 +69,22 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         EnsureNotPayable();
 
         var price = Serializer.ToUInt64(data);
-        var contract = Message.Sender;
-
-        Assert(State.IsContract(contract), "The Caller is not a contract.");
-
-        //Double check but this may not be neccessary actually
-        Assert(Address == GetOwner(contract, tokenId), "The owner of token is not the store contract.");
 
         Assert(price > 0, "Price should be higher than zero.");
 
-        Assert(fromAddress != Address, "The token is already on sale.");
+        var tokenContract = Message.Sender;
 
-        SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = fromAddress });
+        Assert(State.IsContract(tokenContract), "The Caller is not a contract.");
 
-        Log(new TokenOnSaleLog { Contract = contract , TokenId = tokenId, Price = price, Seller = fromAddress, Order = NextId++ });
+        Assert(Address == GetOwner(tokenContract, tokenId), "The store contract is not owner of the token.");
+
+        var saleInfo = GetSaleInfo(tokenContract, tokenId);
+
+        Assert(saleInfo.Price == 0, "The token is already on sale.");
+                
+        SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = fromAddress });
+
+        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = fromAddress, Operator = operatorAddress, Order = NextId++ });
 
         return true;
     }
@@ -133,9 +135,12 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         [Index]
         public Address Seller;
         [Index]
+        public Address Operator;
+        [Index]
         public ulong TokenId;
         public ulong Price;
         public ulong Order;
+
     }
 
     public struct TokenSaleCanceledLog
