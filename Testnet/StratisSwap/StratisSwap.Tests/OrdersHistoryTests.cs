@@ -97,6 +97,7 @@ namespace StratisSwap.Tests
             {
                 OrderTxHash = txHash,
                 Token = Token,
+                Taker = Sender,
                 Order = OrderContractAddress,
                 Block = 12345
             };
