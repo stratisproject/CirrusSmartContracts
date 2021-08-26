@@ -335,7 +335,7 @@ public class NonFungibleToken : SmartContract
         Assert(GetIdToOwner(tokenId) == from);
         var tokenCount = GetBalance(from);
         SetBalance(from, checked(tokenCount - 1));
-        SetIdToOwner(tokenId, Address.Zero); //Work around for clear bug State.Clear(GetIdToOwnerKey(tokenId));
+        SetIdToOwner(tokenId, Address.Zero);
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class NonFungibleToken : SmartContract
     {
         if (GetIdToApproval(tokenId) != Address.Zero)
         {
-            SetIdToApproval(tokenId, Address.Zero); //Workaround for clear bug State.Clear(GetIdToApprovalKey(tokenId));
+            SetIdToApproval(tokenId, Address.Zero);
         }
     }
 
