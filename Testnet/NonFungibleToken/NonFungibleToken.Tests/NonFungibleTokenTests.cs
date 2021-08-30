@@ -139,6 +139,40 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
+    public void TokenUri_Format_With_TokenId_Success()
+    {
+        this.tokenURIFormat = "https://examples.com/api/tokens/{0}/metadata";
+
+        var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
+
+        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, sender, 0));
+
+        var nonFungibleToken = this.CreateNonFungibleToken();
+
+        var result = nonFungibleToken.TokenURI(4);
+
+        var expected = $"https://examples.com/api/tokens/4/metadata";
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void TokenUri_Format_With_TokenId_And_ContractAddress_Success()
+    {
+        this.tokenURIFormat = "https://examples.com/api/contracts/{1}/tokens/{0}/metadata";
+
+        var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
+
+        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, sender, 0));
+
+        var nonFungibleToken = this.CreateNonFungibleToken();
+
+        var result = nonFungibleToken.TokenURI(4);
+
+        var expected = $"https://examples.com/api/contracts/{contractAddress}/tokens/4/metadata";
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
     public void GetApproved_NotValidNFToken_OwnerAddressZero_ThrowsException()
     {
         var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
@@ -1141,7 +1175,7 @@ public class NonFungibleTokenTests
 
         nonFungibleToken.Burn(1);
 
-        Assert.False(this.state.ContainsKey("IdToOwner:1"));
+        Assert.Equal(Address.Zero, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(0ul, this.state.GetUInt64($"Balance:{ownerAddress}"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = Address.Zero, TokenId = 1 }));
