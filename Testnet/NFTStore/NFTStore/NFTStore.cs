@@ -68,6 +68,8 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     {
         EnsureNotPayable();
 
+        var seller = fromAddress == Address.Zero ? operatorAddress : fromAddress;
+
         var price = Serializer.ToUInt64(data);
 
         Assert(price > 0, "Price should be higher than zero.");
@@ -82,9 +84,9 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         Assert(saleInfo.Price == 0, "The token is already on sale.");
                 
-        SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = fromAddress });
+        SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = seller });
 
-        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = fromAddress, Operator = operatorAddress, Order = NextId++ });
+        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress, Order = NextId++ });
 
         return true;
     }

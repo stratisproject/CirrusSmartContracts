@@ -166,7 +166,7 @@ namespace NFTStoreTests
 
             mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
 
-            store.OnNonFungibleTokenReceived(operatorAddress, tokenOwner, tokenId, priceBytes)
+            store.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes)
                  .Should()
                  .BeTrue();
 
@@ -179,6 +179,41 @@ namespace NFTStoreTests
                 Contract = tokenContract,
                 TokenId = tokenId,
                 Seller = tokenOwner,
+                Operator = tokenOwner,
+                Price = price,
+                Order = 0
+            });
+
+        }
+
+        [Fact]
+        public void OnNonFungibleTokenReceived_Operator_Mint_And_Sell_Token_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            SetupMessage(tokenContract, 0);
+            SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
+
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
+
+            
+            store.OnNonFungibleTokenReceived(operatorAddress, Address.Zero, tokenId, priceBytes)
+                 .Should()
+                 .BeTrue();
+
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(new SaleInfo { Price = price, Seller = operatorAddress });
+
+            VerifyLog(new TokenOnSaleLog
+            {
+                Contract = tokenContract,
+                TokenId = tokenId,
+                Seller = operatorAddress,
                 Operator = operatorAddress,
                 Price = price,
                 Order = 0
