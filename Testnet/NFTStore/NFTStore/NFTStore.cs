@@ -45,7 +45,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller, Order = NextId++ });
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller, Order = checked(NextId++) });
     }
 
     public void CancelSale(Address contract, ulong tokenId)
@@ -61,7 +61,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller, Order = NextId++ });
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller, Order = checked(NextId++) });
     }
 
     public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
@@ -86,7 +86,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
                 
         SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = seller });
 
-        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress, Order = NextId++ });
+        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress, Order = checked(NextId++) });
 
         return true;
     }
