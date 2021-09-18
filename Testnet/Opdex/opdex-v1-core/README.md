@@ -4,6 +4,7 @@ V1 of Opdex core smart contracts. Use the following hash and bytecode to deploy 
 
 - [opdex-v1-core source code](https://github.com/opdex/opdex-v1-core)
 - [opdex-v1-core docs](https://docs.opdex.com/docs/v1-core-overview)
+- [CertiK Audit](https://www.certik.org/projects/opdex)
 
 ## Compile
 
