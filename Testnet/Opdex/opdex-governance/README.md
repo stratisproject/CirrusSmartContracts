@@ -4,6 +4,7 @@ Opdex mined token and governance smart contracts. Use the following hash and byt
 
 - [opdex-governance source code](https://github.com/opdex/opdex-governance)
 - [opdex-governance docs](https://docs.opdex.com/docs/governance-overview)
+- [CertiK Audit](https://www.certik.org/projects/opdex)
 
 ## Compile
 
