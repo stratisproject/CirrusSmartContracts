@@ -143,14 +143,9 @@ public class NonFungibleToken : SmartContract
     /// 
     /// </summary>
     /// <param name="state"></param>
-    /// <param name="name"></param>
-    /// <param name="symbol"></param>
-    /// <param name="tokenURIFormat">Format takes tokenId and contractAddress as parameter.
-    /// <para>string.Format(tokenUriFormat,tokenId,contractAddress)</para>
-    /// <para>{0} for tokenId and {1} is for contract address in hex format</para>
-    /// <para>Examples</para>
-    /// <para>https://example.com/tokens/{0} => https://example.com/tokens/20 </para>
-    /// <para>https://example.com/contracts/{1}/tokens/{0}/metadata => https://example.com/contracts/0x0000000000000000000000000000000000000002/token/125/metadata </para>
+    /// <param name="name">Name of the NFT Contract</param>
+    /// <param name="symbol">Symbol of the NFT Contract</param>
+    /// <param name="ownerOnlyMinting">True, if only owner allowed to mint tokens</param>
     /// </param>
     public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting) : base(state)
     {

@@ -16,7 +16,6 @@ public class NonFungibleTokenTests
     private Address contractAddress;
     private string name;
     private string symbol;
-    private string tokenUri;
     private bool ownerOnlyMinting;
 
     public NonFungibleTokenTests()
@@ -31,9 +30,10 @@ public class NonFungibleTokenTests
         this.contractAddress = "0x0000000000000000000000000000000000000001".HexToAddress();
         this.name = "Non-Fungible Token";
         this.symbol = "NFT";
-        this.tokenUri = "https://example.com/api/tokens/1";
         this.ownerOnlyMinting = true;
     }
+
+    public string GetTokenURI(ulong tokenId) => $"https://example.com/api/tokens/{tokenId}";
 
     [Fact]
     public void Constructor_Sets_Values()
@@ -1029,7 +1029,7 @@ public class NonFungibleTokenTests
 
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(userAddress);
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, tokenUri));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, GetTokenURI(1)));
     }
 
     [Fact]
@@ -1039,7 +1039,7 @@ public class NonFungibleTokenTests
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, tokenUri));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, GetTokenURI(1)));
     }
 
     [Fact]
@@ -1055,11 +1055,11 @@ public class NonFungibleTokenTests
         var nonFungibleToken = this.CreateNonFungibleToken();
 
         this.smartContractStateMock.Setup(m => m.Message.Sender).Returns(targetAddress);
-        nonFungibleToken.Mint(targetAddress, tokenUri);
+        nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
-        Assert.Equal(tokenUri, nonFungibleToken.TokenURI(1ul));
+        Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1ul));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
@@ -1074,11 +1074,11 @@ public class NonFungibleTokenTests
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        nonFungibleToken.Mint(targetAddress, tokenUri);
+        nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
-        Assert.Equal(tokenUri, nonFungibleToken.TokenURI(1));
+        Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1));
         Assert.Null(nonFungibleToken.TokenURI(2));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
 
@@ -1100,12 +1100,12 @@ public class NonFungibleTokenTests
         this.transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", parameter, 0))
                                     .Returns(TransferResult.Transferred(true));
 
-        nonFungibleToken.SafeMint(targetAddress, tokenUri, data);
+        nonFungibleToken.SafeMint(targetAddress, GetTokenURI(1), data);
 
         Assert.Equal(targetAddress, this.state.GetAddress("IdToOwner:1"));
         Assert.Equal(1ul, this.state.GetUInt64($"Balance:{targetAddress}"));
         Assert.Equal(1ul, this.state.GetUInt64("TokenIdCounter"));
-        Assert.Equal(tokenUri, nonFungibleToken.TokenURI(1));
+        Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1));
         Assert.Null(nonFungibleToken.TokenURI(2));
 
         this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
