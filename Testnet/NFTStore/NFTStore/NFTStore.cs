@@ -1,7 +1,4 @@
 ﻿using Stratis.SmartContracts;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 [Deploy]
 public class NFTStore : SmartContract //, INonFungibleTokenReceiver
@@ -9,12 +6,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
     private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
-
-    public ulong NextId
-    {
-        get => State.GetUInt64(nameof(NextId));
-        private set => State.SetUInt64(nameof(NextId), value);
-    }
 
     public ulong CreatedAt
     {
@@ -45,7 +36,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller, Order = checked(NextId++) });
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
     }
 
     public void CancelSale(Address contract, ulong tokenId)
@@ -61,7 +52,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller, Order = checked(NextId++) });
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
     }
 
     public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
@@ -83,10 +74,10 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         var saleInfo = GetSaleInfo(tokenContract, tokenId);
 
         Assert(saleInfo.Price == 0, "The token is already on sale.");
-                
+
         SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = seller });
 
-        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress, Order = checked(NextId++) });
+        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress });
 
         return true;
     }
@@ -153,8 +144,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         public ulong TokenId;
         [Index]
         public Address Seller;
-
-        public ulong Order;
     }
 
     public struct TokenPurchasedLog
@@ -166,7 +155,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         public Address Buyer;
         [Index]
         public Address Seller;
-        public ulong Order;
     }
 
     public struct SaleInfo
