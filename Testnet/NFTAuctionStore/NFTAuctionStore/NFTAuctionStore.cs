@@ -1,7 +1,7 @@
 ﻿using Stratis.SmartContracts;
 
 [Deploy]
-public class NFTAuctionStore : SmartContract
+public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 {
     private void SetAuctionInfo(Address contract, ulong tokenId, AuctionInfo auctionInfo)
     {
@@ -27,30 +27,6 @@ public class NFTAuctionStore : SmartContract
         : base(state)
     {
         EnsureNotPayable();
-    }
-
-    public void Auction(Address contract, ulong tokenId, ulong startingPrice, ulong duration)
-    {
-        EnsureNotPayable();
-
-        var tokenOwner = GetOwner(contract, tokenId);
-
-        Assert(tokenOwner != Address, "The token is already on sale.");
-
-        EnsureCallerCanOperate(contract, tokenOwner);
-
-        TransferToken(contract, tokenId, tokenOwner, Address);
-
-        var auction = new AuctionInfo
-        {
-            Seller = tokenOwner,
-            EndBlock = checked(Block.Number + duration),
-            StartingPrice = startingPrice,
-            Ended = false
-        };
-
-        SetAuctionInfo(contract, tokenId, auction);
-        Log(new AuctionStartedLog { Contract = contract, TokenId = tokenId, EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
     }
 
     public void Bid(Address contract, ulong tokenId)
@@ -103,9 +79,9 @@ public class NFTAuctionStore : SmartContract
 
         Assert(Block.Number >= auction.EndBlock, "Auction is not ended yet.");
 
-        Assert(!auction.Ended,"Auction end already executed.");
+        Assert(!auction.Executed, "Auction end already executed.");
 
-        auction.Ended = true;
+        auction.Executed = true;
         SetAuctionInfo(contract, tokenId, auction);
 
         if (auction.HighestBid > 0)
@@ -124,6 +100,40 @@ public class NFTAuctionStore : SmartContract
         Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
 
+    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
+    {
+        EnsureNotPayable();
+        
+        var tokenContract = Message.Sender;
+        
+        Assert(State.IsContract(tokenContract), "The Caller is not a contract.");
+
+        var seller = fromAddress == Address.Zero ? operatorAddress : fromAddress;
+
+        var parameters = Serializer.ToStruct<AuctionParam>(data);
+
+        Assert(parameters.StartingPrice > 0, "Price should be higher than zero.");
+
+        Assert(Address == GetOwner(tokenContract, tokenId), "The store contract is not owner of the token.");
+
+        var auction = GetAuctionInfo(tokenContract, tokenId);
+
+        Assert(auction.StartingPrice == 0, "The token is already on sale.");
+
+        auction = new AuctionInfo
+        {
+            Seller = seller,
+            EndBlock = checked(Block.Number + parameters.Duration),
+            StartingPrice =  parameters.StartingPrice
+        };
+
+        SetAuctionInfo(tokenContract, tokenId, auction);
+
+        Log(new AuctionStartedLog { Contract = tokenContract, TokenId = tokenId, EndBlock = auction.EndBlock, Seller = auction.Seller, startingPrice = auction.StartingPrice });
+
+        return true;
+    }
+
     private bool IsApprovedForAll(Address contract, Address tokenOwner)
     {
         var result = Call(contract, 0, "IsApprovedForAll", new object[] { tokenOwner, Message.Sender });
@@ -131,13 +141,6 @@ public class NFTAuctionStore : SmartContract
         Assert(result.Success, "IsApprovedForAll method call failed.");
 
         return result.ReturnValue is bool success && success;
-    }
-
-    private void TransferToken(Address contract, ulong tokenId, Address from, Address to)
-    {
-        var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
-
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed. Be sure sender is approved to transfer token.");
     }
 
     private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
@@ -193,7 +196,12 @@ public class NFTAuctionStore : SmartContract
         public ulong HighestBid;
         public Address HighestBidder;
         public ulong EndBlock;
-        public bool Ended;
+        public bool Executed;
         public ulong StartingPrice;
+    }
+    public struct AuctionParam
+    {
+        public ulong StartingPrice;
+        public ulong Duration;
     }
 }

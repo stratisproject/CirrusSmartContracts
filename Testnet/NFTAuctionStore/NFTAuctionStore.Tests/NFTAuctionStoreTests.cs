@@ -9,10 +9,11 @@ namespace NFTAuctionStoreTests
 {
     public class NFTAuctionStoreTests
     {
-        private readonly IPersistentState inMemoryState;
+        private readonly InMemoryState state;
 
         private readonly Mock<ISmartContractState> mContractState;
         private readonly Mock<IContractLogger> mContractLogger;
+        private readonly Mock<ISerializer> mSerializer;
         private readonly Mock<IInternalTransactionExecutor> mTransactionExecutor;
 
         private readonly Address creator;
@@ -27,22 +28,28 @@ namespace NFTAuctionStoreTests
 
         public NFTAuctionStoreTests()
         {
-            this.inMemoryState = new InMemoryState();
-            this.mContractState = new Mock<ISmartContractState>();
-            this.mContractLogger = new Mock<IContractLogger>();
-            this.mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
-            this.mContractState.Setup(s => s.PersistentState).Returns(inMemoryState);
-            this.mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
-            this.mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
-            this.creator = "0x0000000000000000000000000000000000000001".HexToAddress();
-            this.tokenOwner = "0x0000000000000000000000000000000000000002".HexToAddress();
-            this.contract = "0x0000000000000000000000000000000000000003".HexToAddress();
-            this.tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
-            this.attacker = "0x0000000000000000000000000000000000000005".HexToAddress();
-            this.operatorAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
-            this.buyer = "0x0000000000000000000000000000000000000006".HexToAddress();
-            this.tokenId = 3;
-            this.duration = 100;
+            state = new InMemoryState();
+            mContractState = new Mock<ISmartContractState>();
+            mContractLogger = new Mock<IContractLogger>();
+            mSerializer = new Mock<ISerializer>();
+            mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
+            mContractState.Setup(s => s.PersistentState).Returns(state);
+            mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
+            mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
+            mContractState.Setup(s => s.Serializer).Returns(mSerializer.Object);
+            
+            creator = "0x0000000000000000000000000000000000000001".HexToAddress();
+            tokenOwner = "0x0000000000000000000000000000000000000002".HexToAddress();
+            contract = "0x0000000000000000000000000000000000000003".HexToAddress();
+            tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
+            attacker = "0x0000000000000000000000000000000000000005".HexToAddress();
+            operatorAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
+            buyer = "0x0000000000000000000000000000000000000006".HexToAddress();
+            tokenId = 3;
+            duration = 100;
+
+            mContractState.Setup(s => s.Message.ContractAddress).Returns(contract);
+            state.SetIsContract(tokenContract, true);
         }
         [Fact]
         public void Constructor_Sending_Coins_Fails()
@@ -58,110 +65,119 @@ namespace NFTAuctionStoreTests
         }
 
         [Fact]
-        public void Auction_Sending_Coins_Fails()
+        public void OnNonFungibleTokenReceived_Sending_Coins_Fails()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetupMessage(tokenOwner, 10);
+            SetupMessage(tokenContract, 10);
 
-            store.Invoking(s => s.Auction(tokenContract, tokenId, 100, duration))
+            var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
+            
+            var paramBytes = Array.Empty<byte>();
+
+            mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("The method is not payable.");
         }
 
         [Fact]
-        public void Auction_GetOwner_Fails()
+        public void OnNonFungibleTokenReceived_Called_By_None_Contract_Fails()
         {
             SetupMessage(creator, 0);
 
-            SetupGetOwnerOfToken(TransferResult.Failed());
+            state.SetIsContract(tokenContract, false);
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            store.Invoking(s => s.Auction(tokenContract, tokenId, 100, duration))
+            SetupMessage(tokenContract, 0);
+
+            var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
+
+            var paramBytes = Array.Empty<byte>();
+
+            mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The Caller is not a contract.");
+        }
+
+
+        [Fact]
+        public void OnNonFungibleTokenReceived_GetOwner_Call_Raise_Exception_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTAuctionStore(mContractState.Object);
+
+            SetupGetOwnerOfToken(TransferResult.Failed());
+            SetupMessage(tokenContract, 0);
+
+            var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
+
+            var paramBytes = Array.Empty<byte>();
+
+            mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("GetOwner method call failed.");
         }
 
         [Fact]
-        public void Auction_Selling_Already_On_Auction_Token_Fails()
+        public void OnNonFungibleTokenReceived_Selling_Already_OnSale_Token_Fails()
         {
             SetupMessage(creator, 0);
-
+            SetupBlock(1);
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetupMessage(tokenOwner, 0);
+            SetupMessage(tokenContract, 0);
             SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            
+            var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
 
-            store.Invoking(s => s.Auction(tokenContract, tokenId, 100, duration))
+            var paramBytes = Array.Empty<byte>();
+
+            mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
+
+            store.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("The token is already on sale.");
         }
 
         [Fact]
-        public void Auction_Called_By_None_Owner_Or_Operator_Of_Token_Fails()
+        public void OnNonFungibleTokenReceived_Owner_Sell_Token_Success()
         {
             SetupMessage(creator, 0);
-
+            SetupBlock(1);
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
+            SetupMessage(tokenContract, 0);
+            SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            
+            var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
 
-            SetupMessage(attacker, 0);
+            var paramBytes = Array.Empty<byte>();
 
-            SetupIsApprovedForAll(tokenOwner, attacker, TransferResult.Succeed(false));
+            mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
 
-            store.Invoking(s => s.Auction(tokenContract, tokenId, 100, duration))
+            store.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes)
                  .Should()
-                 .Throw<SmartContractAssertException>()
-                 .WithMessage("The caller is not owner of the token nor approved for all.");
-        }
+                 .BeTrue();
 
-        [Fact]
-        public void Auction_None_Approved_Token_For_Contract_Fails()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTAuctionStore(mContractState.Object);
-
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
-
-            SetupMessage(tokenOwner, 0);
-
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(false));
-
-            store.Invoking(s => s.Auction(tokenContract, tokenId, 100, duration))
+            store.GetAuctionInfo(tokenContract, tokenId)
                  .Should()
-                 .Throw<SmartContractAssertException>()
-                 .WithMessage("The token transfer failed. Be sure sender is approved to transfer token.");
-
-        }
-
-        [Fact]
-        public void Auction_Owner_Sell_Token_Success()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTAuctionStore(mContractState.Object);
-
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
-
-            SetupMessage(tokenOwner, 0);
-
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed(true));
-
-            mContractState.Setup(m => m.Block.Number).Returns(1);
-
-            store.Auction(tokenContract, tokenId, 100, duration);
-
-            var auctionInfo = store.GetAuctionInfo(tokenContract, tokenId);
-
-            auctionInfo.Should().Be(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100 });
+                 .Be(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100 });
 
             VerifyLog(new AuctionStartedLog
             {
@@ -171,6 +187,7 @@ namespace NFTAuctionStoreTests
                 Seller = tokenOwner,
                 EndBlock = 101
             });
+
         }
 
         [Fact]
@@ -187,7 +204,7 @@ namespace NFTAuctionStoreTests
             store.Invoking(m => m.Bid(tokenContract, tokenId))
                  .Should()
                  .Throw<SmartContractAssertException>()
-                 .WithMessage("Auction closed.");
+                 .WithMessage("Auction ended.");
         }
 
         [Fact]
@@ -299,7 +316,7 @@ namespace NFTAuctionStoreTests
 
             SetupBlock(101);
             SetupMessage(tokenOwner, 0);
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, Ended = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, Executed = true });
 
             store.Invoking(m => m.AuctionEnd(tokenContract, tokenId))
                  .Should()
@@ -350,7 +367,7 @@ namespace NFTAuctionStoreTests
                  .Should()
                  .Be(new AuctionInfo {
                     Seller = tokenOwner,
-                    Ended = true,
+                    Executed = true,
                     EndBlock = 100, 
                     StartingPrice = 100,
                  });
@@ -374,7 +391,7 @@ namespace NFTAuctionStoreTests
                 Seller = tokenOwner,
                 HighestBid = 100,
                 HighestBidder = buyer,
-                Ended = false,
+                Executed = false,
                 EndBlock = 100,
                 StartingPrice = 100
             });
@@ -392,7 +409,7 @@ namespace NFTAuctionStoreTests
                      Seller = tokenOwner,
                      HighestBid = 100,
                      HighestBidder = buyer,
-                     Ended = true,
+                     Executed = true,
                      EndBlock = 100,
                      StartingPrice = 100,
                  });
@@ -408,7 +425,7 @@ namespace NFTAuctionStoreTests
 
         private void SetAuctionInfo(AuctionInfo auctionInfo)
         {
-            inMemoryState.SetStruct($"AuctionInfo:{tokenContract}:{tokenId}", auctionInfo);
+            state.SetStruct($"AuctionInfo:{tokenContract}:{tokenId}", auctionInfo);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct
