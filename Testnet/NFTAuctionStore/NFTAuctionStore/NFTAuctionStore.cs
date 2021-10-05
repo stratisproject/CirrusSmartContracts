@@ -168,24 +168,33 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
     public struct AuctionStartedLog
     {
+        [Index]
         public Address Contract;
+        [Index]
         public ulong TokenId;
         public ulong EndBlock;
         public ulong startingPrice;
+        [Index]
         public Address Seller;
     }
 
     public struct HighestBidUpdatedLog
     {
+        [Index]
         public Address Contract;
+        [Index]
         public ulong TokenId;
+        [Index]
         public Address Bidder;
         public ulong Bid;
     }
     public struct AuctionEndedLog
     {
+        [Index]
         public Address Contract;
+        [Index]
         public ulong TokenId;
+        [Index]
         public Address HighestBidder;
         public ulong HighestBid;
     }
