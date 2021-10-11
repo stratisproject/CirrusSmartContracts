@@ -7,6 +7,7 @@ namespace NFTStoreTests
     public class InMemoryState : IPersistentState
     {
         private readonly Dictionary<string, object> storage = new Dictionary<string, object>();
+
         public bool IsContractResult { get; set; }
         public void Clear(string key) => storage.Remove(key);
 
@@ -46,7 +47,8 @@ namespace NFTStoreTests
 
         public UInt256 GetUInt256(string key) => GetValue<UInt256>(key);
 
-        public bool IsContract(Address address) => IsContractResult;
+        public void SetIsContract(Address address, bool isContract) => AddOrReplace($"__IsContract:{address}", isContract);
+        public bool IsContract(Address address) => GetValue<bool>($"__IsContract:{address}");
 
         public void SetAddress(string key, Address value) => AddOrReplace(key, value);
 

@@ -1,20 +1,11 @@
 ﻿using Stratis.SmartContracts;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 [Deploy]
-public class NFTStore : SmartContract
+public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 {
     public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
     private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
-
-    public ulong NextId
-    {
-        get => State.GetUInt64(nameof(NextId));
-        private set => State.SetUInt64(nameof(NextId), value);
-    }
 
     public ulong CreatedAt
     {
@@ -27,28 +18,6 @@ public class NFTStore : SmartContract
         EnsureNotPayable();
 
         CreatedAt = Block.Number;
-    }
-
-    /// <summary>
-    /// Ensure the token is approved on the non fungible contract for store contract as pre-condition.
-    /// </summary>
-    public void Sale(Address contract, ulong tokenId, ulong price)
-    {
-        EnsureNotPayable();
-
-        Assert(price > 0, "Price should be higher than zero.");
-
-        var tokenOwner = GetOwner(contract, tokenId);
-
-        Assert(tokenOwner != Address, "The token is already on sale.");
-
-        EnsureCallerCanOperate(contract, tokenOwner);
-
-        TransferToken(contract, tokenId, tokenOwner, Address);
-
-        SetSaleInfo(contract, tokenId, new SaleInfo { Price = price, Seller = tokenOwner });
-
-        Log(new TokenOnSaleLog { Contract = contract, TokenId = tokenId, Price = price, Seller = tokenOwner, Order = NextId++ });
     }
 
     public void Buy(Address contract, ulong tokenId)
@@ -67,7 +36,7 @@ public class NFTStore : SmartContract
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller, Order = NextId++ });
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
     }
 
     public void CancelSale(Address contract, ulong tokenId)
@@ -83,7 +52,34 @@ public class NFTStore : SmartContract
 
         ClearSaleInfo(contract, tokenId);
 
-        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller, Order = NextId++ });
+        Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
+    }
+
+    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
+    {
+        EnsureNotPayable();
+
+        var seller = fromAddress == Address.Zero ? operatorAddress : fromAddress;
+
+        var price = Serializer.ToUInt64(data);
+
+        Assert(price > 0, "Price should be higher than zero.");
+
+        var tokenContract = Message.Sender;
+
+        Assert(State.IsContract(tokenContract), "The Caller is not a contract.");
+
+        Assert(Address == GetOwner(tokenContract, tokenId), "The store contract is not owner of the token.");
+
+        var saleInfo = GetSaleInfo(tokenContract, tokenId);
+
+        Assert(saleInfo.Price == 0, "The token is already on sale.");
+
+        SetSaleInfo(tokenContract, tokenId, new SaleInfo { Price = price, Seller = seller });
+
+        Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress });
+
+        return true;
     }
 
     private bool IsApprovedForAll(Address contract, Address tokenOwner)
@@ -93,13 +89,6 @@ public class NFTStore : SmartContract
         Assert(result.Success, "IsApprovedForAll method call failed.");
 
         return result.ReturnValue is bool success && success;
-    }
-
-    private void TransferToken(Address contract, ulong tokenId, Address from, Address to)
-    {
-        var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
-
-        Assert(result.Success, "The token transfer failed. Be sure contract is approved to transfer token.");
     }
 
     private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
@@ -139,9 +128,12 @@ public class NFTStore : SmartContract
         [Index]
         public Address Seller;
         [Index]
+        public Address Operator;
+        [Index]
         public ulong TokenId;
         public ulong Price;
         public ulong Order;
+
     }
 
     public struct TokenSaleCanceledLog
@@ -152,8 +144,6 @@ public class NFTStore : SmartContract
         public ulong TokenId;
         [Index]
         public Address Seller;
-
-        public ulong Order;
     }
 
     public struct TokenPurchasedLog
@@ -165,12 +155,17 @@ public class NFTStore : SmartContract
         public Address Buyer;
         [Index]
         public Address Seller;
-        public ulong Order;
     }
 
     public struct SaleInfo
     {
         public ulong Price;
         public Address Seller;
+    }
+
+    public struct ReceiveInfo
+    {
+        public Address Contract;
+        public ulong Price;
     }
 }
