@@ -120,12 +120,9 @@ public class NonFungibleToken : SmartContract
         get => State.GetString(nameof(Symbol));
         private set => State.SetString(nameof(Symbol), value);
     }
-
-    private string TokenURIFormat
-    {
-        get => State.GetString(nameof(TokenURIFormat));
-        set => State.SetString(nameof(TokenURIFormat), value);
-    }
+    
+    private string GetIdToTokenURI(ulong tokenId) => State.GetString($"URI:{tokenId}");
+    private void SetIdToTokenURI(ulong tokenId, string uri) => State.SetString($"URI:{tokenId}", uri);
 
     private bool OwnerOnlyMinting
     {
@@ -146,16 +143,11 @@ public class NonFungibleToken : SmartContract
     /// 
     /// </summary>
     /// <param name="state"></param>
-    /// <param name="name"></param>
-    /// <param name="symbol"></param>
-    /// <param name="tokenURIFormat">Format takes tokenId and contractAddress as parameter.
-    /// <para>string.Format(tokenUriFormat,tokenId,contractAddress)</para>
-    /// <para>{0} for tokenId and {1} is for contract address in hex format</para>
-    /// <para>Examples</para>
-    /// <para>https://example.com/tokens/{0} => https://example.com/tokens/20 </para>
-    /// <para>https://example.com/contracts/{1}/tokens/{0}/metadata => https://example.com/contracts/0x0000000000000000000000000000000000000002/token/125/metadata </para>
+    /// <param name="name">Name of the NFT Contract</param>
+    /// <param name="symbol">Symbol of the NFT Contract</param>
+    /// <param name="ownerOnlyMinting">True, if only owner allowed to mint tokens</param>
     /// </param>
-    public NonFungibleToken(ISmartContractState state, string name, string symbol, string tokenURIFormat, bool ownerOnlyMinting) : base(state)
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting) : base(state)
     {
         // todo: discuss callback handling and supported interface numbering with community.
         this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
@@ -167,7 +159,6 @@ public class NonFungibleToken : SmartContract
         this.Name = name;
         this.Symbol = symbol;
         this.Owner = Message.Sender;
-        this.TokenURIFormat = tokenURIFormat;
         this.OwnerOnlyMinting = ownerOnlyMinting;
     }
 
@@ -482,11 +473,12 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
-    public ulong Mint(Address to)
+    /// <param name="uri">Metadata URI of the token</param>
+    public ulong Mint(Address to, string uri)
     {
         var tokenId = checked(++TokenIdCounter);
 
-        Mint(to, tokenId);
+        Mint(to, tokenId, uri);
 
         return tokenId;
     }
@@ -495,19 +487,20 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
+    /// <param name="uri">Metadata URI of the token</param>
     /// <param name="data">The data param will passed destination contract</param>
-    public ulong SafeMint(Address to, byte[] data)
+    public ulong SafeMint(Address to, string uri, byte[] data)
     {
         var tokenId = checked(++TokenIdCounter);
 
-        Mint(to, tokenId);
+        Mint(to, tokenId, uri);
 
         EnsureContractReceivedToken(Address.Zero, to, tokenId, data);
 
         return tokenId;
     }
 
-    private void Mint(Address to, ulong tokenId)
+    private void Mint(Address to, ulong tokenId, string uri)
     {
         if (OwnerOnlyMinting)
         {
@@ -517,6 +510,8 @@ public class NonFungibleToken : SmartContract
         EnsureAddressIsNotEmpty(to);
 
         AddToken(to, tokenId);
+
+        SetIdToTokenURI(tokenId, uri);
 
         LogTransfer(Address.Zero, to, tokenId);
     }
@@ -547,13 +542,13 @@ public class NonFungibleToken : SmartContract
         ClearApproval(tokenId);
         RemoveToken(tokenOwner, tokenId);
 
+        SetIdToTokenURI(tokenId, null);
+
         LogTransfer(tokenOwner, Address.Zero, tokenId);
     }
 
-    public string TokenURI(ulong tokenId)
-    {
-        return string.Format(TokenURIFormat, tokenId, Address);
-    }
+    public string TokenURI(ulong tokenId) => GetIdToTokenURI(tokenId);
+
     private void EnsureAddressIsNotEmpty(Address address)
     {
         Assert(address != Address.Zero, "The address can not be zero.");
