@@ -3,9 +3,9 @@
 [Deploy]
 public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 {
-    public SaleInfo GetSaleInfo(Address contract, ulong tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
-    private void SetSaleInfo(Address contract, ulong tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
-    private void ClearSaleInfo(Address contract, ulong tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
+    public SaleInfo GetSaleInfo(Address contract, UInt256 tokenId) => State.GetStruct<SaleInfo>($"SaleInfo:{contract}:{tokenId}");
+    private void SetSaleInfo(Address contract, UInt256 tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
+    private void ClearSaleInfo(Address contract, UInt256 tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
     public ulong CreatedAt
     {
@@ -20,7 +20,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         CreatedAt = Block.Number;
     }
 
-    public void Buy(Address contract, ulong tokenId)
+    public void Buy(Address contract, UInt256 tokenId)
     {
         var saleInfo = GetSaleInfo(contract, tokenId);
 
@@ -39,7 +39,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
     }
 
-    public void CancelSale(Address contract, ulong tokenId)
+    public void CancelSale(Address contract, UInt256 tokenId)
     {
         EnsureNotPayable();
         var saleInfo = GetSaleInfo(contract, tokenId);
@@ -55,7 +55,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         Log(new TokenSaleCanceledLog { Contract = contract, TokenId = tokenId, Seller = saleInfo.Seller });
     }
 
-    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
+    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, UInt256 tokenId, byte[] data)
     {
         EnsureNotPayable();
 
@@ -91,14 +91,14 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         return result.ReturnValue is bool success && success;
     }
 
-    private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
+    private void SafeTransferToken(Address contract, UInt256 tokenId, Address from, Address to)
     {
         var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
         Assert(result.Success, "The token transfer failed.");
     }
 
-    private Address GetOwner(Address contract, ulong tokenId)
+    private Address GetOwner(Address contract, UInt256 tokenId)
     {
         var result = Call(contract, 0, "OwnerOf", new object[] { tokenId });
 
@@ -130,9 +130,8 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         [Index]
         public Address Operator;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
         public ulong Price;
-        public ulong Order;
 
     }
 
@@ -141,7 +140,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         [Index]
         public Address Contract;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
         [Index]
         public Address Seller;
     }
@@ -150,7 +149,7 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     {
         [Index]
         public Address Contract;
-        public ulong TokenId;
+        public UInt256 TokenId;
         [Index]
         public Address Buyer;
         [Index]
