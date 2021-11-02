@@ -71,7 +71,7 @@
         /// </summary>
         /// <param name="owner">Address for whom to query the balance.</param>
         /// <returns>Balance of owner.</returns>
-        ulong BalanceOf(Address owner);
+        UInt256 BalanceOf(Address owner);
 
         /// <summary>
         /// Returns the address of the owner of the NFT. NFTs assigned to zero address are considered invalid, and queries about them do throw.
