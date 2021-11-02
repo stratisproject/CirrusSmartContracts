@@ -20,7 +20,7 @@
         /// <param name="to">The new owner.</param>
         /// <param name="tokenId">The NFT to transfer.</param>
         /// <param name="data">Additional data with no specified format, sent in call to 'to'.</param>
-        void SafeTransferFrom(Address from, Address to, ulong tokenId, byte[] data);
+        void SafeTransferFrom(Address from, Address to, UInt256 tokenId, byte[] data);
 
         /// <summary>
         /// Transfers the ownership of an NFT from one address to another address. This function can
@@ -31,7 +31,7 @@
         /// <param name="from">The current owner of the NFT.</param>
         /// <param name="to">The new owner.</param>
         /// <param name="tokenId">The NFT to transfer.</param>
-        void SafeTransferFrom(Address from, Address to, ulong tokenId);
+        void SafeTransferFrom(Address from, Address to, UInt256 tokenId);
 
         /// <summary>
         /// Throws unless <see cref="Message.Sender"/> is the current owner, an authorized operator, or the approved
@@ -43,7 +43,7 @@
         /// <param name="from">The current owner of the NFT.</param>
         /// <param name="to">The new owner.</param>
         /// <param name="tokenId">The NFT to transfer.</param>
-        void TransferFrom(Address from, Address to, ulong tokenId);
+        void TransferFrom(Address from, Address to, UInt256 tokenId);
 
         /// <summary>
         /// Set or reaffirm the approved address for an NFT. This function can be changed to payable.
@@ -54,7 +54,7 @@
         /// </remarks>
         /// <param name="approved">Address to be approved for the given NFT ID.</param>
         /// <param name="tokenId">ID of the token to be approved.</param>
-        void Approve(Address approved, ulong tokenId);
+        void Approve(Address approved, UInt256 tokenId);
 
         /// <summary>
         /// Enables or disables approval for a third party ("operator") to manage all of
@@ -78,7 +78,7 @@
         /// </summary>
         /// <param name="tokenId">The identifier for an NFT.</param>
         /// <returns>Address of tokenId owner.</returns>
-        Address OwnerOf(ulong tokenId);
+        Address OwnerOf(UInt256 tokenId);
 
         /// <summary>
         /// Get the approved address for a single NFT.
@@ -86,7 +86,7 @@
         /// <remarks>Throws if 'tokenId' is not a valid NFT.</remarks>
         /// <param name="tokenId">ID of the NFT to query the approval of.</param>
         /// <returns>Address that tokenId is approved for. </returns>
-        Address GetApproved(ulong tokenId);
+        Address GetApproved(UInt256 tokenId);
 
         /// <summary>
         /// Checks if 'operator' is an approved operator for 'owner'.

@@ -27,56 +27,56 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="id">The NFT ID.</param>
     /// <returns>The persistent storage key to get or set the NFT owner.</returns>
-    private string GetIdToOwnerKey(ulong id) => $"IdToOwner:{id}";
+    private string GetIdToOwnerKey(UInt256 id) => $"IdToOwner:{id}";
 
     ///<summary>
     /// Gets the address of the owner of the NFT ID. 
     ///</summary>
     /// <param name="id">The ID of the NFT</param>
     ///<returns>The owner address.</returns>
-    private Address GetIdToOwner(ulong id) => State.GetAddress(GetIdToOwnerKey(id));
+    private Address GetIdToOwner(UInt256 id) => State.GetAddress(GetIdToOwnerKey(id));
 
     /// <summary>
     /// Sets the owner to the NFT ID.
     /// </summary>
     /// <param name="id">The ID of the NFT</param>
     /// <param name="value">The address of the owner.</param>
-    private void SetIdToOwner(ulong id, Address value) => State.SetAddress(GetIdToOwnerKey(id), value);
+    private void SetIdToOwner(UInt256 id, Address value) => State.SetAddress(GetIdToOwnerKey(id), value);
 
     /// <summary>
     /// Gets the key to the persistent state for the approval address by NFT ID.
     /// </summary>
     /// <param name="id">The NFT ID.</param>
     /// <returns>The persistent storage key to get or set the NFT approval.</returns>
-    private string GetIdToApprovalKey(ulong id) => $"IdToApproval:{id}";
+    private string GetIdToApprovalKey(UInt256 id) => $"IdToApproval:{id}";
 
     /// <summary>
     /// Getting from NFT ID the approval address.
     /// </summary>
     /// <param name="id">The ID of the NFT</param>
     /// <returns>Address of the approval.</returns>
-    private Address GetIdToApproval(ulong id) => State.GetAddress(GetIdToApprovalKey(id));
+    private Address GetIdToApproval(UInt256 id) => State.GetAddress(GetIdToApprovalKey(id));
 
     /// <summary>
     /// Setting to NFT ID to approval address.
     /// </summary>
     /// <param name="id">The ID of the NFT</param>
     /// <param name="value">The address of the approval.</param>
-    private void SetIdToApproval(ulong id, Address value) => State.SetAddress(GetIdToApprovalKey(id), value);
+    private void SetIdToApproval(UInt256 id, Address value) => State.SetAddress(GetIdToApprovalKey(id), value);
 
     /// <summary>
     /// Gets the amount of non fungible tokens the owner has.
     /// </summary>
     /// <param name="address">The address of the owner.</param>
     /// <returns>The amount of non fungible tokens.</returns>
-    private ulong GetBalance(Address address) => State.GetUInt64($"Balance:{address}");
+    private UInt256 GetBalance(Address address) => State.GetUInt256($"Balance:{address}");
 
     /// <summary>
     /// Sets the owner count of this non fungible tokens.
     /// </summary>
     /// <param name="address">The address of the owner.</param>
     /// <param name="value">The amount of tokens.</param>
-    private void SetBalance(Address address, ulong value) => State.SetUInt64($"Balance:{address}", value);
+    private void SetBalance(Address address, UInt256 value) => State.SetUInt256($"Balance:{address}", value);
 
     /// <summary>
     /// Gets the permission value of the operator authorization to perform actions on behalf of the owner.
@@ -121,8 +121,8 @@ public class NonFungibleToken : SmartContract
         private set => State.SetString(nameof(Symbol), value);
     }
     
-    private string GetIdToTokenURI(ulong tokenId) => State.GetString($"URI:{tokenId}");
-    private void SetIdToTokenURI(ulong tokenId, string uri) => State.SetString($"URI:{tokenId}", uri);
+    private string GetIdToTokenURI(UInt256 tokenId) => State.GetString($"URI:{tokenId}");
+    private void SetIdToTokenURI(UInt256 tokenId, string uri) => State.SetString($"URI:{tokenId}", uri);
 
     private bool OwnerOnlyMinting
     {
@@ -133,10 +133,10 @@ public class NonFungibleToken : SmartContract
     /// <summary>
     /// The next token id which is going to be minted
     /// </summary>
-    private ulong TokenIdCounter
+    private UInt256 TokenIdCounter
     {
-        get => State.GetUInt64(nameof(TokenIdCounter));
-        set => State.SetUInt64(nameof(TokenIdCounter), value);
+        get => State.GetUInt256(nameof(TokenIdCounter));
+        set => State.SetUInt256(nameof(TokenIdCounter), value);
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="to">The new owner.</param>
     /// <param name="tokenId">The NFT to transfer.</param>
     /// <param name="data">Additional data with no specified format, sent in call to 'to'.</param>
-    public void SafeTransferFrom(Address from, Address to, ulong tokenId, byte[] data)
+    public void SafeTransferFrom(Address from, Address to, UInt256 tokenId, byte[] data)
     {
         SafeTransferFromInternal(from, to, tokenId, data);
     }
@@ -189,7 +189,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="from">The current owner of the NFT.</param>
     /// <param name="to">The new owner.</param>
     /// <param name="tokenId">The NFT to transfer.</param>
-    public void SafeTransferFrom(Address from, Address to, ulong tokenId)
+    public void SafeTransferFrom(Address from, Address to, UInt256 tokenId)
     {
         SafeTransferFromInternal(from, to, tokenId, new byte[0]);
     }
@@ -204,7 +204,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="from">The current owner of the NFT.</param>
     /// <param name="to">The new owner.</param>
     /// <param name="tokenId">The NFT to transfer.</param>
-    public void TransferFrom(Address from, Address to, ulong tokenId)
+    public void TransferFrom(Address from, Address to, UInt256 tokenId)
     {
         CanTransfer(tokenId);
 
@@ -225,7 +225,7 @@ public class NonFungibleToken : SmartContract
     /// </remarks>
     /// <param name="approved">Address to be approved for the given NFT ID.</param>
     /// <param name="tokenId">ID of the token to be approved.</param>
-    public void Approve(Address approved, ulong tokenId)
+    public void Approve(Address approved, UInt256 tokenId)
     {
         CanOperate(tokenId);
         ValidateToken(tokenId);
@@ -256,7 +256,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="owner">Address for whom to query the balance.</param>
     /// <returns>Balance of owner.</returns>
-    public ulong BalanceOf(Address owner)
+    public UInt256 BalanceOf(Address owner)
     {
         EnsureAddressIsNotEmpty(owner);
         return GetBalance(owner);
@@ -267,7 +267,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="tokenId">The identifier for an NFT.</param>
     /// <returns>Address of tokenId owner.</returns>
-    public Address OwnerOf(ulong tokenId)
+    public Address OwnerOf(UInt256 tokenId)
     {
         Address owner = GetIdToOwner(tokenId);
         EnsureAddressIsNotEmpty(owner);
@@ -280,7 +280,7 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Throws if 'tokenId' is not a valid NFT.</remarks>
     /// <param name="tokenId">ID of the NFT to query the approval of.</param>
     /// <returns>Address that tokenId is approved for. </returns>
-    public Address GetApproved(ulong tokenId)
+    public Address GetApproved(UInt256 tokenId)
     {
         ValidateToken(tokenId);
 
@@ -304,7 +304,7 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Does NO checks.</remarks>
     /// <param name="to">Address of a new owner.</param>
     /// <param name="tokenId">The NFT that is being transferred.</param>
-    private void TransferInternal(Address to, ulong tokenId)
+    private void TransferInternal(Address to, UInt256 tokenId)
     {
         Address from = GetIdToOwner(tokenId);
         ClearApproval(tokenId);
@@ -321,11 +321,11 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Use and override this function with caution. Wrong usage can have serious consequences.</remarks>
     /// <param name="from">Address from wich we want to remove the NFT.</param>
     /// <param name="tokenId">Which NFT we want to remove.</param>
-    private void RemoveToken(Address from, ulong tokenId)
+    private void RemoveToken(Address from, UInt256 tokenId)
     {
         Assert(GetIdToOwner(tokenId) == from);
         var tokenCount = GetBalance(from);
-        SetBalance(from, checked(tokenCount - 1));
+        SetBalance(from, tokenCount - 1);
         SetIdToOwner(tokenId, Address.Zero);
     }
 
@@ -335,13 +335,13 @@ public class NonFungibleToken : SmartContract
     /// <remarks>Use and override this function with caution. Wrong usage can have serious consequences.</remarks>
     /// <param name="to">Address to which we want to add the NFT.</param>
     /// <param name="tokenId">Which NFT we want to add.</param>
-    private void AddToken(Address to, ulong tokenId)
+    private void AddToken(Address to, UInt256 tokenId)
     {
         Assert(GetIdToOwner(tokenId) == Address.Zero);
 
         SetIdToOwner(tokenId, to);
-        ulong currentTokenAmount = GetBalance(to);
-        SetBalance(to, checked(currentTokenAmount + 1));
+        var currentTokenAmount = GetBalance(to);
+        SetBalance(to, currentTokenAmount + 1);
     }
 
     /// <summary>
@@ -351,7 +351,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="to">The new owner.</param>
     /// <param name="tokenId">The NFT to transfer.</param>
     /// <param name="data">Additional data with no specified format, sent in call to 'to' if it is a contract.</param>
-    private void SafeTransferFromInternal(Address from, Address to, ulong tokenId, byte[] data)
+    private void SafeTransferFromInternal(Address from, Address to, UInt256 tokenId, byte[] data)
     {
         CanTransfer(tokenId);
         ValidateToken(tokenId);
@@ -369,7 +369,7 @@ public class NonFungibleToken : SmartContract
     /// Clears the current approval of a given NFT ID.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to be transferred</param>
-    private void ClearApproval(ulong tokenId)
+    private void ClearApproval(UInt256 tokenId)
     {
         if (GetIdToApproval(tokenId) != Address.Zero)
         {
@@ -386,7 +386,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="from">The from address.</param>
     /// <param name="to">The to address.</param>
     /// <param name="tokenId">The NFT ID.</param>
-    private void LogTransfer(Address from, Address to, ulong tokenId)
+    private void LogTransfer(Address from, Address to, UInt256 tokenId)
     {
         Log(new TransferLog() { From = from, To = to, TokenId = tokenId });
     }
@@ -399,7 +399,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="owner">The owner address.</param>
     /// <param name="operatorAddress">The approved address.</param>
     /// <param name="tokenId">The NFT ID.</param>
-    private void LogApproval(Address owner, Address approved, ulong tokenId)
+    private void LogApproval(Address owner, Address approved, UInt256 tokenId)
     {
         Log(new ApprovalLog() { Owner = owner, Approved = approved, TokenId = tokenId });
     }
@@ -420,7 +420,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the <see cref="Message.Sender"/> is an owner or operator of the given NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void CanOperate(ulong tokenId)
+    private void CanOperate(UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender));
@@ -430,7 +430,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the msg.sender is allowed to transfer NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to transfer.</param>
-    private void CanTransfer(ulong tokenId)
+    private void CanTransfer(UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         Assert(
@@ -444,7 +444,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that tokenId is a valid Token.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void ValidateToken(ulong tokenId)
+    private void ValidateToken(UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         EnsureAddressIsNotEmpty(tokenOwner);
@@ -474,9 +474,9 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
     /// <param name="uri">Metadata URI of the token</param>
-    public ulong Mint(Address to, string uri)
+    public UInt256 Mint(Address to, string uri)
     {
-        var tokenId = checked(++TokenIdCounter);
+        var tokenId = TokenIdCounter += 1;
 
         Mint(to, tokenId, uri);
 
@@ -489,9 +489,9 @@ public class NonFungibleToken : SmartContract
     /// <param name="to">The address that will own the minted NFT</param>
     /// <param name="uri">Metadata URI of the token</param>
     /// <param name="data">The data param will passed destination contract</param>
-    public ulong SafeMint(Address to, string uri, byte[] data)
+    public UInt256 SafeMint(Address to, string uri, byte[] data)
     {
-        var tokenId = checked(++TokenIdCounter);
+        var tokenId = TokenIdCounter += 1;
 
         Mint(to, tokenId, uri);
 
@@ -500,7 +500,7 @@ public class NonFungibleToken : SmartContract
         return tokenId;
     }
 
-    private void Mint(Address to, ulong tokenId, string uri)
+    private void Mint(Address to, UInt256 tokenId, string uri)
     {
         if (OwnerOnlyMinting)
         {
@@ -524,7 +524,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="to">Destination address that will receive the token</param>
     /// <param name="tokenId">The token identifier which is being transferred.</param>
     /// <param name="data">Additional data with no specified format.</param>
-    private void EnsureContractReceivedToken(Address from, Address to, ulong tokenId, byte[] data)
+    private void EnsureContractReceivedToken(Address from, Address to, UInt256 tokenId, byte[] data)
     {
         if (State.IsContract(to))
         {
@@ -533,7 +533,7 @@ public class NonFungibleToken : SmartContract
         }
     }
 
-    public void Burn(ulong tokenId)
+    public void Burn(UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
 
@@ -547,7 +547,7 @@ public class NonFungibleToken : SmartContract
         LogTransfer(tokenOwner, Address.Zero, tokenId);
     }
 
-    public string TokenURI(ulong tokenId) => GetIdToTokenURI(tokenId);
+    public string TokenURI(UInt256 tokenId) => GetIdToTokenURI(tokenId);
 
     private void EnsureAddressIsNotEmpty(Address address)
     {
@@ -561,7 +561,7 @@ public class NonFungibleToken : SmartContract
         [Index]
         public Address To;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
     }
 
     public struct ApprovalLog
@@ -571,7 +571,7 @@ public class NonFungibleToken : SmartContract
         [Index]
         public Address Approved;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
     }
 
     public struct ApprovalForAllLog
