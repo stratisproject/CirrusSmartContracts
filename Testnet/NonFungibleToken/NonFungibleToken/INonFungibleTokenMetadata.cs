@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Stratis.SmartContracts;
 
 namespace NonFungibleTokenContract
 {
@@ -9,6 +7,6 @@ namespace NonFungibleTokenContract
         string Name { get; }
         string Symbol { get; }
 
-        string TokenURI(ulong tokenId);
+        string TokenURI(UInt256 tokenId);
     }
 }
