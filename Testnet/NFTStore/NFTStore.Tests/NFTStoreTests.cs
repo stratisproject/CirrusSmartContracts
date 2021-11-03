@@ -23,7 +23,7 @@ namespace NFTStoreTests
         private readonly Address attacker;
         private readonly Address operatorAddress;
         private readonly Address buyer;
-        private readonly ulong tokenId;
+        private readonly UInt256 tokenId;
         public NFTStoreTests()
         {
             state = new InMemoryState();
@@ -180,8 +180,7 @@ namespace NFTStoreTests
                 TokenId = tokenId,
                 Seller = tokenOwner,
                 Operator = tokenOwner,
-                Price = price,
-                Order = 0
+                Price = price
             });
 
         }
@@ -215,8 +214,7 @@ namespace NFTStoreTests
                 TokenId = tokenId,
                 Seller = operatorAddress,
                 Operator = operatorAddress,
-                Price = price,
-                Order = 0
+                Price = price
             });
 
         }
@@ -430,13 +428,13 @@ namespace NFTStoreTests
             mContractLogger.Verify(x => x.Log(mContractState.Object, expectedLog), Times.Once());
         }
 
-        private void SetupTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
+        private void SetupTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "TransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
         }
 
-        private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
+        private void SetupSafeTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SafeTransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
