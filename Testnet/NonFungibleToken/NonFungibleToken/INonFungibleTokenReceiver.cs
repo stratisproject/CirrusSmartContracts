@@ -17,6 +17,6 @@
         /// <param name="tokenId">The NFT identifier which is being transferred.</param>
         /// <param name="data">Additional data with no specified format.</param>
         /// <returns>A bool indicating the resulting operation.</returns>
-        bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data);
+        bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, UInt256 tokenId, byte[] data);
     }
 }

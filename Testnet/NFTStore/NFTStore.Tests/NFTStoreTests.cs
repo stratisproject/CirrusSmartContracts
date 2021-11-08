@@ -9,11 +9,12 @@ namespace NFTStoreTests
 {
     public class NFTStoreTests
     {
-        private readonly IPersistentState inMemoryState;
+        private readonly InMemoryState state;
 
         private readonly Mock<ISmartContractState> mContractState;
         private readonly Mock<IContractLogger> mContractLogger;
         private readonly Mock<IInternalTransactionExecutor> mTransactionExecutor;
+        private readonly Mock<ISerializer> mSerializer;
 
         private readonly Address creator;
         private readonly Address tokenOwner;
@@ -22,24 +23,40 @@ namespace NFTStoreTests
         private readonly Address attacker;
         private readonly Address operatorAddress;
         private readonly Address buyer;
-        private readonly ulong tokenId;
+        private readonly UInt256 tokenId;
         public NFTStoreTests()
         {
-            this.inMemoryState = new InMemoryState();
-            this.mContractState = new Mock<ISmartContractState>();
-            this.mContractLogger = new Mock<IContractLogger>();
-            this.mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
-            this.mContractState.Setup(s => s.PersistentState).Returns(this.inMemoryState);
-            this.mContractState.Setup(s => s.ContractLogger).Returns(this.mContractLogger.Object);
-            this.mContractState.Setup(s => s.InternalTransactionExecutor).Returns(this.mTransactionExecutor.Object);
-            this.creator = "0x0000000000000000000000000000000000000001".HexToAddress();
-            this.tokenOwner = "0x0000000000000000000000000000000000000002".HexToAddress();
-            this.contract = "0x0000000000000000000000000000000000000003".HexToAddress();
-            this.tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
-            this.attacker = "0x0000000000000000000000000000000000000005".HexToAddress();
-            this.operatorAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
-            this.buyer = "0x0000000000000000000000000000000000000006".HexToAddress();
-            this.tokenId = 3;
+            state = new InMemoryState();
+            mContractState = new Mock<ISmartContractState>();
+            mContractLogger = new Mock<IContractLogger>();
+            mTransactionExecutor = new Mock<IInternalTransactionExecutor>();
+            mSerializer = new Mock<ISerializer>();
+            mContractState.Setup(s => s.PersistentState).Returns(state);
+            mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
+            mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
+            mContractState.Setup(s => s.Serializer).Returns(mSerializer.Object);
+            creator = "0x0000000000000000000000000000000000000001".HexToAddress();
+            tokenOwner = "0x0000000000000000000000000000000000000002".HexToAddress();
+            contract = "0x0000000000000000000000000000000000000003".HexToAddress();
+            tokenContract = "0x0000000000000000000000000000000000000004".HexToAddress();
+            attacker = "0x0000000000000000000000000000000000000005".HexToAddress();
+            operatorAddress = "0x0000000000000000000000000000000000000005".HexToAddress();
+            buyer = "0x0000000000000000000000000000000000000006".HexToAddress();
+            tokenId = 3;
+
+            state.SetIsContract(tokenContract, true);
+
+            SetupBlockNumber(1);
+        }
+
+        [Fact]
+        public void Constructor_Set_Properties_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            Assert.Equal(1ul, store.CreatedAt);
         }
 
         [Fact]
@@ -56,134 +73,150 @@ namespace NFTStoreTests
         }
 
         [Fact]
-        public void Sale_Sending_Coins_Fails()
+        public void OnNonFungibleTokenReceived_Sending_Coins_Fails()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupMessage(tokenOwner, 10);
+            SetupMessage(tokenContract, 10);
 
-            store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
+            var price = 5_00_000_000ul;
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, BitConverter.GetBytes(price)))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("The method is not payable.");
         }
 
         [Fact]
-        public void Sale_GetOwner_Fails()
+        public void OnNonFungibleTokenReceived_Called_By_None_Contract_Fails()
         {
             SetupMessage(creator, 0);
 
-            SetupGetOwnerOfToken(TransferResult.Failed());
+            state.SetIsContract(tokenContract, false);
 
             var store = new NFTStore(mContractState.Object);
 
-            store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
+            SetupMessage(tokenContract, 0);
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
+
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes))
+                 .Should()
+                 .Throw<SmartContractAssertException>()
+                 .WithMessage("The Caller is not a contract.");
+        }
+
+        [Fact]
+        public void OnNonFungibleTokenReceived_GetOwner_Call_Raise_Exception_Fails()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            SetupGetOwnerOfToken(TransferResult.Failed());
+            SetupMessage(tokenContract, 0);
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
+
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("OwnerOf method call failed.");
         }
 
         [Fact]
-        public void Sale_Selling_Already_OnSale_Token_Fails()
+        public void OnNonFungibleTokenReceived_Selling_Already_OnSale_Token_Fails()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupMessage(tokenOwner, 0);
+            SetupMessage(tokenContract, 0);
             SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
 
-            store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
+
+            store.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes);
+
+            store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
                  .WithMessage("The token is already on sale.");
         }
 
         [Fact]
-        public void Sale_Called_By_None_Owner_Or_Operator_Of_Token_Fails()
+        public void OnNonFungibleTokenReceived_Owner_Sell_Token_Success()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
+            SetupMessage(tokenContract, 0);
+            SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
 
-            SetupMessage(attacker, 0);
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
 
-            SetupIsApprovedForAll(tokenOwner, attacker, TransferResult.Succeed(false));
-
-            store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
+            store.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, priceBytes)
                  .Should()
-                 .Throw<SmartContractAssertException>()
-                 .WithMessage("The caller is not owner of the token nor approved for all.");
-        }
+                 .BeTrue();
 
-        [Fact]
-        public void Sale_None_Approved_Token_For_Contract_Fails()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTStore(mContractState.Object);
-
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
-
-            SetupMessage(tokenOwner, 0);
-
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Failed());
-
-            store.Invoking(s => s.Sale(tokenContract, tokenId, 100))
+            store.GetSaleInfo(tokenContract, tokenId)
                  .Should()
-                 .Throw<SmartContractAssertException>()
-                 .WithMessage("The token transfer failed. Be sure contract is approved to transfer token.");
+                 .Be(new SaleInfo { Price = price, Seller = tokenOwner });
+
+            VerifyLog(new TokenOnSaleLog
+            {
+                Contract = tokenContract,
+                TokenId = tokenId,
+                Seller = tokenOwner,
+                Operator = tokenOwner,
+                Price = price
+            });
 
         }
 
         [Fact]
-        public void Sale_Owner_Sell_Token_Success()
+        public void OnNonFungibleTokenReceived_Operator_Mint_And_Sell_Token_Success()
         {
             SetupMessage(creator, 0);
 
             var store = new NFTStore(mContractState.Object);
 
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
+            SetupMessage(tokenContract, 0);
+            SetupGetOwnerOfToken(TransferResult.Succeed(contract));
+            var price = 5_00_000_000ul;
+            var priceBytes = BitConverter.GetBytes(price);
 
-            SetupMessage(tokenOwner, 0);
+            mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
 
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed());
+            
+            store.OnNonFungibleTokenReceived(operatorAddress, Address.Zero, tokenId, priceBytes)
+                 .Should()
+                 .BeTrue();
 
-            store.Sale(tokenContract, tokenId, 100);
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(new SaleInfo { Price = price, Seller = operatorAddress });
 
-            var saleInfo = store.GetSaleInfo(tokenContract, tokenId);
+            VerifyLog(new TokenOnSaleLog
+            {
+                Contract = tokenContract,
+                TokenId = tokenId,
+                Seller = operatorAddress,
+                Operator = operatorAddress,
+                Price = price
+            });
 
-            Assert.Equal(new SaleInfo { Seller = tokenOwner, Price = 100 }, saleInfo);
-
-            VerifyLog(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = 100, Seller = tokenOwner });
-        }
-
-        [Fact]
-        public void Sale_Operator_Sell_Token_Success()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTStore(mContractState.Object);
-
-            SetupGetOwnerOfToken(TransferResult.Succeed(tokenOwner));
-
-            SetupMessage(operatorAddress, 0);
-
-            SetupIsApprovedForAll(tokenOwner, operatorAddress, TransferResult.Succeed(true));
-
-            SetupTransferToken(tokenOwner, contract, tokenId, TransferResult.Succeed());
-
-            store.Sale(tokenContract, tokenId, 100);
-
-            var saleInfo = store.GetSaleInfo(tokenContract, tokenId);
-
-            Assert.Equal(new SaleInfo { Seller = tokenOwner, Price = 100 }, saleInfo);
-
-            VerifyLog(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = 100, Seller = tokenOwner });
         }
 
         [Fact]
@@ -387,7 +420,7 @@ namespace NFTStoreTests
 
         private void SetSaleInfo(SaleInfo saleInfo)
         {
-            inMemoryState.SetStruct($"SaleInfo:{tokenContract}:{tokenId}", saleInfo);
+            state.SetStruct($"SaleInfo:{tokenContract}:{tokenId}", saleInfo);
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct
@@ -395,13 +428,13 @@ namespace NFTStoreTests
             mContractLogger.Verify(x => x.Log(mContractState.Object, expectedLog), Times.Once());
         }
 
-        private void SetupTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
+        private void SetupTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "TransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
         }
 
-        private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
+        private void SetupSafeTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SafeTransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
@@ -416,6 +449,11 @@ namespace NFTStoreTests
         private void SetupMessage(Address caller, ulong amount)
         {
             mContractState.Setup(s => s.Message).Returns(new Message(contract, caller, amount));
+        }
+
+        private void SetupBlockNumber(ulong blockNumber)
+        {
+            mContractState.Setup(s => s.Block.Number).Returns(blockNumber);
         }
 
         private void SetupGetOwnerOfToken(TransferResult result)
