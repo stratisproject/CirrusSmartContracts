@@ -20,7 +20,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="interfaceId">The interface id.</param>
     /// <param name="value">A value indicating if the interface id is supported.</param>
-    private void SetSupportedInterfaces(uint interfaceId, bool value) => State.SetBool($"SupportedInterface:{interfaceId}", value);
+    private void SetSupportedInterfaces(TokenInterface interfaceId, bool value) => State.SetBool($"SupportedInterface:{(uint)interfaceId}", value);
 
     /// <summary>
     /// Gets the key to the persistent state for the owner by NFT ID.
@@ -150,11 +150,11 @@ public class NonFungibleToken : SmartContract
     public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting) : base(state)
     {
         // todo: discuss callback handling and supported interface numbering with community.
-        this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
-        this.SetSupportedInterfaces((uint)0x00000002, true); // (ERC721) - INonFungibleToken,
-        this.SetSupportedInterfaces((uint)0x00000003, false); // (ERC721) - INonFungibleTokenReceiver
-        this.SetSupportedInterfaces((uint)0x00000004, true); // (ERC721) - INonFungibleTokenMetadata
-        this.SetSupportedInterfaces((uint)0x00000005, false); // (ERC721) - IERC721Enumerable
+        this.SetSupportedInterfaces(TokenInterface.ISupportsInterface, true); // (ERC165) - ISupportsInterface
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleToken, true); // (ERC721) - INonFungibleToken,
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenReceiver, false); // (ERC721) - INonFungibleTokenReceiver
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenMetadata, true); // (ERC721) - INonFungibleTokenMetadata
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenEnumerable, false); // (ERC721) - INonFungibleTokenEnumerable
 
         this.Name = name;
         this.Symbol = symbol;
@@ -552,6 +552,15 @@ public class NonFungibleToken : SmartContract
     private void EnsureAddressIsNotEmpty(Address address)
     {
         Assert(address != Address.Zero, "The address can not be zero.");
+    }
+
+    private enum TokenInterface
+    {
+        ISupportsInterface = 1,
+        INonFungibleToken,
+        INonFungibleTokenReceiver,
+        INonFungibleTokenMetadata,
+        INonFungibleTokenEnumerable,
     }
 
     public struct TransferLog
