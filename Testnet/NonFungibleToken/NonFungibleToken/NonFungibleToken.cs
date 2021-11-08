@@ -206,9 +206,10 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">The NFT to transfer.</param>
     public void TransferFrom(Address from, Address to, UInt256 tokenId)
     {
-        CanTransfer(tokenId);
-
         Address tokenOwner = GetIdToOwner(tokenId);
+
+        CanTransfer(tokenOwner, tokenId);
+
         EnsureAddressIsNotEmpty(tokenOwner);
         EnsureAddressIsNotEmpty(to);
         Assert(tokenOwner == from);
@@ -353,10 +354,11 @@ public class NonFungibleToken : SmartContract
     /// <param name="data">Additional data with no specified format, sent in call to 'to' if it is a contract.</param>
     private void SafeTransferFromInternal(Address from, Address to, UInt256 tokenId, byte[] data)
     {
-        CanTransfer(tokenId);
+        Address tokenOwner = GetIdToOwner(tokenId);
+
+        CanTransfer(tokenOwner, tokenId);
         ValidateToken(tokenId);
 
-        Address tokenOwner = GetIdToOwner(tokenId);
         Assert(tokenOwner == from);
         EnsureAddressIsNotEmpty(to);
 
@@ -430,9 +432,8 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the msg.sender is allowed to transfer NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to transfer.</param>
-    private void CanTransfer(UInt256 tokenId)
+    private void CanTransfer(Address tokenOwner,UInt256 tokenId)
     {
-        Address tokenOwner = GetIdToOwner(tokenId);
         Assert(
           tokenOwner == Message.Sender
           || GetIdToApproval(tokenId) == Message.Sender
