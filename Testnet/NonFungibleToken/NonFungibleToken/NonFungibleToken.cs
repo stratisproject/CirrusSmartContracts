@@ -230,7 +230,7 @@ public class NonFungibleToken : SmartContract
     public void Approve(Address approved, UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
-        CanOperate(tokenOwner, tokenId);
+        CanOperate(tokenOwner);
         
         EnsureAddressIsNotEmpty(tokenOwner);
 
@@ -355,6 +355,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="data">Additional data with no specified format, sent in call to 'to' if it is a contract.</param>
     private void SafeTransferFromInternal(Address from, Address to, UInt256 tokenId, byte[] data)
     {
+
         Address tokenOwner = GetIdToOwner(tokenId);
 
         CanTransfer(tokenOwner, tokenId);
@@ -423,7 +424,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the <see cref="Message.Sender"/> is an owner or operator of the given NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void CanOperate(Address tokenOwner, UInt256 tokenId)
+    private void CanOperate(Address tokenOwner)
     {
         Assert(tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender));
     }
