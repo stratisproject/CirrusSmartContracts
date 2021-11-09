@@ -215,7 +215,7 @@ public class NonFungibleToken : SmartContract
         EnsureAddressIsNotEmpty(to);
         Assert(tokenOwner == from);
 
-        TransferInternal(to, tokenId);
+        TransferInternal(tokenOwner, to, tokenId);
     }
 
     /// <summary>
@@ -307,11 +307,11 @@ public class NonFungibleToken : SmartContract
     /// Actually performs the transfer.
     /// </summary>
     /// <remarks>Does NO checks.</remarks>
+    /// <param name="from">The current owner of the NFT.</param>
     /// <param name="to">Address of a new owner.</param>
     /// <param name="tokenId">The NFT that is being transferred.</param>
-    private void TransferInternal(Address to, UInt256 tokenId)
+    private void TransferInternal(Address from ,Address to, UInt256 tokenId)
     {
-        Address from = GetIdToOwner(tokenId);
         ClearApproval(tokenId);
 
         RemoveToken(from, tokenId);
@@ -366,7 +366,7 @@ public class NonFungibleToken : SmartContract
         Assert(tokenOwner == from);
         EnsureAddressIsNotEmpty(to);
 
-        TransferInternal(to, tokenId);
+        TransferInternal(tokenOwner, to, tokenId);
 
         EnsureContractReceivedToken(from, to, tokenId, data);
     }
