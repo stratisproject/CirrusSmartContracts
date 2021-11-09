@@ -341,8 +341,6 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">Which NFT we want to add.</param>
     private void AddToken(Address to, UInt256 tokenId)
     {
-        Assert(GetIdToOwner(tokenId) == Address.Zero);
-
         SetIdToOwner(tokenId, to);
         var currentTokenAmount = GetBalance(to);
         SetBalance(to, currentTokenAmount + 1);
