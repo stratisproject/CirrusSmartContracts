@@ -10,12 +10,6 @@ public class DAOContract : SmartContract
         private set => State.SetAddress(nameof(Owner), value);
     }
 
-    public Address PendingOwner
-    {
-        get => State.GetAddress(nameof(PendingOwner));
-        private set => State.SetAddress(nameof(PendingOwner), value);
-    }
-
     public uint MinQuorum => WhitelistedCount / 2 + 1;
 
     public uint WhitelistedCount
@@ -48,12 +42,11 @@ public class DAOContract : SmartContract
     public ulong GetVotingDeadline(uint proposalId) => State.GetUInt64($"Deadline:{proposalId}");
     private void SetVotingDeadline(uint proposalId, ulong block) => State.SetUInt64($"Deadline:{proposalId}", block);
 
-    public uint GetVotes(uint proposalId, bool vote) => State.GetUInt32($"Votes:{proposalId}:{vote}");
-    private void SetVotes(uint proposalId, bool vote, uint value) => State.SetUInt32($"Votes:{proposalId}:{vote}", value);
+    public uint GetYesVotes(uint proposalId) => State.GetUInt32($"YesVotes:{proposalId}");
+    private void SetYesVotes(uint proposalId, uint value) => State.SetUInt32($"YesVotes:{proposalId}", value);
 
-    public uint GetYesVotes(uint proposalId) => GetVotes(proposalId, true);
-
-    public uint GetNoVotes(uint proposalId) => GetVotes(proposalId, false);
+    public uint GetNoVotes(uint proposalId) => State.GetUInt32($"NoVotes:{proposalId}");
+    private void SetNoVotes(uint proposalId, uint value) => State.SetUInt32($"NoVotes:{proposalId}", value);
 
     public uint GetVote(uint proposalId, Address address) => State.GetUInt32($"Vote:{proposalId}:{address}");
     private void SetVote(uint proposalId, Address address, Votes vote) => State.SetUInt32($"Vote:{proposalId}:{address}", (uint)vote);
@@ -62,18 +55,19 @@ public class DAOContract : SmartContract
 
     private void SetProposal(uint index, Proposal proposal) => State.SetStruct($"Proposals:{index}", proposal);
 
-    public DAOContract(ISmartContractState state, uint minVotingDuration, uint maxVotingDuration)
+    public const uint DefaultMaxDuration = 60u * 60 * 24 * 7 / 16; // 1 week period as second/ block duration as second
+    public DAOContract(ISmartContractState state, uint minVotingDuration)
         : base(state)
     {
-        Assert(maxVotingDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({maxVotingDuration})");
+        Assert(DefaultMaxDuration > minVotingDuration, $"MinVotingDuration should be lower than maxVotingDuration({DefaultMaxDuration})");
 
         Owner = Message.Sender;
         LastProposalId = 1;
         MinVotingDuration = minVotingDuration;
-        MaxVotingDuration = maxVotingDuration;
+        MaxVotingDuration = DefaultMaxDuration;
     }
 
-    public uint CreateProposal(Address recipient, ulong amount, uint votingDuration, string description)
+    public uint CreateProposal(Address recipent, ulong amount, uint votingDuration, string description)
     {
         EnsureNotPayable();
 
@@ -86,7 +80,7 @@ public class DAOContract : SmartContract
         {
             RequestedAmount = amount,
             Description = description,
-            Recipient = recipient,
+            Recipient = recipent,
             Owner = Message.Sender
         };
 
@@ -96,7 +90,7 @@ public class DAOContract : SmartContract
         Log(new ProposalAddedLog
         {
             ProposalId = proposalId,
-            Recipient = recipient,
+            Recipent = recipent,
             Amount = amount,
             Description = description
         });
@@ -113,43 +107,44 @@ public class DAOContract : SmartContract
 
         Assert(GetVotingDeadline(proposalId) > Block.Number, "Voting is closed.");
 
-        VoteProposal(proposalId, vote);
+        VoteProposal(proposalId, ToVote(vote));
     }
 
-    private void VoteProposal(uint proposalId, bool vote)
+    private void VoteProposal(uint proposalId, Votes vote)
     {
         var currentVote = (Votes)GetVote(proposalId, Message.Sender);
 
-        var voteEnum = ToVoteEnum(vote);
-        if (currentVote == voteEnum)
+        if (currentVote == vote)
         {
             return;
         }
 
         Unvote(proposalId, currentVote);
+        SetVote(proposalId, Message.Sender, vote);
 
-        SetVote(proposalId, Message.Sender, voteEnum);
+        Log(new ProposalVotedLog { ProposalId = proposalId, Voter = Message.Sender, Vote = vote == Votes.Yes });
 
-        Log(new ProposalVotedLog { ProposalId = proposalId, Voter = Message.Sender, Vote = vote });
-
-        var voteCount = GetVotes(proposalId, vote);
-
-        SetVotes(proposalId, vote, voteCount + 1);
+        if (vote == Votes.Yes)
+        {
+            SetYesVotes(proposalId, GetYesVotes(proposalId) + 1);
+        }
+        else
+        {
+            SetNoVotes(proposalId, GetNoVotes(proposalId) + 1);
+        }
     }
 
-    private void Unvote(uint proposalId, Votes vote)
+    private void Unvote(uint proposalId, Votes currentVote)
     {
-        if (vote == Votes.None)
-            return;
-
-        var voteBool = ToVoteBool(vote);
-        var voteCount = GetVotes(proposalId, voteBool);
-
-        SetVotes(proposalId, voteBool, voteCount - 1);
+        switch (currentVote)
+        {
+            case Votes.Yes: SetYesVotes(proposalId, GetYesVotes(proposalId) - 1); break;
+            case Votes.No: SetNoVotes(proposalId, GetNoVotes(proposalId) - 1); break;
+            case Votes.None: break;
+        }
     }
 
-    private Votes ToVoteEnum(bool vote) => vote ? Votes.Yes : Votes.No;
-    private bool ToVoteBool(Votes vote) => vote == Votes.Yes;
+    private Votes ToVote(bool vote) => vote ? Votes.Yes : Votes.No;
 
     public void ExecuteProposal(uint proposalId)
     {
@@ -174,7 +169,7 @@ public class DAOContract : SmartContract
 
         Assert(result.Success, "Transfer failed.");
 
-        Log(new ProposalExecutedLog { ProposalId = proposalId, Amount = proposal.RequestedAmount, Recipient = proposal.Recipient });
+        Log(new ProposalExecutedLog { ProposalId = proposalId, Amount = proposal.RequestedAmount, Recipent = proposal.Recipient });
 
     }
 
@@ -229,28 +224,33 @@ public class DAOContract : SmartContract
 
     public void Deposit()
     {
+        EnsureOwnerOnly();
         Log(new FundRaisedLog { Sender = Message.Sender, Amount = Message.Value });
     }
 
     public override void Receive() => Deposit();
 
-    public void SetPendingOwner(Address newOwner)
+    public void TransferOwnership(Address newOwner)
     {
         EnsureOwnerOnly();
-        PendingOwner = newOwner;
+        Owner = newOwner;
     }
 
-    public void ClaimOwnership()
+    public void UpdateMinVotingDuration(uint minVotingDuration)
     {
-        var newOwner = PendingOwner;
+        EnsureOwnerOnly();
 
-        Assert(newOwner == Message.Sender, "ClaimOwnership must be called by the new(pending) owner.");
+        Assert(minVotingDuration < MaxVotingDuration, "MinVotingDuration should be lower than MaxVotingDuration.");
 
-        var oldOwner = Owner;
-        Owner = newOwner;
-        PendingOwner = Address.Zero;
+        MinVotingDuration = minVotingDuration;
+    }
 
-        Log(new OwnerTransferredLog { From = oldOwner, To = newOwner });
+    public void UpdateMaxVotingDuration(uint maxVotingDuration)
+    {
+        EnsureOwnerOnly();
+        Assert(maxVotingDuration > MinVotingDuration, "MaxVotingDuration should be higher than MinVotingDuration.");
+
+        MaxVotingDuration = maxVotingDuration;
     }
 
     private void EnsureOwnerOnly() => Assert(this.Owner == Message.Sender, "The method is owner only.");
@@ -266,7 +266,7 @@ public class DAOContract : SmartContract
     public struct ProposalAddedLog
     {
         [Index]
-        public Address Recipient;
+        public Address Recipent;
         [Index]
         public uint ProposalId;
         public ulong Amount;
@@ -275,7 +275,7 @@ public class DAOContract : SmartContract
     public struct ProposalExecutedLog
     {
         [Index]
-        public Address Recipient;
+        public Address Recipent;
         [Index]
         public uint ProposalId;
         public ulong Amount;
@@ -303,6 +303,7 @@ public class DAOContract : SmartContract
 
         public ulong RequestedAmount;
 
+
         public string Description;
 
         /// <summary>
@@ -310,12 +311,4 @@ public class DAOContract : SmartContract
         /// </summary>
         public bool Executed;
     }
-    public struct OwnerTransferredLog
-    {
-        [Index]
-        public Address From;
-        [Index]
-        public Address To;
-    }
 }
-
