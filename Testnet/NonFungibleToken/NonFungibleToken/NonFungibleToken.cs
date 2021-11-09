@@ -229,10 +229,11 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">ID of the token to be approved.</param>
     public void Approve(Address approved, UInt256 tokenId)
     {
-        CanOperate(tokenId);
-        ValidateToken(tokenId);
-
         Address tokenOwner = GetIdToOwner(tokenId);
+        CanOperate(tokenOwner, tokenId);
+        
+        EnsureAddressIsNotEmpty(tokenOwner);
+
         Assert(approved != tokenOwner);
 
         SetIdToApproval(tokenId, approved);
@@ -284,7 +285,9 @@ public class NonFungibleToken : SmartContract
     /// <returns>Address that tokenId is approved for. </returns>
     public Address GetApproved(UInt256 tokenId)
     {
-        ValidateToken(tokenId);
+        Address tokenOwner = GetIdToOwner(tokenId);
+
+        EnsureAddressIsNotEmpty(tokenOwner);
 
         return GetIdToApproval(tokenId);
     }
@@ -358,7 +361,7 @@ public class NonFungibleToken : SmartContract
         Address tokenOwner = GetIdToOwner(tokenId);
 
         CanTransfer(tokenOwner, tokenId);
-        ValidateToken(tokenId);
+        EnsureAddressIsNotEmpty(tokenOwner);
 
         Assert(tokenOwner == from);
         EnsureAddressIsNotEmpty(to);
@@ -423,9 +426,8 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the <see cref="Message.Sender"/> is an owner or operator of the given NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void CanOperate(UInt256 tokenId)
+    private void CanOperate(Address tokenOwner, UInt256 tokenId)
     {
-        Address tokenOwner = GetIdToOwner(tokenId);
         Assert(tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender));
     }
 
@@ -442,16 +444,7 @@ public class NonFungibleToken : SmartContract
         );
     }
 
-    /// <summary>
-    /// Guarantees that tokenId is a valid Token.
-    /// </summary>
-    /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void ValidateToken(UInt256 tokenId)
-    {
-        Address tokenOwner = GetIdToOwner(tokenId);
-        EnsureAddressIsNotEmpty(tokenOwner);
-    }
-
+    
     /// <summary>
     /// Sets the contract owner who can mint/burn
     /// </summary>
