@@ -304,7 +304,7 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
-    /// Actually preforms the transfer.
+    /// Actually performs the transfer.
     /// </summary>
     /// <remarks>Does NO checks.</remarks>
     /// <param name="to">Address of a new owner.</param>
