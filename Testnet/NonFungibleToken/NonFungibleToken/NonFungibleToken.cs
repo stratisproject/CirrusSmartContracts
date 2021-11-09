@@ -196,8 +196,10 @@ public class NonFungibleToken : SmartContract
 
     /// <summary>
     /// Throws unless <see cref="Message.Sender"/> is the current owner, an authorized operator, or the approved
-    /// address for this NFT.Throws if <see cref="from"/> is not the current owner.Throws if <see cref="to"/> is the zero
-    /// address.Throws if <see cref="tokenId"/> is not a valid NFT. This function can be changed to payable.
+    /// address for this NFT.
+    /// Throws if <see cref="from"/> is not the current owner.
+    /// Throws if <see cref="to"/> is the zero address.
+    /// Throws if <see cref="tokenId"/> is not a valid NFT.
     /// </summary>
     /// <remarks>The caller is responsible to confirm that <see cref="to"/> is capable of receiving NFTs or else
     /// they maybe be permanently lost.</remarks>
@@ -210,7 +212,6 @@ public class NonFungibleToken : SmartContract
 
         CanTransfer(tokenOwner, tokenId);
 
-        EnsureAddressIsNotEmpty(tokenOwner);
         EnsureAddressIsNotEmpty(to);
         Assert(tokenOwner == from);
 
