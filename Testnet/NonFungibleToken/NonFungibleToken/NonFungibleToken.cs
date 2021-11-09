@@ -328,7 +328,6 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">Which NFT we want to remove.</param>
     private void RemoveToken(Address from, UInt256 tokenId)
     {
-        Assert(GetIdToOwner(tokenId) == from);
         var tokenCount = GetBalance(from);
         SetBalance(from, tokenCount - 1);
         SetIdToOwner(tokenId, Address.Zero);
