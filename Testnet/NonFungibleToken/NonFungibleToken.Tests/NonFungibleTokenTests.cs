@@ -1,4 +1,5 @@
 ﻿using DividendTokenContract.Tests;
+using FluentAssertions;
 using Moq;
 using Moq.Language.Flow;
 using NonFungibleTokenContract.Tests;
@@ -6,6 +7,7 @@ using Stratis.SmartContracts;
 using System;
 using System.Linq;
 using Xunit;
+using static NonFungibleToken;
 
 public class NonFungibleTokenTests
 {
@@ -55,46 +57,91 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
-    public void TransferOwnership_CalledByNonContractOwner_ThrowsException()
+    public void SetPendingOwner_Success()
     {
         var owner = "0x0000000000000000000000000000000000000002".HexToAddress();
         var newOwner = "0x0000000000000000000000000000000000000003".HexToAddress();
-        var someAddress = "0x0000000000000000000000000000000000000004".HexToAddress();
-        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
+
+        smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, someAddress, 0));
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferOwnership(newOwner));
+        nonFungibleToken.SetPendingOwner(newOwner);
+
+        nonFungibleToken.Owner
+                        .Should()
+                        .Be(owner);
+
+        nonFungibleToken.PendingOwner
+                .Should()
+                .Be(newOwner);
+
+        var log = new OwnershipTransferRequestedLog { CurrentOwner = owner, PendingOwner = newOwner };
+        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), log));
     }
 
     [Fact]
-    public void TransferOwnership_CalledByZeroAddress_ThrowsException()
+    public void SetPendingOwner_Called_By_NonOwner_Fails()
     {
         var owner = "0x0000000000000000000000000000000000000002".HexToAddress();
         var newOwner = "0x0000000000000000000000000000000000000003".HexToAddress();
+
         this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, Address.Zero, 0));
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferOwnership(newOwner));
+        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, newOwner, 0));
+
+        nonFungibleToken.Invoking(c => c.SetPendingOwner(newOwner))
+                        .Should()
+                        .ThrowExactly<SmartContractAssertException>()
+                        .WithMessage("The method is owner only.");
     }
 
     [Fact]
-    public void TransferOwnership_CalledByContractOwner_Success()
+    public void ClaimOwnership_Not_Called_By_NewOwner_Fails()
     {
         var owner = "0x0000000000000000000000000000000000000002".HexToAddress();
         var newOwner = "0x0000000000000000000000000000000000000003".HexToAddress();
-        this.smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
+
+        smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
 
         var nonFungibleToken = this.CreateNonFungibleToken();
 
-        nonFungibleToken.TransferOwnership(newOwner);
+        nonFungibleToken.SetPendingOwner(newOwner);
 
-        Assert.Equal(newOwner, nonFungibleToken.Owner);
+        nonFungibleToken.Invoking(c => c.ClaimOwnership())
+                .Should()
+                .ThrowExactly<SmartContractAssertException>()
+                .WithMessage("ClaimOwnership must be called by the new(pending) owner.");
+    }
 
-        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.OwnershipTransferedLog { PreviousOwner = owner, NewOwner = newOwner }));
+    [Fact]
+    public void ClaimOwnership_Success()
+    {
+        var owner = "0x0000000000000000000000000000000000000002".HexToAddress();
+        var newOwner = "0x0000000000000000000000000000000000000003".HexToAddress();
+
+        smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, owner, 0));
+
+        var nonFungibleToken = this.CreateNonFungibleToken();
+
+        nonFungibleToken.SetPendingOwner(newOwner);
+
+        smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(this.contractAddress, newOwner, 0));
+
+        nonFungibleToken.ClaimOwnership();
+
+        nonFungibleToken.Owner
+                .Should()
+                .Be(newOwner);
+
+        nonFungibleToken.PendingOwner
+                        .Should()
+                        .Be(Address.Zero);
+
+        var log = new OwnershipTransferedLog { PreviousOwner = owner, NewOwner = newOwner };
+        this.contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), log));
     }
 
     [Fact]

@@ -104,6 +104,15 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    public Address PendingOwner
+    {
+        get => State.GetAddress(nameof(PendingOwner));
+        private set => State.SetAddress(nameof(PendingOwner), value);
+    }
+
+    /// <summary>
     /// Name for non-fungible token contract
     /// </summary>
     public string Name
@@ -120,7 +129,7 @@ public class NonFungibleToken : SmartContract
         get => State.GetString(nameof(Symbol));
         private set => State.SetString(nameof(Symbol), value);
     }
-    
+
     private string GetIdToTokenURI(UInt256 tokenId) => State.GetString($"URI:{tokenId}");
     private void SetIdToTokenURI(UInt256 tokenId, string uri) => State.SetString($"URI:{tokenId}", uri);
 
@@ -231,7 +240,7 @@ public class NonFungibleToken : SmartContract
     {
         Address tokenOwner = GetIdToOwner(tokenId);
         CanOperate(tokenOwner);
-        
+
         EnsureAddressIsNotEmpty(tokenOwner);
 
         Assert(approved != tokenOwner);
@@ -310,7 +319,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="from">The current owner of the NFT.</param>
     /// <param name="to">Address of a new owner.</param>
     /// <param name="tokenId">The NFT that is being transferred.</param>
-    private void TransferInternal(Address from ,Address to, UInt256 tokenId)
+    private void TransferInternal(Address from, Address to, UInt256 tokenId)
     {
         ClearApproval(tokenId);
 
@@ -433,7 +442,7 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the msg.sender is allowed to transfer NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to transfer.</param>
-    private void CanTransfer(Address tokenOwner,UInt256 tokenId)
+    private void CanTransfer(Address tokenOwner, UInt256 tokenId)
     {
         Assert(
           tokenOwner == Message.Sender
@@ -442,24 +451,30 @@ public class NonFungibleToken : SmartContract
         );
     }
 
-    
-    /// <summary>
-    /// Sets the contract owner who can mint/burn
-    /// </summary>
-    /// <param name="owner"></param>
-    public void TransferOwnership(Address owner)
+    public void SetPendingOwner(Address newOwner)
     {
         EnsureOwnerOnly();
-        EnsureAddressIsNotEmpty(owner);
+        PendingOwner = newOwner;
 
-        Log(new OwnershipTransferedLog { PreviousOwner = Owner, NewOwner = owner });
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = newOwner });
+    }
 
-        Owner = owner;
+    public void ClaimOwnership()
+    {
+        var newOwner = PendingOwner;
+
+        Assert(newOwner == Message.Sender, "ClaimOwnership must be called by the new(pending) owner.");
+
+        var oldOwner = Owner;
+        Owner = newOwner;
+        PendingOwner = Address.Zero;
+
+        Log(new OwnershipTransferedLog { PreviousOwner = oldOwner, NewOwner = newOwner });
     }
 
     private void EnsureOwnerOnly()
     {
-        Assert(Message.Sender == Owner, "Only owner of the contract can set new owner.");
+        Assert(Message.Sender == Owner, "The method is owner only.");
     }
 
     /// <summary>
@@ -594,4 +609,13 @@ public class NonFungibleToken : SmartContract
         [Index]
         public Address NewOwner;
     }
+
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index]
+        public Address CurrentOwner;
+        [Index]
+        public Address PendingOwner;
+    }
+
 }
