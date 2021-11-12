@@ -448,7 +448,7 @@ public class NonFungibleToken : SmartContract
     /// Only owner can set new owner and new owner will be in pending state 
     /// till new owner will call <see cref="ClaimOwnership"></see> method. 
     /// </summary>
-    /// <param name="newOwner"></param>
+    /// <param name="newOwner">The new owner which is going to be in pending state</param>
     public void SetPendingOwner(Address newOwner)
     {
         EnsureOwnerOnly();
