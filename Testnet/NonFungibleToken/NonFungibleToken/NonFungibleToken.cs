@@ -216,8 +216,10 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">The NFT to transfer.</param>
     public void TransferFrom(Address from, Address to, UInt256 tokenId)
     {
+        EnsureAddressIsNotEmpty(to);
         Address tokenOwner = GetIdToOwner(tokenId);
 
+        EnsureAddressIsNotEmpty(tokenOwner);
         CanTransfer(tokenOwner, tokenId);
 
         Assert(tokenOwner == from, "The from parameter is not token owner.");
@@ -232,17 +234,20 @@ public class NonFungibleToken : SmartContract
     /// The zero address indicates there is no approved address. Throws unless <see cref="Message.Sender"/> is
     /// the current NFT owner, or an authorized operator of the current owner.
     /// </remarks>
-    /// <param name="to">Address to be approved for the given NFT ID.</param>
+    /// <param name="approved">Address to be approved for the given NFT ID.</param>
     /// <param name="tokenId">ID of the token to be approved.</param>
-    public void Approve(Address to, UInt256 tokenId)
+    public void Approve(Address approved, UInt256 tokenId)
     {
         Address tokenOwner = GetIdToOwner(tokenId);
+
+        EnsureAddressIsNotEmpty(tokenOwner);
+
         CanOperate(tokenOwner);
 
-        Assert(to != tokenOwner,"The to address is already token owner.");
+        Assert(approved != tokenOwner, $"The {nameof(approved)} address is already token owner.");
 
-        SetIdToApproval(tokenId, to);
-        LogApproval(tokenOwner, to, tokenId);
+        SetIdToApproval(tokenId, approved);
+        LogApproval(tokenOwner, approved, tokenId);
     }
 
     /// <summary>
@@ -360,16 +365,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="data">Additional data with no specified format, sent in call to 'to' if it is a contract.</param>
     private void SafeTransferFromInternal(Address from, Address to, UInt256 tokenId, byte[] data)
     {
-
-        Address tokenOwner = GetIdToOwner(tokenId);
-
-        CanTransfer(tokenOwner, tokenId);
-        EnsureAddressIsNotEmpty(tokenOwner);
-
-        Assert(tokenOwner == from);
-        EnsureAddressIsNotEmpty(to);
-
-        TransferInternal(tokenOwner, to, tokenId);
+        TransferFrom(from, to, tokenId);
 
         EnsureContractReceivedToken(from, to, tokenId, data);
     }

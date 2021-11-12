@@ -398,7 +398,7 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
-    public void Approve_NTFokenOwnerSameAsMessageSender_ThrowsException()
+    public void Approve_NFTokenOwnerSameAsMessageSender_ThrowsException()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
         state.SetAddress("IdToOwner:1", ownerAddress);
@@ -431,7 +431,7 @@ public class NonFungibleTokenTests
     public void Approve_InvalidNFToken_ThrowsException()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
-        var operatorAddress = Address.Zero;
+        var operatorAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
         var someAddress = "0x0000000000000000000000000000000000000008".HexToAddress();
         state.SetAddress("IdToOwner:1", Address.Zero);
         state.SetBool($"OwnerToOperator:{ownerAddress}:{operatorAddress}", true);
