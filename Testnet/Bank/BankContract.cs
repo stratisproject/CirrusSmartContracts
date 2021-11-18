@@ -29,6 +29,8 @@ public class BankContract : SmartContract
 
         Assert(balance > 0, "Sender does not have a balance");
 
+        this.State.SetUInt64($"Balance:{Message.Sender}", 0);
+
         var transferResult = Transfer(Message.Sender, balance);
 
         Assert(transferResult.Success, "Withdrawal transfer failed!");
