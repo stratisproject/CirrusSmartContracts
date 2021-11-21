@@ -3,12 +3,12 @@
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 {
-    private void SetAuctionInfo(Address contract, ulong tokenId, AuctionInfo auctionInfo)
+    private void SetAuctionInfo(Address contract, UInt256 tokenId, AuctionInfo auctionInfo)
     {
         State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
     }
 
-    public AuctionInfo GetAuctionInfo(Address contract, ulong tokenId)
+    public AuctionInfo GetAuctionInfo(Address contract, UInt256 tokenId)
     {
         return State.GetStruct<AuctionInfo>($"AuctionInfo:{contract}:{tokenId}");
     }
@@ -29,7 +29,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         EnsureNotPayable();
     }
 
-    public void Bid(Address contract, ulong tokenId)
+    public void Bid(Address contract, UInt256 tokenId)
     {
         var auction = GetAuctionInfo(contract, tokenId);
 
@@ -71,7 +71,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         return transfer.Success;
     }
 
-    public void AuctionEnd(Address contract, ulong tokenId)
+    public void AuctionEnd(Address contract, UInt256 tokenId)
     {
         EnsureNotPayable();
 
@@ -97,10 +97,10 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
             SafeTransferToken(contract, tokenId, Address, auction.Seller);
         }
 
-        Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
+        Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, Seller = auction.Seller, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
 
-    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, ulong tokenId, byte[] data)
+    public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, UInt256 tokenId, byte[] data)
     {
         EnsureNotPayable();
         
@@ -124,7 +124,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         {
             Seller = seller,
             EndBlock = checked(Block.Number + parameters.Duration),
-            StartingPrice =  parameters.StartingPrice
+            StartingPrice = parameters.StartingPrice
         };
 
         SetAuctionInfo(tokenContract, tokenId, auction);
@@ -134,34 +134,20 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         return true;
     }
 
-    private bool IsApprovedForAll(Address contract, Address tokenOwner)
-    {
-        var result = Call(contract, 0, "IsApprovedForAll", new object[] { tokenOwner, Message.Sender });
-
-        Assert(result.Success, "IsApprovedForAll method call failed.");
-
-        return result.ReturnValue is bool success && success;
-    }
-
-    private void SafeTransferToken(Address contract, ulong tokenId, Address from, Address to)
+    private void SafeTransferToken(Address contract, UInt256 tokenId, Address from, Address to)
     {
         var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
 
         Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
     }
 
-    private Address GetOwner(Address contract, ulong tokenId)
+    private Address GetOwner(Address contract, UInt256 tokenId)
     {
-        var result = Call(contract, 0, "GetOwner", new object[] { tokenId });
+        var result = Call(contract, 0, "OwnerOf", new object[] { tokenId });
 
         Assert(result.Success && result.ReturnValue is Address, "GetOwner method call failed.");
 
         return (Address)result.ReturnValue;
-    }
-
-    private void EnsureCallerCanOperate(Address contract, Address tokenOwner)
-    {
-        Assert(Message.Sender == tokenOwner || IsApprovedForAll(contract, tokenOwner), "The caller is not owner of the token nor approved for all.");
     }
 
     private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
@@ -171,7 +157,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         [Index]
         public Address Contract;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
         public ulong EndBlock;
         public ulong startingPrice;
         [Index]
@@ -183,7 +169,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         [Index]
         public Address Contract;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
         [Index]
         public Address Bidder;
         public ulong Bid;
@@ -193,7 +179,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         [Index]
         public Address Contract;
         [Index]
-        public ulong TokenId;
+        public UInt256 TokenId;
         [Index]
         public Address HighestBidder;
         public ulong HighestBid;
