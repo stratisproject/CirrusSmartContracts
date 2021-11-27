@@ -1,4 +1,5 @@
 ﻿using Stratis.SmartContracts;
+using System;
 
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
@@ -33,9 +34,11 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
     {
         var auction = GetAuctionInfo(contract, tokenId);
 
-        Assert(Block.Number < auction.EndBlock, "Auction ended.");
+        Assert(!EndBlockReached(auction), "Auction ended.");
 
-        Assert(Message.Value > auction.HighestBid && Message.Value >= auction.StartingPrice, "The amount is not higher than highest bidder or starting price.");
+        var highestBid = Math.Max(auction.HighestBid, auction.StartingPrice);
+
+        Assert(Message.Value > highestBid, "The amount is not higher than highest bidder or starting price.");
 
         if (auction.HighestBid > 0)
         {
@@ -51,6 +54,11 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         SetAuctionInfo(contract, tokenId, auction);
 
         Log(new HighestBidUpdatedLog { Contract = contract, TokenId = tokenId, Bidder = auction.HighestBidder, Bid = auction.HighestBid });
+    }
+
+    private bool EndBlockReached(AuctionInfo auction)
+    {
+        return Block.Number >= auction.EndBlock;
     }
 
     public bool Refund()
@@ -77,7 +85,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var auction = GetAuctionInfo(contract, tokenId);
 
-        Assert(Block.Number >= auction.EndBlock, "Auction is not ended yet.");
+        Assert(EndBlockReached(auction), "Auction is not ended yet.");
 
         Assert(!auction.Executed, "Auction end already executed.");
 
@@ -97,15 +105,15 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
             SafeTransferToken(contract, tokenId, Address, auction.Seller);
         }
 
-        Log(new AuctionEndedLog { Contract = contract, TokenId = tokenId, Seller = auction.Seller, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
+        Log(new AuctionEndExecutedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
 
     public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, UInt256 tokenId, byte[] data)
     {
         EnsureNotPayable();
-        
+
         var tokenContract = Message.Sender;
-        
+
         Assert(State.IsContract(tokenContract), "The Caller is not a contract.");
 
         var seller = fromAddress == Address.Zero ? operatorAddress : fromAddress;
@@ -174,7 +182,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         public Address Bidder;
         public ulong Bid;
     }
-    public struct AuctionEndedLog
+    public struct AuctionEndExecutedLog
     {
         [Index]
         public Address Contract;

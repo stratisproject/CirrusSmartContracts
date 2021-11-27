@@ -372,7 +372,7 @@ namespace NFTAuctionStoreTests
                     StartingPrice = 100,
                  });
 
-            VerifyLog(new AuctionEndedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 0, HighestBidder = Address.Zero });
+            VerifyLog(new AuctionEndExecutedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 0, HighestBidder = Address.Zero });
         }
 
         [Fact]
@@ -415,7 +415,7 @@ namespace NFTAuctionStoreTests
                  });
 
 
-            VerifyLog(new AuctionEndedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
+            VerifyLog(new AuctionEndExecutedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
         }
 
         private void SetupBlock(ulong block)
