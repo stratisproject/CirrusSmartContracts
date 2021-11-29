@@ -4,11 +4,6 @@ using System;
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 {
-    private void DeleteAuctionInfo(Address contract, UInt256 tokenId)
-    {
-        State.Clear($"AuctionInfo:{contract}:{tokenId}");
-    }
-
     private void SetAuctionInfo(Address contract, UInt256 tokenId, AuctionInfo auctionInfo)
     {
         State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
@@ -38,6 +33,8 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
     public void Bid(Address contract, UInt256 tokenId)
     {
         var auction = GetAuctionInfo(contract, tokenId);
+
+        Assert(auction.OnAuction, "Auction is not found.");
 
         Assert(!EndBlockReached(auction), "Auction ended.");
 
@@ -90,11 +87,12 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var auction = GetAuctionInfo(contract, tokenId);
 
-        Assert(auction.StartingPrice > 0, "Auction is not found.");
+        Assert(auction.OnAuction, "Auction is not found.");
 
         Assert(EndBlockReached(auction), "Auction is not ended yet.");
 
-        DeleteAuctionInfo(contract, tokenId);
+        auction.OnAuction = false;
+        SetAuctionInfo(contract, tokenId, auction);
 
         if (auction.HighestBid > 0)
         {
@@ -130,13 +128,14 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var auction = GetAuctionInfo(tokenContract, tokenId);
 
-        Assert(auction.StartingPrice == 0, "The token is already on sale.");
+        Assert(!auction.OnAuction, "The token is already on auction.");
 
         auction = new AuctionInfo
         {
             Seller = seller,
             EndBlock = checked(Block.Number + parameters.Duration),
-            StartingPrice = parameters.StartingPrice
+            StartingPrice = parameters.StartingPrice,
+            OnAuction = true
         };
 
         SetAuctionInfo(tokenContract, tokenId, auction);
@@ -204,6 +203,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         public Address HighestBidder;
         public ulong EndBlock;
         public ulong StartingPrice;
+        public bool OnAuction;
     }
     public struct AuctionParam
     {
