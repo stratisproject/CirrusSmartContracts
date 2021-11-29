@@ -4,6 +4,11 @@ using System;
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 {
+    private void DeleteAuctionInfo(Address contract, UInt256 tokenId)
+    {
+        State.Clear($"AuctionInfo:{contract}:{tokenId}");
+    }
+
     private void SetAuctionInfo(Address contract, UInt256 tokenId, AuctionInfo auctionInfo)
     {
         State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
@@ -85,12 +90,11 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var auction = GetAuctionInfo(contract, tokenId);
 
+        Assert(auction.StartingPrice > 0, "Auction is not found.");
+
         Assert(EndBlockReached(auction), "Auction is not ended yet.");
 
-        Assert(!auction.Executed, "Auction end already executed.");
-
-        auction.Executed = true;
-        SetAuctionInfo(contract, tokenId, auction);
+        DeleteAuctionInfo(contract, tokenId);
 
         if (auction.HighestBid > 0)
         {
@@ -199,7 +203,6 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         public ulong HighestBid;
         public Address HighestBidder;
         public ulong EndBlock;
-        public bool Executed;
         public ulong StartingPrice;
     }
     public struct AuctionParam
