@@ -581,7 +581,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         }
 
         [Fact]
-        public void Constructor_Sets_Name_And_Symbol()
+        public void Constructor_Sets_Name_And_Symbol_And_Decimals()
         {
             Address subject = this.sender;
 
@@ -591,8 +591,21 @@ namespace Stratis.SmartContracts.Samples.Tests
             var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Verify we set the name and the symbol
-            this.mockPersistentState.Verify(s => s.SetString("Name", this.name));
-            this.mockPersistentState.Verify(s => s.SetString("Symbol", this.symbol));
+            this.mockPersistentState.Verify(s => s.SetString(nameof(standardToken.Name), this.name));
+            this.mockPersistentState.Verify(s => s.SetString(nameof(standardToken.Symbol), this.symbol));
+            this.mockPersistentState.Verify(s => s.SetBytes(nameof(standardToken.Decimals), new[] { this.decimals }));
+
+            // Verify name property returns name.
+            this.mockPersistentState.Setup(s => s.GetString(nameof(standardToken.Name))).Returns(this.name);
+            Assert.Equal(this.name, standardToken.Name);
+
+            // Verify symbol property returns symbol.
+            this.mockPersistentState.Setup(s => s.GetString(nameof(standardToken.Symbol))).Returns(this.symbol);
+            Assert.Equal(this.symbol, standardToken.Symbol);
+
+            // Verify decimals property returns decimals.
+            this.mockPersistentState.Setup(s => s.GetBytes(nameof(standardToken.Decimals))).Returns(new[] { this.decimals });
+            Assert.Equal(this.decimals, standardToken.Decimals);
         }
     }
 }
