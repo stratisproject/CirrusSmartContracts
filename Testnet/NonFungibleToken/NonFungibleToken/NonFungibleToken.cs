@@ -20,7 +20,7 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="interfaceId">The interface id.</param>
     /// <param name="value">A value indicating if the interface id is supported.</param>
-    private void SetSupportedInterfaces(uint interfaceId, bool value) => State.SetBool($"SupportedInterface:{interfaceId}", value);
+    private void SetSupportedInterfaces(TokenInterface interfaceId, bool value) => State.SetBool($"SupportedInterface:{(uint)interfaceId}", value);
 
     /// <summary>
     /// Gets the key to the persistent state for the owner by NFT ID.
@@ -104,6 +104,15 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
+    /// Claimed new owner 
+    /// </summary>
+    public Address PendingOwner
+    {
+        get => State.GetAddress(nameof(PendingOwner));
+        private set => State.SetAddress(nameof(PendingOwner), value);
+    }
+
+    /// <summary>
     /// Name for non-fungible token contract
     /// </summary>
     public string Name
@@ -120,7 +129,7 @@ public class NonFungibleToken : SmartContract
         get => State.GetString(nameof(Symbol));
         private set => State.SetString(nameof(Symbol), value);
     }
-    
+
     private string GetIdToTokenURI(UInt256 tokenId) => State.GetString($"URI:{tokenId}");
     private void SetIdToTokenURI(UInt256 tokenId, string uri) => State.SetString($"URI:{tokenId}", uri);
 
@@ -140,21 +149,20 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
-    /// 
+    /// Constructor used to create a new instance of the non-fungible token.
     /// </summary>
-    /// <param name="state"></param>
+    /// <param name="state">The execution state for the contract.</param>
     /// <param name="name">Name of the NFT Contract</param>
     /// <param name="symbol">Symbol of the NFT Contract</param>
     /// <param name="ownerOnlyMinting">True, if only owner allowed to mint tokens</param>
     /// </param>
     public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting) : base(state)
     {
-        // todo: discuss callback handling and supported interface numbering with community.
-        this.SetSupportedInterfaces((uint)0x00000001, true); // (ERC165) - ISupportsInterface
-        this.SetSupportedInterfaces((uint)0x00000002, true); // (ERC721) - INonFungibleToken,
-        this.SetSupportedInterfaces((uint)0x00000003, false); // (ERC721) - INonFungibleTokenReceiver
-        this.SetSupportedInterfaces((uint)0x00000004, true); // (ERC721) - INonFungibleTokenMetadata
-        this.SetSupportedInterfaces((uint)0x00000005, false); // (ERC721) - IERC721Enumerable
+        this.SetSupportedInterfaces(TokenInterface.ISupportsInterface, true); // (ERC165) - ISupportsInterface
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleToken, true); // (ERC721) - INonFungibleToken,
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenReceiver, false); // (ERC721) - INonFungibleTokenReceiver
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenMetadata, true); // (ERC721) - INonFungibleTokenMetadata
+        this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenEnumerable, false); // (ERC721) - INonFungibleTokenEnumerable
 
         this.Name = name;
         this.Symbol = symbol;
@@ -196,8 +204,10 @@ public class NonFungibleToken : SmartContract
 
     /// <summary>
     /// Throws unless <see cref="Message.Sender"/> is the current owner, an authorized operator, or the approved
-    /// address for this NFT.Throws if <see cref="from"/> is not the current owner.Throws if <see cref="to"/> is the zero
-    /// address.Throws if <see cref="tokenId"/> is not a valid NFT. This function can be changed to payable.
+    /// address for this NFT.
+    /// Throws if <see cref="from"/> is not the current owner.
+    /// Throws if <see cref="to"/> is the zero address.
+    /// Throws if <see cref="tokenId"/> is not a valid NFT.
     /// </summary>
     /// <remarks>The caller is responsible to confirm that <see cref="to"/> is capable of receiving NFTs or else
     /// they maybe be permanently lost.</remarks>
@@ -206,14 +216,15 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">The NFT to transfer.</param>
     public void TransferFrom(Address from, Address to, UInt256 tokenId)
     {
-        CanTransfer(tokenId);
-
-        Address tokenOwner = GetIdToOwner(tokenId);
-        EnsureAddressIsNotEmpty(tokenOwner);
         EnsureAddressIsNotEmpty(to);
-        Assert(tokenOwner == from);
+        Address tokenOwner = GetIdToOwner(tokenId);
 
-        TransferInternal(to, tokenId);
+        EnsureAddressIsNotEmpty(tokenOwner);
+        CanTransfer(tokenOwner, tokenId);
+
+        Assert(tokenOwner == from, "The from parameter is not token owner.");
+
+        TransferInternal(tokenOwner, to, tokenId);
     }
 
     /// <summary>
@@ -227,11 +238,13 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">ID of the token to be approved.</param>
     public void Approve(Address approved, UInt256 tokenId)
     {
-        CanOperate(tokenId);
-        ValidateToken(tokenId);
-
         Address tokenOwner = GetIdToOwner(tokenId);
-        Assert(approved != tokenOwner);
+
+        EnsureAddressIsNotEmpty(tokenOwner);
+
+        CanOperate(tokenOwner);
+
+        Assert(approved != tokenOwner, $"The {nameof(approved)} address is already token owner.");
 
         SetIdToApproval(tokenId, approved);
         LogApproval(tokenOwner, approved, tokenId);
@@ -282,7 +295,9 @@ public class NonFungibleToken : SmartContract
     /// <returns>Address that tokenId is approved for. </returns>
     public Address GetApproved(UInt256 tokenId)
     {
-        ValidateToken(tokenId);
+        Address tokenOwner = GetIdToOwner(tokenId);
+
+        EnsureAddressIsNotEmpty(tokenOwner);
 
         return GetIdToApproval(tokenId);
     }
@@ -299,14 +314,14 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
-    /// Actually preforms the transfer.
+    /// Actually performs the transfer.
     /// </summary>
     /// <remarks>Does NO checks.</remarks>
+    /// <param name="from">The current owner of the NFT.</param>
     /// <param name="to">Address of a new owner.</param>
     /// <param name="tokenId">The NFT that is being transferred.</param>
-    private void TransferInternal(Address to, UInt256 tokenId)
+    private void TransferInternal(Address from, Address to, UInt256 tokenId)
     {
-        Address from = GetIdToOwner(tokenId);
         ClearApproval(tokenId);
 
         RemoveToken(from, tokenId);
@@ -323,7 +338,6 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">Which NFT we want to remove.</param>
     private void RemoveToken(Address from, UInt256 tokenId)
     {
-        Assert(GetIdToOwner(tokenId) == from);
         var tokenCount = GetBalance(from);
         SetBalance(from, tokenCount - 1);
         SetIdToOwner(tokenId, Address.Zero);
@@ -337,8 +351,6 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">Which NFT we want to add.</param>
     private void AddToken(Address to, UInt256 tokenId)
     {
-        Assert(GetIdToOwner(tokenId) == Address.Zero);
-
         SetIdToOwner(tokenId, to);
         var currentTokenAmount = GetBalance(to);
         SetBalance(to, currentTokenAmount + 1);
@@ -353,14 +365,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="data">Additional data with no specified format, sent in call to 'to' if it is a contract.</param>
     private void SafeTransferFromInternal(Address from, Address to, UInt256 tokenId, byte[] data)
     {
-        CanTransfer(tokenId);
-        ValidateToken(tokenId);
-
-        Address tokenOwner = GetIdToOwner(tokenId);
-        Assert(tokenOwner == from);
-        EnsureAddressIsNotEmpty(to);
-
-        TransferInternal(to, tokenId);
+        TransferFrom(from, to, tokenId);
 
         EnsureContractReceivedToken(from, to, tokenId, data);
     }
@@ -420,53 +425,58 @@ public class NonFungibleToken : SmartContract
     /// Guarantees that the <see cref="Message.Sender"/> is an owner or operator of the given NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void CanOperate(UInt256 tokenId)
+    private void CanOperate(Address tokenOwner)
     {
-        Address tokenOwner = GetIdToOwner(tokenId);
-        Assert(tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender));
+        Assert(IsOwnerOrOperator(tokenOwner), "Caller is not owner nor approved.");
+    }
+
+    private bool IsOwnerOrOperator(Address tokenOwner)
+    {
+        return tokenOwner == Message.Sender || GetOwnerToOperator(tokenOwner, Message.Sender);
     }
 
     /// <summary>
     /// Guarantees that the msg.sender is allowed to transfer NFT.
     /// </summary>
     /// <param name="tokenId">ID of the NFT to transfer.</param>
-    private void CanTransfer(UInt256 tokenId)
+    private void CanTransfer(Address tokenOwner, UInt256 tokenId)
     {
-        Address tokenOwner = GetIdToOwner(tokenId);
-        Assert(
-          tokenOwner == Message.Sender
-          || GetIdToApproval(tokenId) == Message.Sender
-          || GetOwnerToOperator(tokenOwner, Message.Sender)
-        );
+        Assert(IsOwnerOrOperator(tokenOwner) || GetIdToApproval(tokenId) == Message.Sender, "Caller is not owner nor approved for token.");
     }
 
     /// <summary>
-    /// Guarantees that tokenId is a valid Token.
+    /// Only owner can set new owner and new owner will be in pending state 
+    /// till new owner will call <see cref="ClaimOwnership"></see> method. 
     /// </summary>
-    /// <param name="tokenId">ID of the NFT to validate.</param>
-    private void ValidateToken(UInt256 tokenId)
-    {
-        Address tokenOwner = GetIdToOwner(tokenId);
-        EnsureAddressIsNotEmpty(tokenOwner);
-    }
-
-    /// <summary>
-    /// Sets the contract owner who can mint/burn
-    /// </summary>
-    /// <param name="owner"></param>
-    public void TransferOwnership(Address owner)
+    /// <param name="newOwner">The new owner which is going to be in pending state</param>
+    public void SetPendingOwner(Address newOwner)
     {
         EnsureOwnerOnly();
-        EnsureAddressIsNotEmpty(owner);
+        PendingOwner = newOwner;
 
-        Log(new OwnershipTransferedLog { PreviousOwner = Owner, NewOwner = owner });
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = newOwner });
+    }
 
-        Owner = owner;
+    /// <summary>
+    /// Waiting be called after new owner is requested by <see cref="SetPendingOwner"/> call.
+    /// Pending owner will be new owner after successfull call. 
+    /// </summary>
+    public void ClaimOwnership()
+    {
+        var newOwner = PendingOwner;
+
+        Assert(newOwner == Message.Sender, "ClaimOwnership must be called by the new(pending) owner.");
+
+        var oldOwner = Owner;
+        Owner = newOwner;
+        PendingOwner = Address.Zero;
+
+        Log(new OwnershipTransferedLog { PreviousOwner = oldOwner, NewOwner = newOwner });
     }
 
     private void EnsureOwnerOnly()
     {
-        Assert(Message.Sender == Owner, "Only owner of the contract can set new owner.");
+        Assert(Message.Sender == Owner, "The method is owner only.");
     }
 
     /// <summary>
@@ -529,7 +539,7 @@ public class NonFungibleToken : SmartContract
         if (State.IsContract(to))
         {
             var result = Call(to, 0, "OnNonFungibleTokenReceived", new object[] { Message.Sender, from, tokenId, data }, 0);
-            Assert((bool)result.ReturnValue);
+            Assert((bool)result.ReturnValue, "OnNonFungibleTokenReceived call failed.");
         }
     }
 
@@ -552,6 +562,15 @@ public class NonFungibleToken : SmartContract
     private void EnsureAddressIsNotEmpty(Address address)
     {
         Assert(address != Address.Zero, "The address can not be zero.");
+    }
+
+    private enum TokenInterface
+    {
+        ISupportsInterface = 1,
+        INonFungibleToken = 2,
+        INonFungibleTokenReceiver = 3,
+        INonFungibleTokenMetadata = 4,
+        INonFungibleTokenEnumerable = 5,
     }
 
     public struct TransferLog
@@ -592,4 +611,13 @@ public class NonFungibleToken : SmartContract
         [Index]
         public Address NewOwner;
     }
+
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index]
+        public Address CurrentOwner;
+        [Index]
+        public Address PendingOwner;
+    }
+
 }
