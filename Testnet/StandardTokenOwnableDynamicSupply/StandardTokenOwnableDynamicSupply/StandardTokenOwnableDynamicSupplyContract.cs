@@ -2,9 +2,90 @@
 using Stratis.SmartContracts.Standards;
 
 /// <summary>
+/// Provides the notion of ownership to the token contract.
+/// The owner is able to perform certain privileged operations not available to generic users.
+/// </summary>
+public interface IOwnable
+{
+    Address Owner { get; }
+
+    /// <summary>
+    /// Secures method access by ensuring that only the owner of the contract is able to call a particular method. 
+    /// </summary>
+    void OnlyOwner();
+
+    /// <summary>
+    /// Checks whether the message sender is the current owner of the contract.
+    /// </summary>
+    /// <returns>True if the message sender is the contract owner.</returns>
+    bool IsOwner();
+
+    /// <summary>
+    /// Assign ownership of the contract to the zero address, i.e. no owner.
+    /// All functions that require owner-level access then become inaccessible.
+    /// Naturally, only the current owner of the contract is able to call this.
+    /// </summary>
+    void RenounceOwnership();
+
+    /// <summary>
+    /// Called by the current owner of the contract in order to grant ownership to a new owner.
+    /// </summary>
+    /// <param name="newOwner">The address of the new owner.</param>
+    void TransferOwnership(Address newOwner);
+}
+
+/// <summary>
+/// A subset of the ERC20Mintable interface used by OpenZeppelin contracts.
+/// For simplicity, we assume that the owner of the contract is the sole minter.
+/// </summary>
+public interface IMintable
+{
+    /// <summary>
+    /// The owner of the contract can create (mint) new tokens as required.
+    /// This increases the total supply of the token.
+    /// </summary>
+    /// <remarks>Emits a TransferLog event with the 'from' address set to the zero address.</remarks>
+    /// <param name="account">The account the newly minted tokens should be credited to.</param>
+    /// <param name="amount">The amount of tokens to mint.</param>
+    void Mint(Address account, UInt256 amount);
+}
+
+/// <summary>
+/// A subset of the ERC20Burnable interface used by OpenZeppelin contracts.
+/// </summary>
+public interface IBurnable
+{
+    /// <summary>
+    /// A user can burn tokens if the have the requisite balance available.
+    /// Burnt tokens are permanently removed from the total supply and cannot be retrieved.
+    /// </summary>
+    /// <remarks>Emits a TransferLog event with the 'to' address set to the zero address.</remarks>
+    /// <param name="amount">The quantity of tokens to be burnt.</param>
+    bool Burn(UInt256 amount);
+}
+
+/// <summary>
+/// An extension of the IBurnable functionality that allows additional data (e.g. for tagging) to be recorded.
+/// </summary>
+public interface IBurnableWithMetadata
+{
+    /// <summary>
+    /// A user can burn tokens if the have the requisite balance available.
+    /// Burnt tokens are permanently removed from the total supply and cannot be retrieved.
+    /// </summary>
+    /// <remarks>Emits a TransferLog event with the 'to' address set to the zero address.
+    /// Additionally emits a BurnMetadata event containing the metadata string.</remarks>
+    /// <param name="amount">The quantity of tokens to be burnt.</param>
+    /// <param name="metadata">Additional data to be recorded with the burn.
+    /// The structure and interpretation of this data is unspecified here.</param>
+    bool BurnWithMetadata(UInt256 amount, string metadata);
+}
+
+/// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
-public class StandardToken : SmartContract, IStandardToken256
+[Deploy]
+public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandardToken256, IOwnable, IMintable, IBurnable, IBurnableWithMetadata
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -14,14 +95,14 @@ public class StandardToken : SmartContract, IStandardToken256
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-    public StandardToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals)
-        : base(smartContractState)
+    public StandardTokenOwnableDynamicSupplyContract(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
         this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
+        this.Owner = Message.Sender;
     }
 
     public string Symbol
@@ -48,6 +129,13 @@ public class StandardToken : SmartContract, IStandardToken256
     {
         get => State.GetUInt256(nameof(this.TotalSupply));
         private set => State.SetUInt256(nameof(this.TotalSupply), value);
+    }
+
+    /// <inheritdoc />
+    public Address Owner
+    {
+        get => State.GetAddress(nameof(this.Owner));
+        private set => State.SetAddress(nameof(this.Owner), value);
     }
 
     /// <inheritdoc />
@@ -142,126 +230,6 @@ public class StandardToken : SmartContract, IStandardToken256
         return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
-    public struct TransferLog
-    {
-        [Index]
-        public Address From;
-
-        [Index]
-        public Address To;
-
-        public UInt256 Amount;
-    }
-
-    public struct ApprovalLog
-    {
-        [Index]
-        public Address Owner;
-
-        [Index]
-        public Address Spender;
-
-        public UInt256 OldAmount;
-
-        public UInt256 Amount;
-    }
-}
-
-/// <summary>
-/// Provides the notion of ownership to the token contract.
-/// The owner is able to perform certain privileged operations not available to generic users.
-/// </summary>
-public interface IOwnable
-{
-    Address Owner { get; }
-
-    /// <summary>
-    /// Secures method access by ensuring that only the owner of the contract is able to call a particular method. 
-    /// </summary>
-    void OnlyOwner();
-
-    /// <summary>
-    /// Checks whether the message sender is the current owner of the contract.
-    /// </summary>
-    /// <returns>True if the message sender is the contract owner.</returns>
-    bool IsOwner();
-
-    /// <summary>
-    /// Assign ownership of the contract to the zero address, i.e. no owner.
-    /// All functions that require owner-level access then become inaccessible.
-    /// Naturally, only the current owner of the contract is able to call this.
-    /// </summary>
-    void RenounceOwnership();
-
-    /// <summary>
-    /// Called by the current owner of the contract in order to grant ownership to a new owner.
-    /// </summary>
-    /// <param name="newOwner">The address of the new owner.</param>
-    void TransferOwnership(Address newOwner);
-}
-
-/// <summary>
-/// A subset of the ERC20Mintable interface used by OpenZeppelin contracts.
-/// For simplicity, we assume that the owner of the contract is the sole minter.
-/// </summary>
-public interface IMintable
-{
-    /// <summary>
-    /// The owner of the contract can create (mint) new tokens as required.
-    /// This increases the total supply of the token.
-    /// </summary>
-    /// <remarks>Emits a TransferLog event with the 'from' address set to the zero address.</remarks>
-    /// <param name="account">The account the newly minted tokens should be credited to.</param>
-    /// <param name="amount">The amount of tokens to mint.</param>
-    void Mint(Address account, UInt256 amount);
-}
-
-/// <summary>
-/// A subset of the ERC20Burnable interface used by OpenZeppelin contracts.
-/// </summary>
-public interface IBurnable
-{
-    /// <summary>
-    /// A user can burn tokens if the have the requisite balance available.
-    /// Burnt tokens are permanently removed from the total supply and cannot be retrieved.
-    /// </summary>
-    /// <remarks>Emits a TransferLog event with the 'to' address set to the zero address.</remarks>
-    /// <param name="amount">The quantity of tokens to be burnt.</param>
-    bool Burn(UInt256 amount);
-}
-
-/// <summary>
-/// An extension of the IBurnable functionality that allows additional data (e.g. for tagging) to be recorded.
-/// </summary>
-public interface IBurnableWithMetadata
-{
-    /// <summary>
-    /// A user can burn tokens if the have the requisite balance available.
-    /// Burnt tokens are permanently removed from the total supply and cannot be retrieved.
-    /// </summary>
-    /// <remarks>Emits a TransferLog event with the 'to' address set to the zero address.
-    /// Additionally emits a BurnMetadata event containing the metadata string.</remarks>
-    /// <param name="amount">The quantity of tokens to be burnt.</param>
-    /// <param name="metadata">Additional data to be recorded with the burn.
-    /// The structure and interpretation of this data is unspecified here.</param>
-    bool BurnWithMetadata(UInt256 amount, string metadata);
-}
-
-[Deploy]
-public class StandardTokenEnhanced : StandardToken, IOwnable, IMintable, IBurnable, IBurnableWithMetadata
-{
-    public StandardTokenEnhanced(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals) : base(smartContractState, totalSupply, name, symbol, decimals)
-    {
-        this.Owner = Message.Sender;
-    }
-
-    /// <inheritdoc />
-    public Address Owner
-    {
-        get => State.GetAddress(nameof(this.Owner));
-        private set => State.SetAddress(nameof(this.Owner), value);
-    }
-
     /// <inheritdoc />
     public void OnlyOwner()
     {
@@ -277,13 +245,7 @@ public class StandardTokenEnhanced : StandardToken, IOwnable, IMintable, IBurnab
     /// <inheritdoc />
     public void RenounceOwnership()
     {
-        OnlyOwner();
-
-        Address previousOwner = this.Owner;
-
-        this.Owner = Address.Zero;
-
-        Log(new OwnershipTransferred { PreviousOwner = previousOwner, NewOwner = Address.Zero });
+        TransferOwnership(Address.Zero);
     }
 
     /// <inheritdoc />
@@ -336,6 +298,30 @@ public class StandardTokenEnhanced : StandardToken, IOwnable, IMintable, IBurnab
         }
 
         return false;
+    }
+
+    public struct TransferLog
+    {
+        [Index]
+        public Address From;
+
+        [Index]
+        public Address To;
+
+        public UInt256 Amount;
+    }
+
+    public struct ApprovalLog
+    {
+        [Index]
+        public Address Owner;
+
+        [Index]
+        public Address Spender;
+
+        public UInt256 OldAmount;
+
+        public UInt256 Amount;
     }
 
     /// <summary>
