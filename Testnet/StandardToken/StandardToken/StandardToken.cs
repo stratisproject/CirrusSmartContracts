@@ -47,7 +47,7 @@ public class StandardToken : SmartContract, IStandardToken256
     public UInt256 TotalSupply
     {
         get => State.GetUInt256(nameof(this.TotalSupply));
-        private set => State.SetUInt256(nameof(this.TotalSupply), value);
+        protected set => State.SetUInt256(nameof(this.TotalSupply), value);
     }
 
     /// <inheritdoc />
@@ -56,7 +56,7 @@ public class StandardToken : SmartContract, IStandardToken256
         return State.GetUInt256($"Balance:{address}");
     }
 
-    private void SetBalance(Address address, UInt256 value)
+    protected void SetBalance(Address address, UInt256 value)
     {
         State.SetUInt256($"Balance:{address}", value);
     }
