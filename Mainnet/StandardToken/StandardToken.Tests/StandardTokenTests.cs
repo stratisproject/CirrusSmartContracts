@@ -1,6 +1,5 @@
 using System;
 using Moq;
-using Stratis.SmartContracts.Networks;
 using Stratis.SmartContracts.CLR;
 using Xunit;
 
@@ -18,6 +17,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         private Address destination;
         private string name;
         private string symbol;
+        private byte decimals;
 
         public StandardTokenTests()
         {
@@ -33,6 +33,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.destination = "0x0000000000000000000000000000000000000005".HexToAddress();
             this.name = "Test Token";
             this.symbol = "TST";
+            this.decimals = 8;
         }
 
         [Fact]
@@ -40,36 +41,36 @@ namespace Stratis.SmartContracts.Samples.Tests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            ulong totalSupply = 100_000;
-            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol);
+            UInt256 totalSupply = 100_000;
+            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
-            this.mockPersistentState.Verify(s => s.SetUInt64(nameof(StandardToken.TotalSupply), totalSupply));
+            this.mockPersistentState.Verify(s => s.SetUInt256(nameof(StandardToken.TotalSupply), totalSupply));
         }
 
         [Fact]
         public void Constructor_Assigns_TotalSupply_To_Owner()
         {
-            ulong totalSupply = 100_000;
+            UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", totalSupply));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.owner}", totalSupply));
         }
 
         [Fact]
         public void GetBalance_Returns_Correct_Balance()
         {
-            ulong balance = 100;
+            UInt256 balance = 100;
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.spender}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.spender}")).Returns(balance);
 
             Assert.Equal(balance, standardToken.GetBalance(this.spender));
         }
@@ -77,16 +78,16 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly()
         {
-            ulong approval = 1000;
+            UInt256 approval = 1000;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             standardToken.Approve(this.spender, 0, approval);
 
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.spender}", approval));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Allowance:{this.owner}:{this.spender}", approval));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.ApprovalLog { Owner = this.owner, Spender = this.spender, Amount = approval, OldAmount = 0 }));
         }
@@ -94,20 +95,20 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void Approve_Sets_Approval_Correctly_When_NonZero()
         {
-            ulong approval = 1000;
-            ulong newApproval = 2000;
+            UInt256 approval = 1000;
+            UInt256 newApproval = 2000;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
 
             standardToken.Approve(this.spender, approval, newApproval);
 
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.spender}", newApproval));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Allowance:{this.owner}:{this.spender}", newApproval));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.ApprovalLog { Owner = this.owner, Spender = this.spender, Amount = newApproval, OldAmount = approval }));
         }
@@ -121,7 +122,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -139,11 +140,11 @@ namespace Stratis.SmartContracts.Samples.Tests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             standardToken.Allowance(this.owner, this.spender);
 
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.spender}"));
         }
 
         [Fact]
@@ -155,7 +156,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             Assert.True(standardToken.TransferTo(this.destination, amount));
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = this.sender, To = this.destination, Amount = amount }));
@@ -164,127 +165,127 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Full_Balance_Returns_True()
         {
-            ulong balance = 10000;
-            ulong amount = balance;
-            ulong destinationBalance = 123;
+            UInt256 balance = 10000;
+            UInt256 amount = balance;
+            UInt256 destinationBalance = 123;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the sender's address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
 
             // Setup the balance of the recipient's address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.destination}")).Returns(destinationBalance);
 
             Assert.True(standardToken.TransferTo(this.destination, amount));
 
             // Verify we queried the balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.sender}"));
 
             // Verify we set the sender's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.sender}", balance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.sender}", balance - amount));
 
             // Verify we set the receiver's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", destinationBalance + amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.destination}", destinationBalance + amount));
         }
 
         [Fact]
         public void TransferTo_Greater_Than_Balance_Returns_False()
         {
-            ulong balance = 0;
-            ulong amount = balance + 1;
+            UInt256 balance = 0;
+            UInt256 amount = balance + 1;
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
 
             Assert.False(standardToken.TransferTo(this.destination, amount));
 
             // Verify we queried the balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.sender}"));
         }
 
         [Fact]
         public void TransferTo_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
         {
-            ulong destinationBalance = ulong.MaxValue;
-            ulong senderBalance = 100;
-            ulong amount = senderBalance - 1; // Transfer less than the balance
+            UInt256 destinationBalance = UInt256.MaxValue;
+            UInt256 senderBalance = 100;
+            UInt256 amount = senderBalance - 1; // Transfer less than the balance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(senderBalance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(senderBalance);
 
             // Setup the destination's balance to be ulong.MaxValue
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.destination}")).Returns(destinationBalance);
 
             Assert.ThrowsAny<OverflowException>(() => standardToken.TransferTo(this.destination, amount));
 
             // Verify we queried the sender's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.sender}"));
 
             // Verify we queried the destination's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.destination}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.destination}"));
         }
 
         [Fact]
         public void TransferTo_Destination_Success_Returns_True()
         {
-            ulong destinationBalance = 400_000;
-            ulong senderBalance = 100;
-            ulong amount = senderBalance - 1; // Transfer less than the balance
+            UInt256 destinationBalance = 400_000;
+            UInt256 senderBalance = 100;
+            UInt256 amount = senderBalance - 1; // Transfer less than the balance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.sender}")).Returns(senderBalance)
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(senderBalance)
                 .Callback(() => Assert.Equal(1, callOrder++));
 
-            // Setup the destination's balance
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance)
+            // Setup the sender's balance
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.sender}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(2, callOrder++));
 
-            // Setup the sender's balance
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{this.sender}", It.IsAny<uint>()))
+            // Setup the destination's balance
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.destination}")).Returns(destinationBalance)
                 .Callback(() => Assert.Equal(3, callOrder++));
 
             // Setup the destination's balance. Important that this happens AFTER setting the sender's balance
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{this.destination}", It.IsAny<uint>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(4, callOrder++));
 
             Assert.True(standardToken.TransferTo(this.destination, amount));
 
             // Verify we queried the sender's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.sender}"));
 
             // Verify we queried the destination's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.destination}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.destination}"));
 
             // Verify we set the sender's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.sender}", senderBalance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.sender}", senderBalance - amount));
 
             // Verify we set the receiver's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", destinationBalance + amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.destination}", destinationBalance + amount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = this.sender, To = this.destination, Amount = amount }));
         }
@@ -298,7 +299,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
 
@@ -308,187 +309,187 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Full_Balance_Returns_True()
         {
-            ulong allowance = 1000;
-            ulong amount = allowance;
-            ulong balance = amount; // Balance should be the same as the amount we are trying to send
+            UInt256 allowance = 1000;
+            UInt256 amount = allowance;
+            UInt256 balance = amount; // Balance should be the same as the amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
 
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
 
             // Verify we queried the sender's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}"));
 
             // Verify we queried the owner's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.owner}"));
 
             // Verify we set the sender's allowance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.sender}", allowance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Allowance:{this.owner}:{this.sender}", allowance - amount));
 
             // Verify we set the owner's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", balance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.owner}", balance - amount));
 
             // Verify we set the destination's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.destination}", amount));
         }
 
         [Fact]
         public void TransferFrom_Greater_Than_Senders_Allowance_Returns_False()
         {
-            ulong allowance = 0;
-            ulong amount = allowance + 1;
-            ulong balance = amount + 1; // Balance should be more than amount we are trying to send
+            UInt256 allowance = 0;
+            UInt256 amount = allowance + 1;
+            UInt256 balance = amount + 1; // Balance should be more than amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
 
             // Setup the balance of the address in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
 
             Assert.False(standardToken.TransferFrom(this.owner, this.destination, amount));
 
             // Verify we queried the sender's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}"));
 
             // Verify we queried the owner's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.owner}"));
         }
 
         [Fact]
         public void TransferFrom_Greater_Than_Owners_Balance_Returns_False()
         {
-            ulong balance = 0; // Balance should be less than amount we are trying to send
-            ulong amount = balance + 1;
-            ulong allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 balance = 0; // Balance should be less than amount we are trying to send
+            UInt256 amount = balance + 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
 
             // Setup the allowance of the sender in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
 
             Assert.False(standardToken.TransferFrom(this.owner, this.destination, amount));
 
             // Verify we queried the sender's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}"));
 
             // Verify we queried the owner's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.owner}"));
         }
 
         [Fact]
-        public void TransferFrom_To_Destination_With_Balance_Greater_Than_uint_MaxValue_Returns_False()
+        public void TransferFrom_To_Destination_With_Balance_Greater_Than_Amount_MaxValue_Returns_False()
         {
-            ulong destinationBalance = ulong.MaxValue; // Destination balance should be ulong.MaxValue
-            ulong amount = 1;
-            ulong allowance = amount + 1; // Allowance should be more than amount we are trying to send
-            ulong ownerBalance = allowance + 1; // Owner balance should be more than allowance
+            UInt256 destinationBalance = UInt256.MaxValue; // Destination balance should be ulong.MaxValue
+            UInt256 amount = 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 ownerBalance = allowance + 1; // Owner balance should be more than allowance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(ownerBalance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(ownerBalance);
 
             // Setup the balance of the destination in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.destination}")).Returns(destinationBalance);
 
             // Setup the allowance of the sender in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}")).Returns(allowance);
 
             Assert.ThrowsAny<OverflowException>(() => standardToken.TransferFrom(this.owner, this.destination, amount));
 
             // Verify we queried the sender's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}"));
 
             // Verify we queried the owner's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.owner}"));
         }
 
         [Fact]
         public void TransferFrom_To_Destination_Success_Returns_True()
         {
-            ulong destinationBalance = 100;
-            ulong amount = 1;
-            ulong allowance = amount + 1; // Allowance should be more than amount we are trying to send
-            ulong ownerBalance = allowance + 1; // Owner balance should be more than allowance
+            UInt256 destinationBalance = 100;
+            UInt256 amount = 1;
+            UInt256 allowance = amount + 1; // Allowance should be more than amount we are trying to send
+            UInt256 ownerBalance = allowance + 1; // Owner balance should be more than allowance
 
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
             // Setup the allowance of the sender in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}")).Returns(allowance)
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}")).Returns(allowance)
                 .Callback(() => Assert.Equal(1, callOrder++));
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.owner}")).Returns(ownerBalance)
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(ownerBalance)
                 .Callback(() => Assert.Equal(2, callOrder++));
 
-            // Setup the balance of the destination in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{this.destination}")).Returns(destinationBalance)
+            // Set the sender's new allowance
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Allowance:{this.owner}:{this.sender}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(3, callOrder++));
 
-            // Set the sender's new allowance
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Allowance:{this.owner}:{this.sender}", It.IsAny<uint>()))
+            // Set the owner's new balance
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.owner}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(4, callOrder++));
 
-            // Set the owner's new balance
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{this.owner}", It.IsAny<uint>()))
+            // Setup the balance of the destination in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.destination}")).Returns(destinationBalance)
                 .Callback(() => Assert.Equal(5, callOrder++));
 
             // Setup the destination's balance. Important that this happens AFTER setting the owner's balance
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{this.destination}", It.IsAny<uint>()))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{this.destination}", It.IsAny<UInt256>()))
                 .Callback(() => Assert.Equal(6, callOrder++));
 
             Assert.True(standardToken.TransferFrom(this.owner, this.destination, amount));
 
             // Verify we queried the sender's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{this.owner}:{this.sender}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{this.owner}:{this.sender}"));
 
             // Verify we queried the owner's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.owner}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.owner}"));
 
             // Verify we queried the destination's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{this.destination}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{this.destination}"));
 
             // Verify we set the sender's allowance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{this.owner}:{this.sender}", allowance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Allowance:{this.owner}:{this.sender}", allowance - amount));
 
             // Verify we set the owner's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.owner}", ownerBalance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.owner}", ownerBalance - amount));
 
             // Verify we set the receiver's balance
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{this.destination}", destinationBalance + amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.destination}", destinationBalance + amount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = this.owner, To = this.destination, Amount = amount }));
         }
@@ -496,35 +497,35 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferTo_Self()
         {
-            ulong balance = 100;
-            ulong amount = 27;
+            UInt256 balance = 100;
+            UInt256 amount = 27;
 
             Address subject = this.sender;
 
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
 
             // If a call is made to set the subject's balance to amount, make sure we update the state
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{subject}", balance - amount))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{subject}", balance - amount))
                 .Callback(() =>
-                    this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance - amount));
+                    this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance - amount));
 
             // Transfer all of the subject's tokens
             Assert.True(standardToken.TransferTo(subject, amount));
 
             // Verify we set the subject's balance to the difference between the amounts
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{subject}", balance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{subject}", balance - amount));
 
             // Verify we get the subject's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{subject}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{subject}"));
 
             // Verify we set the subject's balance back to the initial same amount
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{subject}", balance));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{subject}", balance));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = subject, To = subject, Amount = amount }));
         }
@@ -532,66 +533,79 @@ namespace Stratis.SmartContracts.Samples.Tests
         [Fact]
         public void TransferFrom_Self()
         {
-            ulong balance = 100;
-            ulong amount = 27;
+            UInt256 balance = 100;
+            UInt256 amount = 27;
 
             Address subject = this.sender;
 
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
 
             // Setup the allowance of the owner in persistent state
-            this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{subject}:{subject}")).Returns(balance);
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{subject}:{subject}")).Returns(balance);
 
             // If a call is made to set the subject's balance to amount, make sure we update the state
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Balance:{subject}", balance - amount))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Balance:{subject}", balance - amount))
                 .Callback(() =>
-                    this.mockPersistentState.Setup(s => s.GetUInt64($"Balance:{subject}")).Returns(balance - amount));
+                    this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance - amount));
 
             // If a call is made to set the subject's allowance to amount, make sure we update the state
-            this.mockPersistentState.Setup(s => s.SetUInt64($"Allowance:{subject}:{subject}", balance - amount))
+            this.mockPersistentState.Setup(s => s.SetUInt256($"Allowance:{subject}:{subject}", balance - amount))
                 .Callback(() =>
-                    this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{subject}:{subject}")).Returns(balance - amount));
+                    this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{subject}:{subject}")).Returns(balance - amount));
 
             // Transfer all of the subject's tokens
             Assert.True(standardToken.TransferFrom(subject, subject, amount));
 
             // Verify we set the subject's balance to the difference between the amounts
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{subject}", balance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{subject}", balance - amount));
 
             // Verify we get the subject's balance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Balance:{subject}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Balance:{subject}"));
 
             // Verify we set the subject's balance back to the initial same amount
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Balance:{subject}", balance));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{subject}", balance));
 
             // Verify we get the subject's allowance
-            this.mockPersistentState.Verify(s => s.GetUInt64($"Allowance:{subject}:{subject}"));
+            this.mockPersistentState.Verify(s => s.GetUInt256($"Allowance:{subject}:{subject}"));
 
             // Verify we set the subject's allowance to the difference between the amounts
-            this.mockPersistentState.Verify(s => s.SetUInt64($"Allowance:{subject}:{subject}", balance - amount));
+            this.mockPersistentState.Verify(s => s.SetUInt256($"Allowance:{subject}:{subject}", balance - amount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new StandardToken.TransferLog { From = subject, To = subject, Amount = amount }));
         }
 
         [Fact]
-        public void Constructor_Sets_Name_And_Symbol()
+        public void Constructor_Sets_Name_And_Symbol_And_Decimals()
         {
             Address subject = this.sender;
 
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol);
+            var standardToken = new StandardToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Verify we set the name and the symbol
-            this.mockPersistentState.Verify(s => s.SetString("Name", this.name));
-            this.mockPersistentState.Verify(s => s.SetString("Symbol", this.symbol));
+            this.mockPersistentState.Verify(s => s.SetString(nameof(standardToken.Name), this.name));
+            this.mockPersistentState.Verify(s => s.SetString(nameof(standardToken.Symbol), this.symbol));
+            this.mockPersistentState.Verify(s => s.SetBytes(nameof(standardToken.Decimals), new[] { this.decimals }));
+
+            // Verify name property returns name.
+            this.mockPersistentState.Setup(s => s.GetString(nameof(standardToken.Name))).Returns(this.name);
+            Assert.Equal(this.name, standardToken.Name);
+
+            // Verify symbol property returns symbol.
+            this.mockPersistentState.Setup(s => s.GetString(nameof(standardToken.Symbol))).Returns(this.symbol);
+            Assert.Equal(this.symbol, standardToken.Symbol);
+
+            // Verify decimals property returns decimals.
+            this.mockPersistentState.Setup(s => s.GetBytes(nameof(standardToken.Decimals))).Returns(new[] { this.decimals });
+            Assert.Equal(this.decimals, standardToken.Decimals);
         }
     }
 }
