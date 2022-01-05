@@ -316,12 +316,12 @@ namespace NFTAuctionStoreTests
 
             SetupBlock(101);
             SetupMessage(tokenOwner, 0);
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, Executed = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
 
             store.Invoking(m => m.AuctionEnd(tokenContract, tokenId))
                  .Should()
                  .Throw<SmartContractAssertException>()
-                 .WithMessage("Auction end already executed.");
+                 .WithMessage("Auction end already OnAuction.");
         }
 
         [Fact]
@@ -367,7 +367,7 @@ namespace NFTAuctionStoreTests
                  .Should()
                  .Be(new AuctionInfo {
                     Seller = tokenOwner,
-                    Executed = true,
+                    OnAuction = true,
                     EndBlock = 100, 
                     StartingPrice = 100,
                  });
@@ -391,7 +391,7 @@ namespace NFTAuctionStoreTests
                 Seller = tokenOwner,
                 HighestBid = 100,
                 HighestBidder = buyer,
-                Executed = false,
+                OnAuction = false,
                 EndBlock = 100,
                 StartingPrice = 100
             });
@@ -409,7 +409,7 @@ namespace NFTAuctionStoreTests
                      Seller = tokenOwner,
                      HighestBid = 100,
                      HighestBidder = buyer,
-                     Executed = true,
+                     OnAuction = true,
                      EndBlock = 100,
                      StartingPrice = 100,
                  });

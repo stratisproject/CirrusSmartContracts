@@ -72,8 +72,9 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var transfer = Transfer(this.Message.Sender, amount);
 
-        if (!transfer.Success)
-            SetRefund(Message.Sender, amount);
+        Assert(transfer.Success, "Transfer failed.");
+
+        Log(new BalanceRefundedLog { To = Message.Sender, Amount = amount });
 
         return transfer.Success;
     }
@@ -201,6 +202,13 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         public Address Contract;
         [Index]
         public UInt256 TokenId;
+    }
+
+    public struct BalanceRefundedLog
+    {
+        [Index]
+        public Address To;
+        public ulong Amount;
     }
 
     public struct AuctionInfo
