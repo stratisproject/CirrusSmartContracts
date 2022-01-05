@@ -185,9 +185,9 @@ public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandar
     {
         OnlyOwner();
 
-        UInt256 senderBalance = GetBalance(account);
+        UInt256 startingBalance = GetBalance(account);
 
-        SetBalance(account, senderBalance + amount);
+        SetBalance(account, startingBalance + amount);
 
         Log(new TransferLog() { From = Address.Zero, To = account, Amount = amount });
 
