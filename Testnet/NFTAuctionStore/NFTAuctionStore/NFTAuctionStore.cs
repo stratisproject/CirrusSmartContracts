@@ -93,7 +93,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         if (auction.HighestBid == 0)
         {
-            SafeTransferToken(contract, tokenId, Address, auction.Seller);
+            TransferToken(contract, tokenId, Address, auction.Seller);
 
             Log(new AuctionEndFailedLog { Contract = contract, TokenId = tokenId });
             return;
@@ -103,7 +103,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         Assert(result.Success, "Transfer failed.");
 
-        SafeTransferToken(contract, tokenId, Address, auction.HighestBidder);
+        TransferToken(contract, tokenId, Address, auction.HighestBidder);
 
         Log(new AuctionEndSucceedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
     }
@@ -143,12 +143,13 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         return true;
     }
 
-    private void SafeTransferToken(Address contract, UInt256 tokenId, Address from, Address to)
+    private void TransferToken(Address contract, UInt256 tokenId, Address from, Address to)
     {
-        var result = Call(contract, 0, "SafeTransferFrom", new object[] { from, to, tokenId });
+        var result = Call(contract, 0, "TransferFrom", new object[] { from, to, tokenId });
 
-        Assert(result.Success && result.ReturnValue is bool success && success, "The token transfer failed.");
+        Assert(result.Success, "The token transfer failed.");
     }
+
 
     private Address GetOwner(Address contract, UInt256 tokenId)
     {
