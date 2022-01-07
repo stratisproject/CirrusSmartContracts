@@ -150,16 +150,12 @@ public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandar
         return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
-    /// <inheritdoc />
-    public void OnlyOwner()
+    /// <summary>
+    /// Secures method access by ensuring that only the owner of the contract is able to call a particular method. 
+    /// </summary>
+    private void OnlyOwner()
     {
-        Assert(IsOwner(), "Only the owner can call this method");
-    }
-
-    /// <inheritdoc />
-    public bool IsOwner()
-    {
-        return Message.Sender == Owner;
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
     }
 
     /// <inheritdoc />
@@ -192,6 +188,12 @@ public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandar
         Log(new TransferLog() { From = Address.Zero, To = account, Amount = amount });
 
         this.TotalSupply += amount;
+
+        Log(new SupplyChangeLog()
+        {
+            PreviousSupply = (this.TotalSupply - amount),
+            TotalSupply = this.TotalSupply
+        });
     }
 
     /// <inheritdoc />
@@ -200,6 +202,12 @@ public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandar
         if (TransferTo(Address.Zero, amount))
         {
             this.TotalSupply -= amount;
+
+            Log(new SupplyChangeLog()
+            {
+                PreviousSupply = (this.TotalSupply - amount),
+                TotalSupply = this.TotalSupply
+            });
 
             return true;
         }
@@ -261,5 +269,12 @@ public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandar
         [Index] public string Metadata;
 
         public UInt256 Amount;
+    }
+
+    public struct SupplyChangeLog
+    {
+        public UInt256 PreviousSupply;
+
+        public UInt256 TotalSupply;
     }
 }

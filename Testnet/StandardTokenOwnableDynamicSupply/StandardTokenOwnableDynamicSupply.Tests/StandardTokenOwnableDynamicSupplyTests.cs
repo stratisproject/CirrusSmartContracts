@@ -1,5 +1,4 @@
-﻿using System;
-using Moq;
+﻿using Moq;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
 using Xunit;
@@ -50,37 +49,6 @@ namespace StandardTokenOwnableDynamicSupply.Tests
 
             // Verify that PersistentState was called with the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.owner));
-        }
-
-        [Fact]
-        public void IsOwner_Returns_True_For_Owner()
-        {
-            UInt256 totalSupply = 100_000;
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
-
-            var standardToken = new StandardTokenOwnableDynamicSupplyContract(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
-
-            // Setup the owner of the contract
-            this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
-
-            Assert.True(standardToken.IsOwner());
-        }
-
-        [Fact]
-        public void IsOwner_Returns_False_For_NonOwner()
-        {
-            UInt256 totalSupply = 100_000;
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
-
-            var standardToken = new StandardTokenOwnableDynamicSupplyContract(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
-
-            // Setup the owner of the contract
-            this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
-
-            // Call the IsOwner method from a different address
-            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
-
-            Assert.False(standardToken.IsOwner());
         }
 
         [Fact]
