@@ -100,9 +100,16 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
             return;
         }
 
-        var result = Transfer(auction.Seller, auction.HighestBid);
+        if (State.IsContract(auction.Seller))
+        {
+            SetRefund(auction.Seller, auction.HighestBid);
+        }
+        else
+        {
+            var result = Transfer(auction.Seller, auction.HighestBid);
 
-        Assert(result.Success, "Transfer failed.");
+            Assert(result.Success, "Transfer failed.");
+        }
 
         TransferToken(contract, tokenId, Address, auction.HighestBidder);
 
