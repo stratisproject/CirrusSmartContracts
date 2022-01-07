@@ -6,7 +6,7 @@ using Xunit;
 namespace StandardTokenOwnableDynamicSupply.Tests
 {
     /// <summary>
-    /// These tests are reproduced from the original StandardToken project to ensure that no breaking changes have been made to the contract interface.
+    /// These tests validate the functionality that differs between the original standard token and the extended version.
     /// </summary>
     public class StandardTokenOwnableDynamicSupplyTests
     {
