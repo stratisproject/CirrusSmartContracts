@@ -42,9 +42,17 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         if (auction.HighestBid > 0)
         {
             //refund for previous bidder
-            var balance = GetRefund(auction.HighestBidder);
+            var balance = GetRefund(auction.HighestBidder) + auction.HighestBid;
 
-            SetRefund(auction.HighestBidder, balance + auction.HighestBid);
+            if (!State.IsContract(auction.HighestBidder))
+            {
+                var result = Transfer(auction.HighestBidder, balance);
+
+                if (result.Success)
+                    balance = 0;
+            }
+
+            SetRefund(auction.HighestBidder, balance);
         }
 
         auction.HighestBidder = Message.Sender;
