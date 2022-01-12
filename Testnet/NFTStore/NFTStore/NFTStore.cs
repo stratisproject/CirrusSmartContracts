@@ -13,6 +13,16 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         private set => State.SetUInt64(nameof(CreatedAt), value);
     }
 
+    public ulong GetBalance(Address address)
+    {
+        return State.GetUInt64($"Balance:{address}");
+    }
+
+    private void SetBalance(Address address, ulong balance)
+    {
+        State.SetUInt64($"Balance:{address}", balance);
+    }
+
     public NFTStore(ISmartContractState state) : base(state)
     {
         EnsureNotPayable();
@@ -32,9 +42,17 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        var result = Transfer(saleInfo.Seller, saleInfo.Price);
+        if (State.IsContract(saleInfo.Seller))
+        {
+            SetBalance(saleInfo.Seller, saleInfo.Price);
+        }
+        else
+        {
+            var result = Transfer(saleInfo.Seller, saleInfo.Price);
 
-        Assert(result.Success, "Transfer failed.");
+            Assert(result.Success, "Transfer failed.");
+        }
+
 
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
     }
@@ -80,6 +98,25 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         Log(new TokenOnSaleLog { Contract = tokenContract, TokenId = tokenId, Price = price, Seller = seller, Operator = operatorAddress });
 
         return true;
+    }
+
+    public bool Withdraw()
+    {
+        EnsureNotPayable();
+
+        var amount = GetBalance(Message.Sender);
+
+        Assert(amount > 0);
+
+        SetBalance(Message.Sender, 0);
+
+        var transfer = Transfer(Message.Sender, amount);
+
+        Assert(transfer.Success, "Transfer failed.");
+
+        Log(new BalanceRefundedLog { To = Message.Sender, Amount = amount });
+
+        return transfer.Success;
     }
 
     private bool IsApprovedForAll(Address contract, Address tokenOwner)
@@ -154,6 +191,13 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         public Address Buyer;
         [Index]
         public Address Seller;
+    }
+
+    public struct BalanceRefundedLog
+    {
+        [Index]
+        public Address To;
+        public ulong Amount;
     }
 
     public struct SaleInfo
