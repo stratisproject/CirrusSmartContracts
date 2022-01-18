@@ -1077,7 +1077,7 @@ public class NonFungibleTokenTests
 
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(userAddress);
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, GetTokenURI(1)));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(userAddress, (UInt256)1, GetTokenURI(1)));
     }
 
     [Fact]
@@ -1087,7 +1087,7 @@ public class NonFungibleTokenTests
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
         var nonFungibleToken = CreateNonFungibleToken();
 
-        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, GetTokenURI(1)));
+        Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, (UInt256)1, GetTokenURI(1)));
     }
 
     [Fact]
@@ -1103,12 +1103,11 @@ public class NonFungibleTokenTests
         var nonFungibleToken = CreateNonFungibleToken();
 
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(targetAddress);
-        nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
+        nonFungibleToken.Mint(targetAddress, (UInt256)1, GetTokenURI(1));
 
         Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
         Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
         Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1));
-        Assert.Equal(1, state.GetUInt256("TokenIdCounter"));
 
         contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
     }
@@ -1122,13 +1121,12 @@ public class NonFungibleTokenTests
 
         var nonFungibleToken = CreateNonFungibleToken();
 
-        nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
+        nonFungibleToken.Mint(targetAddress, (UInt256)1, GetTokenURI(1));
 
         Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
         Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
         Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1));
         Assert.Null(nonFungibleToken.TokenURI(2));
-        Assert.Equal(1, state.GetUInt256("TokenIdCounter"));
 
         contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = Address.Zero, To = targetAddress, TokenId = 1 }));
     }
@@ -1148,11 +1146,10 @@ public class NonFungibleTokenTests
         transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", parameter, 0))
                                     .Returns(TransferResult.Transferred(true));
 
-        nonFungibleToken.SafeMint(targetAddress, GetTokenURI(1), data);
+        nonFungibleToken.SafeMint(targetAddress, (UInt256)1, GetTokenURI(1), data);
 
         Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
         Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
-        Assert.Equal(1, state.GetUInt256("TokenIdCounter"));
         Assert.Equal(GetTokenURI(1), nonFungibleToken.TokenURI(1));
         Assert.Null(nonFungibleToken.TokenURI(2));
 
