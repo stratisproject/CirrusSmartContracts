@@ -140,15 +140,6 @@ public class NonFungibleToken : SmartContract
     }
 
     /// <summary>
-    /// The next token id which is going to be minted
-    /// </summary>
-    private UInt256 TokenIdCounter
-    {
-        get => State.GetUInt256(nameof(TokenIdCounter));
-        set => State.SetUInt256(nameof(TokenIdCounter), value);
-    }
-
-    /// <summary>
     /// Constructor used to create a new instance of the non-fungible token.
     /// </summary>
     /// <param name="state">The execution state for the contract.</param>
@@ -483,12 +474,11 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
+    /// <param name="tokenId">The id of token</param>
     /// <param name="uri">Metadata URI of the token</param>
-    public UInt256 Mint(Address to, string uri)
+    public UInt256 Mint(Address to, UInt256 tokenId, string uri)
     {
-        var tokenId = TokenIdCounter += 1;
-
-        Mint(to, tokenId, uri);
+        MintToken(to, tokenId, uri);
 
         return tokenId;
     }
@@ -497,25 +487,28 @@ public class NonFungibleToken : SmartContract
     /// Mints new tokens
     /// </summary>
     /// <param name="to">The address that will own the minted NFT</param>
+    /// <param name="tokenId">The id of token</param>
     /// <param name="uri">Metadata URI of the token</param>
     /// <param name="data">The data param will passed destination contract</param>
-    public UInt256 SafeMint(Address to, string uri, byte[] data)
+    public UInt256 SafeMint(Address to, UInt256 tokenId, string uri, byte[] data)
     {
-        var tokenId = TokenIdCounter += 1;
-
-        Mint(to, tokenId, uri);
+        MintToken(to, tokenId, uri);
 
         EnsureContractReceivedToken(Address.Zero, to, tokenId, data);
 
         return tokenId;
     }
 
-    private void Mint(Address to, UInt256 tokenId, string uri)
+    private void MintToken(Address to, UInt256 tokenId, string uri)
     {
         if (OwnerOnlyMinting)
         {
             EnsureOwnerOnly();
         }
+
+        var owner = GetIdToOwner(tokenId);
+
+        Assert(owner == Address.Zero, "Token already minted.");
 
         EnsureAddressIsNotEmpty(to);
 
