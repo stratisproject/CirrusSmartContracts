@@ -263,6 +263,36 @@ namespace Multisig.Tests
         }
 
         [Fact]
+        public void Confirmations_ForSubmittedTransaction_ReturnsOne()
+        {
+            var multiSigContract = CreateNewMultisigContract();
+
+            SetupMessage(Contract, AddressOne);
+
+            ulong transactionId = multiSigContract.Submit(Contract, "TestMethod", new byte[] { });
+
+            // Note: submission is an implicit confirmation by the submitter
+
+            multiSigContract.Confirmations(transactionId).Should().Be(1);
+        }
+
+        [Fact]
+        public void Confirmations_AfterConfirmingTransaction_Increases()
+        {
+            var multiSigContract = CreateNewMultisigContract();
+
+            SetupMessage(Contract, AddressOne);
+
+            ulong transactionId = multiSigContract.Submit(Contract, "TestMethod", new byte[] { });
+
+            SetupMessage(Contract, AddressTwo);
+
+            multiSigContract.Confirm(transactionId);
+
+            multiSigContract.Confirmations(transactionId).Should().Be(2);
+        }
+
+        [Fact]
         public void IsConfirmedBy_ForSubmittedTransaction_ReturnsTrue()
         {
             var multiSigContract = CreateNewMultisigContract();

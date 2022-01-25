@@ -59,6 +59,11 @@ public class MultisigContract : SmartContract
         return State.GetBool($"{ConfirmationPrefix}:{transactionId}:{address}");
     }
 
+    public uint Confirmations(ulong transactionId)
+    {
+        return State.GetUInt32($"{ConfirmationCountPrefix}:{transactionId}");
+    }
+
     public Transaction GetTransaction(ulong transactionId)
     {
         Assert(transactionId <= TransactionCount, "Can't retrieve a transaction that doesn't exist yet.");
@@ -122,8 +127,10 @@ public class MultisigContract : SmartContract
     /// <summary>
     /// Submits method and parameter metadata describing a contract call that the multisig contract should invoke once it is sufficiently confirmed.
     /// </summary>
+    /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
+    /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
     /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
-    /// <returns>The transactionId of the submitted multisig transaction.</returns>
+    /// <returns>The transactionId of the submitted multisig transaction. This is used for confirmation by other multisig nodes, and for looking up execution status etc.</returns>
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction.</remarks>
     public ulong Submit(Address destination, string methodName, byte[] data)
     {
@@ -160,7 +167,7 @@ public class MultisigContract : SmartContract
 
         State.SetBool($"{ConfirmationPrefix}:{transactionId}:{Message.Sender}", true);
 
-        uint confirmationCount = State.GetUInt32($"{ConfirmationCountPrefix}:{transactionId}");
+        uint confirmationCount = Confirmations(transactionId);
 
         State.SetUInt32($"{ConfirmationCountPrefix}:{transactionId}", ++confirmationCount);
 
