@@ -4,7 +4,8 @@ using Stratis.SmartContracts.Standards;
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
-public class StandardToken : SmartContract, IStandardToken256
+[Deploy]
+public class StandardTokenOwnableDynamicSupplyContract : SmartContract, IStandardToken256, IOwnable, IMintable, IBurnable, IBurnableWithMetadata
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -14,14 +15,14 @@ public class StandardToken : SmartContract, IStandardToken256
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-    public StandardToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals)
-        : base(smartContractState)
+    public StandardTokenOwnableDynamicSupplyContract(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
         this.Decimals = decimals;
         this.SetBalance(Message.Sender, totalSupply);
+        this.Owner = Message.Sender;
     }
 
     public string Symbol
@@ -48,6 +49,13 @@ public class StandardToken : SmartContract, IStandardToken256
     {
         get => State.GetUInt256(nameof(this.TotalSupply));
         private set => State.SetUInt256(nameof(this.TotalSupply), value);
+    }
+
+    /// <inheritdoc />
+    public Address Owner
+    {
+        get => State.GetAddress(nameof(this.Owner));
+        private set => State.SetAddress(nameof(this.Owner), value);
     }
 
     /// <inheritdoc />
@@ -142,6 +150,84 @@ public class StandardToken : SmartContract, IStandardToken256
         return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
+    /// <summary>
+    /// Secures method access by ensuring that only the owner of the contract is able to call a particular method. 
+    /// </summary>
+    private void OnlyOwner()
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+    }
+
+    /// <inheritdoc />
+    public void RenounceOwnership()
+    {
+        TransferOwnership(Address.Zero);
+    }
+
+    /// <inheritdoc />
+    public void TransferOwnership(Address newOwner)
+    {
+        OnlyOwner();
+
+        Address previousOwner = this.Owner;
+
+        this.Owner = newOwner;
+
+        Log(new OwnershipTransferred { PreviousOwner = previousOwner, NewOwner = newOwner });
+    }
+
+    /// <inheritdoc />
+    public void Mint(Address account, UInt256 amount)
+    {
+        OnlyOwner();
+
+        UInt256 startingBalance = GetBalance(account);
+
+        SetBalance(account, startingBalance + amount);
+
+        Log(new TransferLog() { From = Address.Zero, To = account, Amount = amount });
+
+        this.TotalSupply += amount;
+
+        Log(new SupplyChangeLog()
+        {
+            PreviousSupply = (this.TotalSupply - amount),
+            TotalSupply = this.TotalSupply
+        });
+    }
+
+    /// <inheritdoc />
+    public bool Burn(UInt256 amount)
+    {
+        if (TransferTo(Address.Zero, amount))
+        {
+            this.TotalSupply -= amount;
+
+            Log(new SupplyChangeLog()
+            {
+                PreviousSupply = (this.TotalSupply - amount),
+                TotalSupply = this.TotalSupply
+            });
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc />
+    public bool BurnWithMetadata(UInt256 amount, string metadata)
+    {
+        if (Burn(amount))
+        {
+            Log(new BurnMetadata() { From = Message.Sender, Amount = amount, Metadata = metadata });
+
+            return true;
+        }
+
+        return false;
+    }
+
     public struct TransferLog
     {
         [Index]
@@ -164,5 +250,31 @@ public class StandardToken : SmartContract, IStandardToken256
         public UInt256 OldAmount;
 
         public UInt256 Amount;
+    }
+
+    /// <summary>
+    /// Provides a record that ownership was transferred from one account to another.
+    /// </summary>
+    public struct OwnershipTransferred
+    {
+        [Index] public Address PreviousOwner;
+
+        [Index] public Address NewOwner;
+    }
+
+    public struct BurnMetadata
+    {
+        [Index] public Address From;
+
+        [Index] public string Metadata;
+
+        public UInt256 Amount;
+    }
+
+    public struct SupplyChangeLog
+    {
+        public UInt256 PreviousSupply;
+
+        public UInt256 TotalSupply;
     }
 }
