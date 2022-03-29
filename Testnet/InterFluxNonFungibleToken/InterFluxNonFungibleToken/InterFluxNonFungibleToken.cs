@@ -1,7 +1,9 @@
 ﻿using Stratis.SmartContracts;
+
 /// <summary>
 /// A non fungible token contract.
 /// </summary>
+[Deploy]
 public class InterFluxNonFungibleToken : SmartContract, IBurnableWithMetadata
 {
     /// <summary>

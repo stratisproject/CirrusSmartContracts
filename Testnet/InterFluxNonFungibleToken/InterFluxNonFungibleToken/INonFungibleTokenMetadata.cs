@@ -1,12 +1,9 @@
 ﻿using Stratis.SmartContracts;
 
-namespace NonFungibleTokenContract
+public interface INonFungibleTokenMetadata
 {
-    public interface INonFungibleTokenMetadata
-    {
-        string Name { get; }
-        string Symbol { get; }
+    string Name { get; }
+    string Symbol { get; }
 
-        string TokenURI(UInt256 tokenId);
-    }
+    string TokenURI(UInt256 tokenId);
 }
