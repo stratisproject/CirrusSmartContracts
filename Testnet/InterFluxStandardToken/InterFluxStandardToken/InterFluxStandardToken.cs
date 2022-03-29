@@ -222,7 +222,7 @@ public class InterFluxStandardToken : SmartContract, IStandardToken256, IOwnable
 
             Log(new SupplyChangeLog()
             {
-                PreviousSupply = (this.TotalSupply - amount),
+                PreviousSupply = (this.TotalSupply + amount),
                 TotalSupply = this.TotalSupply
             });
 
