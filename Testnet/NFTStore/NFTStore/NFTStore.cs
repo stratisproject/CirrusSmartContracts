@@ -42,46 +42,19 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
-
-        var royaltyInfo = supportsRoyaltyInfo
-            ? GetRoyaltyInfo(contract, tokenId, saleInfo.Price)
-            : new object[] { Address.Zero, 0UL };
-
-        var royaltyRecipient = (Address)royaltyInfo[0];
-        var royaltyAmount = (ulong)royaltyInfo[1];
-
-        var salePriceMinusRoyalty = supportsRoyaltyInfo ? saleInfo.Price - royaltyAmount : saleInfo.Price;
-
         if (State.IsContract(saleInfo.Seller))
         {
-            SetBalance(saleInfo.Seller, salePriceMinusRoyalty);
+            SetBalance(saleInfo.Seller, saleInfo.Price);
         }
         else
         {
-            var result = Transfer(saleInfo.Seller, salePriceMinusRoyalty);
+            var result = Transfer(saleInfo.Seller, saleInfo.Price);
 
             Assert(result.Success, "Transfer failed.");
         }
 
-        if (royaltyAmount > 0)
-        {
-            var royaltyTransfer = Transfer(royaltyRecipient, royaltyAmount);
-
-            Assert(royaltyTransfer.Success, "Royalty transfer failed.");
-            Log(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
-        }
 
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
-    }
-
-    private object[] GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
-    {
-        var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice });
-
-        Assert(royaltyCall.Success, "Get royalty info failed.");
-
-        return royaltyCall.ReturnValue as object[];
     }
 
     public void CancelSale(Address contract, UInt256 tokenId)
@@ -185,14 +158,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
     private void EnsureNotPayable() => Assert(Message.Value == 0, "The method is not payable.");
 
-    private bool SupportsRoyaltyInfo(Address contract)
-    {
-        // 6 is IRoyaltyInfo
-        var supportsInterfaceResult = Call(contract, 0, "SupportsInterface", new object[] { 6 });
-
-        return supportsInterfaceResult.Success && ((bool)supportsInterfaceResult.ReturnValue);
-    }
-
     public struct TokenOnSaleLog
     {
         [Index]
@@ -226,13 +191,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         public Address Buyer;
         [Index]
         public Address Seller;
-    }
-
-    public struct RoyaltyPaidLog
-    {
-        [Index]
-        public Address Recipient;
-        public ulong Amount;
     }
 
     public struct BalanceRefundedLog

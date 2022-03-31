@@ -275,9 +275,6 @@ namespace NFTStoreTests
 
             SetupTransfer(tokenOwner, 100, TransferResult.Failed());
 
-            SetupSupportsRoyaltyInfo(TransferResult.Succeed(true));
-            SetupRoyaltyInfo(tokenId, saleInfo.Price, TransferResult.Succeed(new object[] { Address.Zero, 0UL }));
-
             store.Invoking(s => s.Buy(tokenContract, tokenId))
                  .Should()
                  .Throw<SmartContractAssertException>()
@@ -304,80 +301,6 @@ namespace NFTStoreTests
             SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
 
             SetupTransfer(tokenOwner, 100, TransferResult.Succeed());
-
-            SetupSupportsRoyaltyInfo(TransferResult.Succeed(true));
-            SetupRoyaltyInfo(tokenId, saleInfo.Price, TransferResult.Succeed(new object[] { Address.Zero, 0UL }));
-
-            store.Buy(tokenContract, tokenId);
-
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
-
-            store.GetSaleInfo(tokenContract, tokenId)
-                 .Should()
-                 .Be(default(SaleInfo));
-        }
-
-        [Fact]
-        public void Buy_Token_Buying_With_Royalty_Success()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTStore(mContractState.Object);
-
-            var saleInfo = new SaleInfo
-            {
-                Price = 100,
-                Seller = tokenOwner
-            };
-
-            var royaltyAmount = 11UL;
-            var royaltyRecipient = Address.Zero;
-            var salePriceMinusRoyalty = saleInfo.Price - royaltyAmount;
-
-            SetSaleInfo(saleInfo);
-
-            SetupMessage(buyer, 100);
-
-            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
-
-            SetupTransfer(tokenOwner, salePriceMinusRoyalty, TransferResult.Succeed());
-            SetupTransfer(royaltyRecipient, royaltyAmount, TransferResult.Succeed());
-
-            SetupSupportsRoyaltyInfo(TransferResult.Succeed(true));
-            SetupRoyaltyInfo(tokenId, saleInfo.Price, TransferResult.Succeed(new object[] { royaltyRecipient, royaltyAmount }));
-
-            store.Buy(tokenContract, tokenId);
-
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
-            VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
-
-            store.GetSaleInfo(tokenContract, tokenId)
-                 .Should()
-                 .Be(default(SaleInfo));
-        }
-
-        [Fact]
-        public void Buy_Token_Buying_Without_Royalty_Support_Success()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTStore(mContractState.Object);
-
-            var saleInfo = new SaleInfo
-            {
-                Price = 100,
-                Seller = tokenOwner
-            };
-
-            SetSaleInfo(saleInfo);
-
-            SetupMessage(buyer, 100);
-
-            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
-
-            SetupTransfer(tokenOwner, saleInfo.Price, TransferResult.Succeed());
-
-            SetupSupportsRoyaltyInfo(TransferResult.Failed());
 
             store.Buy(tokenContract, tokenId);
 
@@ -544,18 +467,6 @@ namespace NFTStoreTests
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "IsApprovedForAll", new object[] { owner, delegator }, 0))
                                 .Returns(result);
-        }
-
-        private void SetupSupportsRoyaltyInfo(TransferResult result)
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SupportsInterface", new object[] { 6 }, 0))
-                    .Returns(result);
-        }
-
-        private void SetupRoyaltyInfo(UInt256 tokenId, ulong salePrice, TransferResult result)
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice }, 0))
-                .Returns(result);
         }
     }
 }
