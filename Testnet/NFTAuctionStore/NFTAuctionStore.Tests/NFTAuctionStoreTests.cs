@@ -23,7 +23,7 @@ namespace NFTAuctionStoreTests
         private readonly Address attacker;
         private readonly Address operatorAddress;
         private readonly Address buyer;
-        private readonly UInt256 tokenId;
+        private readonly ulong tokenId;
         private readonly ulong duration;
 
         public NFTAuctionStoreTests()
@@ -152,7 +152,7 @@ namespace NFTAuctionStoreTests
             store.Invoking(s => s.OnNonFungibleTokenReceived(tokenOwner, tokenOwner, tokenId, paramBytes))
                  .Should()
                  .Throw<SmartContractAssertException>()
-                 .WithMessage("The token is already on auction.");
+                 .WithMessage("The token is already on sale.");
         }
 
         [Fact]
@@ -177,7 +177,7 @@ namespace NFTAuctionStoreTests
 
             store.GetAuctionInfo(tokenContract, tokenId)
                  .Should()
-                 .Be(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100, OnAuction = true });
+                 .Be(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100 });
 
             VerifyLog(new AuctionStartedLog
             {
@@ -197,7 +197,7 @@ namespace NFTAuctionStoreTests
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100 });
 
             SetupBlock(101);
 
@@ -214,7 +214,7 @@ namespace NFTAuctionStoreTests
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 2, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 2, StartingPrice = 100 });
 
             SetupMessage(buyer, 99);
             SetupBlock(1);
@@ -232,7 +232,7 @@ namespace NFTAuctionStoreTests
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 101, StartingPrice = 100 });
 
             SetupBlock(100);
             SetupMessage(buyer, 100);
@@ -246,8 +246,7 @@ namespace NFTAuctionStoreTests
                      HighestBidder = buyer,
                      Seller = tokenOwner,
                      EndBlock = 101,
-                     StartingPrice = 100,
-                     OnAuction = true
+                     StartingPrice = 100
                  });
 
             VerifyLog(new HighestBidUpdatedLog
@@ -267,7 +266,7 @@ namespace NFTAuctionStoreTests
 
             var store = new NFTAuctionStore(mContractState.Object);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100 });
 
             SetupBlock(101);
 
@@ -300,7 +299,7 @@ namespace NFTAuctionStoreTests
 
             SetupBlock(10);
             SetupMessage(tokenOwner, 0);
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100 });
 
             store.Invoking(m => m.AuctionEnd(tokenContract, tokenId))
                  .Should()
@@ -317,12 +316,12 @@ namespace NFTAuctionStoreTests
 
             SetupBlock(101);
             SetupMessage(tokenOwner, 0);
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = false });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
 
             store.Invoking(m => m.AuctionEnd(tokenContract, tokenId))
                  .Should()
                  .Throw<SmartContractAssertException>()
-                 .WithMessage("Auction is not found.");
+                 .WithMessage("Auction end already OnAuction.");
         }
 
         [Fact]
@@ -336,11 +335,9 @@ namespace NFTAuctionStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100 });
 
-            SetupTransferToken(contract, tokenOwner, tokenId, TransferResult.Failed());
-
-            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, TransferResult.Succeed(false));
 
             store.Invoking(m => m.AuctionEnd(tokenContract, tokenId))
                  .Should()
@@ -360,11 +357,9 @@ namespace NFTAuctionStoreTests
 
             SetupMessage(tokenOwner, 0);
 
-            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100, OnAuction = true });
+            SetAuctionInfo(new AuctionInfo { Seller = tokenOwner, EndBlock = 100, StartingPrice = 100 });
 
-            SetupTransferToken(contract, tokenOwner, tokenId, TransferResult.Succeed(true));
-
-            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+            SetupSafeTransferToken(contract, tokenOwner, tokenId, TransferResult.Succeed(true));
 
             store.AuctionEnd(tokenContract, tokenId);
 
@@ -372,12 +367,12 @@ namespace NFTAuctionStoreTests
                  .Should()
                  .Be(new AuctionInfo {
                     Seller = tokenOwner,
-                    OnAuction = false,
+                    OnAuction = true,
                     EndBlock = 100, 
                     StartingPrice = 100,
                  });
 
-            VerifyLog(new AuctionEndFailedLog { Contract = tokenContract, TokenId = tokenId });
+            VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 0, HighestBidder = Address.Zero });
         }
 
         [Fact]
@@ -396,17 +391,15 @@ namespace NFTAuctionStoreTests
                 Seller = tokenOwner,
                 HighestBid = 100,
                 HighestBidder = buyer,
-                OnAuction = true,
+                OnAuction = false,
                 EndBlock = 100,
                 StartingPrice = 100
             });
 
-            SetupTransferToken(contract, buyer, tokenId, TransferResult.Succeed(true));
+            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed(true));
 
             SetupTransfer(tokenOwner, 100, TransferResult.Succeed());
 
-            SetupSupportsRoyaltyInfo(TransferResult.Failed());
-
             store.AuctionEnd(tokenContract, tokenId);
 
             store.GetAuctionInfo(tokenContract, tokenId)
@@ -416,67 +409,13 @@ namespace NFTAuctionStoreTests
                      Seller = tokenOwner,
                      HighestBid = 100,
                      HighestBidder = buyer,
-                     OnAuction = false,
+                     OnAuction = true,
                      EndBlock = 100,
                      StartingPrice = 100,
                  });
 
 
             VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
-        }
-
-        [Fact]
-        public void AuctionEnd_With_Royalty_Success()
-        {
-            SetupMessage(creator, 0);
-
-            var store = new NFTAuctionStore(mContractState.Object);
-
-            SetupBlock(101);
-
-            SetupMessage(tokenOwner, 0);
-
-            var auctionInfo = new AuctionInfo
-            {
-                Seller = tokenOwner,
-                HighestBid = 100,
-                HighestBidder = buyer,
-                OnAuction = true,
-                EndBlock = 100,
-                StartingPrice = 100
-            };
-
-            SetAuctionInfo(auctionInfo);
-
-            var royaltyAmount = 11UL;
-            var royaltyRecipient = Address.Zero;
-            var salePriceMinusRoyalty = 100 - royaltyAmount;
-
-            SetupTransferToken(contract, buyer, tokenId, TransferResult.Succeed(true));
-
-            SetupTransfer(royaltyRecipient, royaltyAmount, TransferResult.Succeed());
-            SetupTransfer(tokenOwner, salePriceMinusRoyalty, TransferResult.Succeed());
-
-            SetupSupportsRoyaltyInfo(TransferResult.Succeed(true));
-            SetupRoyaltyInfo(tokenId, auctionInfo.HighestBid, TransferResult.Succeed(new object[] { royaltyRecipient, royaltyAmount }));
-
-            store.AuctionEnd(tokenContract, tokenId);
-
-            store.GetAuctionInfo(tokenContract, tokenId)
-                 .Should()
-                 .Be(new AuctionInfo
-                 {
-                     Seller = tokenOwner,
-                     HighestBid = 100,
-                     HighestBidder = buyer,
-                     OnAuction = false,
-                     EndBlock = 100,
-                     StartingPrice = 100,
-                 });
-
-
-            VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
-            VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
         }
 
         private void SetupBlock(ulong block)
@@ -494,13 +433,13 @@ namespace NFTAuctionStoreTests
             mContractLogger.Verify(x => x.Log(mContractState.Object, expectedLog), Times.Once());
         }
 
-        private void SetupTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
+        private void SetupTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "TransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
         }
 
-        private void SetupSafeTransferToken(Address from, Address to, UInt256 tokenId, TransferResult result)
+        private void SetupSafeTransferToken(Address from, Address to, ulong tokenId, TransferResult result)
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SafeTransferFrom", new object[] { from, to, tokenId }, 0))
                                 .Returns(result);
@@ -519,7 +458,7 @@ namespace NFTAuctionStoreTests
 
         private void SetupGetOwnerOfToken(TransferResult result)
         {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "OwnerOf", new object[] { tokenId }, 0))
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "GetOwner", new object[] { tokenId }, 0))
                                 .Returns(result);
         }
 
@@ -527,18 +466,6 @@ namespace NFTAuctionStoreTests
         {
             mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "IsApprovedForAll", new object[] { owner, delegator }, 0))
                                 .Returns(result);
-        }
-
-        private void SetupSupportsRoyaltyInfo(TransferResult result)
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SupportsInterface", new object[] { 6 }, 0))
-                    .Returns(result);
-        }
-
-        private void SetupRoyaltyInfo(UInt256 tokenId, ulong salePrice, TransferResult result)
-        {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice }, 0))
-                .Returns(result);
         }
     }
 }
