@@ -117,15 +117,15 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         var royaltyRecipient = (Address)royaltyInfo[0];
         var royaltyAmount = (ulong)royaltyInfo[1];
 
-        var salePriceMinusRoyalty = supportsRoyaltyInfo ? auction.HighestBid - royaltyAmount : auction.HighestBid;
+        var highestBidMinusRoyalty = supportsRoyaltyInfo ? auction.HighestBid - royaltyAmount : auction.HighestBid;
 
         if (State.IsContract(auction.Seller))
         {
-            SetRefund(auction.Seller, salePriceMinusRoyalty);
+            SetRefund(auction.Seller, highestBidMinusRoyalty);
         }
         else
         {
-            var result = Transfer(auction.Seller, salePriceMinusRoyalty);
+            var result = Transfer(auction.Seller, highestBidMinusRoyalty);
 
             Assert(result.Success, "Transfer failed.");
         }
@@ -199,10 +199,9 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
     private bool SupportsRoyaltyInfo(Address contract)
     {
-        // 6 is IRoyaltyInfo
-        var supportsInterfaceResult = Call(contract, 0, "SupportsInterface", new object[] { 6 });
+        var supportsInterfaceResult = Call(contract, 0, "SupportsInterface", new object[] { 6 /* 6 is IRoyaltyInfo */ });
 
-        return supportsInterfaceResult.Success && ((bool)supportsInterfaceResult.ReturnValue);
+        return supportsInterfaceResult.Success && supportsInterfaceResult.ReturnValue is bool value && value;
     }
 
     private object[] GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
