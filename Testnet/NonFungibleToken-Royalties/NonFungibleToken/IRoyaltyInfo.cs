@@ -11,6 +11,6 @@ namespace NonFungibleTokenContract
         /// <param name="tokenId"></param>
         /// <param name="salePrice"></param>
         /// <returns></returns>
-         object[] RoyaltyInfo(UInt256 tokenId, UInt256 salePrice);
+         object[] RoyaltyInfo(UInt256 tokenId, ulong salePrice);
     }
 }
