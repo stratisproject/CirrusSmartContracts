@@ -177,8 +177,10 @@ public class NonFungibleToken : SmartContract
     /// <param name="symbol">Symbol of the NFT Contract</param>
     /// <param name="ownerOnlyMinting">True, if only owner allowed to mint tokens</param>
     /// </param>
-    public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting) : base(state)
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting,Address royaltyRecipent,uint royaltyPercent) : base(state)
     {
+        Assert(royaltyPercent <= 10000, "Royalty percentage too high");
+
         this.SetSupportedInterfaces(TokenInterface.ISupportsInterface, true); // (ERC165) - ISupportsInterface
         this.SetSupportedInterfaces(TokenInterface.INonFungibleToken, true); // (ERC721) - INonFungibleToken,
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenReceiver, false); // (ERC721) - INonFungibleTokenReceiver
@@ -186,10 +188,13 @@ public class NonFungibleToken : SmartContract
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenEnumerable, false); // (ERC721) - INonFungibleTokenEnumerable
         this.SetSupportedInterfaces(TokenInterface.IRoyaltyInfo, true); // (EIP2981) - IRoyaltyInfo
 
+
         this.Name = name;
         this.Symbol = symbol;
         this.Owner = Message.Sender;
         this.OwnerOnlyMinting = ownerOnlyMinting;
+        this.RoyaltyPercent = royaltyPercent;
+        this.RoyaltyRecipient = royaltyRecipent;
     }
 
     /// <summary>
@@ -591,9 +596,8 @@ public class NonFungibleToken : SmartContract
     /// </summary>
     /// <param name="recipient">The address to receive the royalties</param>
     /// <param name="percentage">Percentage amount using 2 decimals: 100% = 10000, 55.11% = 5511, 0% = 0</param>
-    public void SetRoyalties(Address recipient, uint percentage)
+    private void SetRoyalties(Address recipient, uint percentage)
     {
-        EnsureOwnerOnly();
         Assert(percentage <= 10000, "Royalty percentage too high");
 
         RoyaltyPercent = percentage;

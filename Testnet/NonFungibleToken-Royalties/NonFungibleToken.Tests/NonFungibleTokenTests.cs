@@ -1212,11 +1212,9 @@ public class NonFungibleTokenTests
 
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-        var nonFungibleToken = CreateNonFungibleToken();
+        var nonFungibleToken = CreateNonFungibleToken(ownerAddress, royaltyPercentage);
 
         nonFungibleToken.Mint(targetAddress, GetTokenURI(tokenId));
-
-        nonFungibleToken.SetRoyalties(ownerAddress, royaltyPercentage);
 
         var royaltyInfo = nonFungibleToken.RoyaltyInfo(tokenId, salePrice);
 
@@ -1231,6 +1229,18 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
+    public void Set_Invalid_RoyaltyPercent_Fails()
+    {
+        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
+        var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
+        uint royaltyPercentage = 10001;
+
+        smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
+
+        Assert.Throws<SmartContractAssertException>(() => CreateNonFungibleToken(ownerAddress, royaltyPercentage));
+    }
+
+    [Fact]
     public void RoyaltyInfo_RoyaltyPercent_0()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
@@ -1241,11 +1251,9 @@ public class NonFungibleTokenTests
 
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-        var nonFungibleToken = CreateNonFungibleToken();
+        var nonFungibleToken = CreateNonFungibleToken(ownerAddress, royaltyPercentage);
 
         nonFungibleToken.Mint(targetAddress, GetTokenURI(tokenId));
-
-        nonFungibleToken.SetRoyalties(ownerAddress, royaltyPercentage);
 
         var royaltyInfo = nonFungibleToken.RoyaltyInfo(tokenId, salePrice);
 
@@ -1268,11 +1276,9 @@ public class NonFungibleTokenTests
 
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-        var nonFungibleToken = CreateNonFungibleToken();
+        var nonFungibleToken = CreateNonFungibleToken(ownerAddress, royaltyPercentage);
 
         nonFungibleToken.Mint(targetAddress, GetTokenURI(tokenId));
-
-        nonFungibleToken.SetRoyalties(ownerAddress, royaltyPercentage);
 
         var royaltyInfo = nonFungibleToken.RoyaltyInfo(tokenId, salePrice);
 
@@ -1284,8 +1290,8 @@ public class NonFungibleTokenTests
         Assert.Equal(salePrice, royaltyAmount);
     }
 
-    private NonFungibleToken CreateNonFungibleToken()
+    private NonFungibleToken CreateNonFungibleToken(Address royaltyRecipent = default, uint royaltyPercent = default)
     {
-        return new NonFungibleToken(smartContractStateMock.Object, name, symbol, ownerOnlyMinting);
+        return new NonFungibleToken(smartContractStateMock.Object, name, symbol, ownerOnlyMinting, royaltyRecipent, royaltyPercent);
     }
 }
