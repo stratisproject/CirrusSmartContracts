@@ -199,7 +199,7 @@ namespace NFTStoreTests
 
             mSerializer.Setup(m => m.ToUInt64(priceBytes)).Returns(price);
 
-            
+
             store.OnNonFungibleTokenReceived(operatorAddress, Address.Zero, tokenId, priceBytes)
                  .Should()
                  .BeTrue();
@@ -357,6 +357,49 @@ namespace NFTStoreTests
         }
 
         [Fact]
+        public void Buy_Token_Buying_With_Royalty_From_Cache_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            var saleInfo = new SaleInfo
+            {
+                Price = 100,
+                Seller = tokenOwner
+            };
+
+            var royaltyAmount = 11UL;
+            var royaltyRecipient = Address.Zero;
+            var salePriceMinusRoyalty = saleInfo.Price - royaltyAmount;
+
+            SetSaleInfo(saleInfo);
+
+            SetupMessage(buyer, 100);
+
+            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
+
+            SetupTransfer(tokenOwner, salePriceMinusRoyalty, TransferResult.Succeed());
+            SetupTransfer(royaltyRecipient, royaltyAmount, TransferResult.Succeed());
+
+
+            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+
+            SetSupportsRoyaltyProperty(true);
+
+            SetupRoyaltyInfo(tokenId, saleInfo.Price, TransferResult.Succeed(new object[] { royaltyRecipient, royaltyAmount }));
+
+            store.Buy(tokenContract, tokenId);
+
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+            VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
+
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(default(SaleInfo));
+        }
+
+        [Fact]
         public void Buy_Token_Buying_Without_Royalty_Support_Success()
         {
             SetupMessage(creator, 0);
@@ -498,6 +541,11 @@ namespace NFTStoreTests
         private void SetSaleInfo(SaleInfo saleInfo)
         {
             state.SetStruct($"SaleInfo:{tokenContract}:{tokenId}", saleInfo);
+        }
+
+        private void SetSupportsRoyaltyProperty(bool value)
+        {
+            state.SetString($"SupportsRoyalty:{tokenContract}", value.ToString());
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct

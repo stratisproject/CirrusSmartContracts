@@ -7,6 +7,9 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     private void SetSaleInfo(Address contract, UInt256 tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, UInt256 tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
+    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyalty:{contract}");
+    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyalty:{contract}", value.ToString());
+
     public ulong CreatedAt
     {
         get => State.GetUInt64(nameof(CreatedAt));
@@ -187,10 +190,18 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
     private bool SupportsRoyaltyInfo(Address contract)
     {
-        // 6 is IRoyaltyInfo
-        var supportsInterfaceResult = Call(contract, 0, "SupportsInterface", new object[] { 6 });
+        var cached = GetSupportsRoyalty(contract);
 
-        return supportsInterfaceResult.Success && ((bool)supportsInterfaceResult.ReturnValue);
+        if (cached != null)
+            return cached == bool.TrueString;
+
+        var result = Call(contract, 0, "SupportsInterface", new object[] { 6 /* IRoyaltyInfo */ });
+
+        var supported = result.Success && result.ReturnValue is bool value && value;
+
+        SetSupportsRoyalty(contract, supported);
+
+        return supported;
     }
 
     public struct TokenOnSaleLog
