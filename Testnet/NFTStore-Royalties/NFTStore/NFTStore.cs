@@ -45,9 +45,9 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        var royaltyInfo = GetRoyaltyInfo(contract, tokenId, saleInfo.Price);
+        var royalty = GetRoyaltyInfo(contract, tokenId, saleInfo.Price);
 
-        var salePriceMinusRoyalty = saleInfo.Price - royaltyInfo.Amount;
+        var salePriceMinusRoyalty = saleInfo.Price - royalty.Amount;
 
         if (State.IsContract(saleInfo.Seller))
         {
@@ -60,12 +60,12 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
             Assert(result.Success, "Transfer failed.");
         }
 
-        if (royaltyInfo.Amount > 0)
+        if (royalty.Amount > 0)
         {
-            var royaltyTransfer = Transfer(royaltyInfo.Recipient, royaltyInfo.Amount);
+            var royaltyTransfer = Transfer(royalty.Recipient, royalty.Amount);
 
             Assert(royaltyTransfer.Success, "Royalty transfer failed.");
-            Log(new RoyaltyPaidLog { Recipient = royaltyInfo.Recipient, Amount = royaltyInfo.Amount });
+            Log(new RoyaltyPaidLog { Recipient = royalty.Recipient, Amount = royalty.Amount });
         }
 
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
