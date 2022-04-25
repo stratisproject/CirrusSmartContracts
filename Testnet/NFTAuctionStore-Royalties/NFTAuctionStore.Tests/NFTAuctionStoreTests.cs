@@ -37,7 +37,7 @@ namespace NFTAuctionStoreTests
             mContractState.Setup(s => s.ContractLogger).Returns(mContractLogger.Object);
             mContractState.Setup(s => s.InternalTransactionExecutor).Returns(mTransactionExecutor.Object);
             mContractState.Setup(s => s.Serializer).Returns(mSerializer.Object);
-            
+
             creator = "0x0000000000000000000000000000000000000001".HexToAddress();
             tokenOwner = "0x0000000000000000000000000000000000000002".HexToAddress();
             contract = "0x0000000000000000000000000000000000000003".HexToAddress();
@@ -74,7 +74,7 @@ namespace NFTAuctionStoreTests
             SetupMessage(tokenContract, 10);
 
             var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
-            
+
             var paramBytes = Array.Empty<byte>();
 
             mSerializer.Setup(s => s.ToStruct<AuctionParam>(paramBytes)).Returns(parameters);
@@ -140,7 +140,7 @@ namespace NFTAuctionStoreTests
 
             SetupMessage(tokenContract, 0);
             SetupGetOwnerOfToken(TransferResult.Succeed(contract));
-            
+
             var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
 
             var paramBytes = Array.Empty<byte>();
@@ -164,7 +164,7 @@ namespace NFTAuctionStoreTests
 
             SetupMessage(tokenContract, 0);
             SetupGetOwnerOfToken(TransferResult.Succeed(contract));
-            
+
             var parameters = new AuctionParam { StartingPrice = 100, Duration = duration };
 
             var paramBytes = Array.Empty<byte>();
@@ -370,11 +370,12 @@ namespace NFTAuctionStoreTests
 
             store.GetAuctionInfo(tokenContract, tokenId)
                  .Should()
-                 .Be(new AuctionInfo {
-                    Seller = tokenOwner,
-                    OnAuction = false,
-                    EndBlock = 100, 
-                    StartingPrice = 100,
+                 .Be(new AuctionInfo
+                 {
+                     Seller = tokenOwner,
+                     OnAuction = false,
+                     EndBlock = 100,
+                     StartingPrice = 100,
                  });
 
             VerifyLog(new AuctionEndFailedLog { Contract = tokenContract, TokenId = tokenId });
@@ -479,6 +480,62 @@ namespace NFTAuctionStoreTests
             VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
         }
 
+        [Fact]
+        public void AuctionEnd_With_Royalty_From_Cache_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTAuctionStore(mContractState.Object);
+
+            SetupBlock(101);
+
+            SetupMessage(tokenOwner, 0);
+
+            var auctionInfo = new AuctionInfo
+            {
+                Seller = tokenOwner,
+                HighestBid = 100,
+                HighestBidder = buyer,
+                OnAuction = true,
+                EndBlock = 100,
+                StartingPrice = 100
+            };
+
+            SetAuctionInfo(auctionInfo);
+
+            var royaltyAmount = 11UL;
+            var royaltyRecipient = Address.Zero;
+            var salePriceMinusRoyalty = 100 - royaltyAmount;
+
+            SetupTransferToken(contract, buyer, tokenId, TransferResult.Succeed(true));
+
+            SetupTransfer(royaltyRecipient, royaltyAmount, TransferResult.Succeed());
+            SetupTransfer(tokenOwner, salePriceMinusRoyalty, TransferResult.Succeed());
+
+            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+
+            SetSupportsRoyaltyProperty(true);
+            SetupRoyaltyInfo(tokenId, auctionInfo.HighestBid, TransferResult.Succeed(new object[] { royaltyRecipient, royaltyAmount }));
+
+            store.AuctionEnd(tokenContract, tokenId);
+
+            store.GetAuctionInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(new AuctionInfo
+                 {
+                     Seller = tokenOwner,
+                     HighestBid = 100,
+                     HighestBidder = buyer,
+                     OnAuction = false,
+                     EndBlock = 100,
+                     StartingPrice = 100,
+                 });
+
+
+            VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
+            VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
+        }
+
         private void SetupBlock(ulong block)
         {
             mContractState.Setup(m => m.Block.Number).Returns(block);
@@ -487,6 +544,11 @@ namespace NFTAuctionStoreTests
         private void SetAuctionInfo(AuctionInfo auctionInfo)
         {
             state.SetStruct($"AuctionInfo:{tokenContract}:{tokenId}", auctionInfo);
+        }
+
+        private void SetSupportsRoyaltyProperty(bool value)
+        {
+            state.SetString($"SupportsRoyalty:{tokenContract}", value.ToString());
         }
 
         private void VerifyLog<T>(T expectedLog) where T : struct

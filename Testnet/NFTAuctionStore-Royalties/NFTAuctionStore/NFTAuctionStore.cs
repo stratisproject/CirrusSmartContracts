@@ -4,25 +4,17 @@ using System;
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 {
-    private void SetAuctionInfo(Address contract, UInt256 tokenId, AuctionInfo auctionInfo)
-    {
-        State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
-    }
+    private void SetAuctionInfo(Address contract, UInt256 tokenId, AuctionInfo auctionInfo) => State.SetStruct($"AuctionInfo:{contract}:{tokenId}", auctionInfo);
 
-    public AuctionInfo GetAuctionInfo(Address contract, UInt256 tokenId)
-    {
-        return State.GetStruct<AuctionInfo>($"AuctionInfo:{contract}:{tokenId}");
-    }
+    public AuctionInfo GetAuctionInfo(Address contract, UInt256 tokenId) => State.GetStruct<AuctionInfo>($"AuctionInfo:{contract}:{tokenId}");
 
-    public ulong GetRefund(Address address)
-    {
-        return State.GetUInt64($"Refund:{address}");
-    }
+    public ulong GetRefund(Address address) => State.GetUInt64($"Refund:{address}");
 
-    private void SetRefund(Address address, ulong balance)
-    {
-        State.SetUInt64($"Refund:{address}", balance);
-    }
+    private void SetRefund(Address address, ulong balance) => State.SetUInt64($"Refund:{address}", balance);
+
+    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyalty:{contract}");
+    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyalty:{contract}", value.ToString());
+
 
     public NFTAuctionStore(ISmartContractState state) : base(state)
     {
@@ -108,16 +100,9 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
             return;
         }
 
-        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+        var royalty = GetRoyaltyInfo(contract, tokenId, auction.HighestBid);
 
-        var royaltyInfo = supportsRoyaltyInfo
-            ? GetRoyaltyInfo(contract, tokenId, auction.HighestBid)
-            : new object[] { Address.Zero, 0UL };
-
-        var royaltyRecipient = (Address)royaltyInfo[0];
-        var royaltyAmount = (ulong)royaltyInfo[1];
-
-        var highestBidMinusRoyalty = supportsRoyaltyInfo ? auction.HighestBid - royaltyAmount : auction.HighestBid;
+        var highestBidMinusRoyalty = auction.HighestBid - royalty.Amount;
 
         if (State.IsContract(auction.Seller))
         {
@@ -130,12 +115,12 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
             Assert(result.Success, "Transfer failed.");
         }
 
-        if (royaltyAmount > 0)
+        if (royalty.Amount > 0)
         {
-            var royaltyTransfer = Transfer(royaltyRecipient, royaltyAmount);
+            var royaltyTransfer = Transfer(royalty.Recipient, royalty.Amount);
 
             Assert(royaltyTransfer.Success, "Royalty transfer failed.");
-            Log(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
+            Log(new RoyaltyPaidLog { Recipient = royalty.Recipient, Amount = royalty.Amount });
         }
 
         TransferToken(contract, tokenId, Address, auction.HighestBidder);
@@ -199,18 +184,33 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
     private bool SupportsRoyaltyInfo(Address contract)
     {
-        var supportsInterfaceResult = Call(contract, 0, "SupportsInterface", new object[] { 6 /* 6 is IRoyaltyInfo */ });
+        var cached = GetSupportsRoyalty(contract);
 
-        return supportsInterfaceResult.Success && supportsInterfaceResult.ReturnValue is bool value && value;
+        if (cached != null)
+            return cached == bool.TrueString;
+
+        var result = Call(contract, 0, "SupportsInterface", new object[] { 6 /* IRoyaltyInfo */ });
+
+        var supported = result.Success && result.ReturnValue is bool value && value;
+
+        SetSupportsRoyalty(contract, supported);
+
+        return supported;
     }
 
-    private object[] GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
+    private RoyaltyInfo GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong price)
     {
-        var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice });
+        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+
+        if (!supportsRoyaltyInfo)
+            return new RoyaltyInfo { Recipient = Address.Zero, Amount = 0UL };
+
+        var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, price });
 
         Assert(royaltyCall.Success, "Get royalty info failed.");
 
-        return royaltyCall.ReturnValue as object[];
+        var result = royaltyCall.ReturnValue as object[];
+        return new RoyaltyInfo { Recipient = (Address)result[0], Amount = (ulong)result[1] };
     }
 
     public struct AuctionStartedLog
@@ -282,5 +282,11 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
     {
         public ulong StartingPrice;
         public ulong Duration;
+    }
+
+    public struct RoyaltyInfo
+    {
+        public Address Recipient;
+        public ulong Amount;
     }
 }
