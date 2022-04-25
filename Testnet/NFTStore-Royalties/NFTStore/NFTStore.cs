@@ -45,16 +45,9 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         ClearSaleInfo(contract, tokenId);
 
-        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+        var royaltyInfo = GetRoyaltyInfo(contract, tokenId, saleInfo.Price);
 
-        var royaltyInfo = supportsRoyaltyInfo
-            ? GetRoyaltyInfo(contract, tokenId, saleInfo.Price)
-            : new object[] { Address.Zero, 0UL };
-
-        var royaltyRecipient = (Address)royaltyInfo[0];
-        var royaltyAmount = (ulong)royaltyInfo[1];
-
-        var salePriceMinusRoyalty = supportsRoyaltyInfo ? saleInfo.Price - royaltyAmount : saleInfo.Price;
+        var salePriceMinusRoyalty = saleInfo.Price - royaltyInfo.Amount;
 
         if (State.IsContract(saleInfo.Seller))
         {
@@ -67,24 +60,30 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
             Assert(result.Success, "Transfer failed.");
         }
 
-        if (royaltyAmount > 0)
+        if (royaltyInfo.Amount > 0)
         {
-            var royaltyTransfer = Transfer(royaltyRecipient, royaltyAmount);
+            var royaltyTransfer = Transfer(royaltyInfo.Recipient, royaltyInfo.Amount);
 
             Assert(royaltyTransfer.Success, "Royalty transfer failed.");
-            Log(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
+            Log(new RoyaltyPaidLog { Recipient = royaltyInfo.Recipient, Amount = royaltyInfo.Amount });
         }
 
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
     }
 
-    private object[] GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
+    private RoyaltyInfo GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
     {
+        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+
+        if (!supportsRoyaltyInfo)
+            return new RoyaltyInfo { Recipient = Address.Zero, Amount = 0UL };
+
         var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice });
 
         Assert(royaltyCall.Success, "Get royalty info failed.");
 
-        return royaltyCall.ReturnValue as object[];
+        var result = royaltyCall.ReturnValue as object[];
+        return new RoyaltyInfo { Recipient = (Address)result[0], Amount = (ulong)result[1] };
     }
 
     public void CancelSale(Address contract, UInt256 tokenId)
@@ -263,5 +262,11 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     {
         public Address Contract;
         public ulong Price;
+    }
+
+    public struct RoyaltyInfo
+    {
+        public Address Recipient;
+        public ulong Amount;
     }
 }
