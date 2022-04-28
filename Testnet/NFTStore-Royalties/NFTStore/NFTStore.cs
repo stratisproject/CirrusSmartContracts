@@ -7,8 +7,8 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     private void SetSaleInfo(Address contract, UInt256 tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, UInt256 tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
-    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyalty:{contract}");
-    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyalty:{contract}", value.ToString());
+    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyaltyX:{contract}");
+    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyaltyX:{contract}", value.ToString());
 
     public ulong CreatedAt
     {
@@ -51,7 +51,8 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         if (State.IsContract(saleInfo.Seller))
         {
-            SetBalance(saleInfo.Seller, salePriceMinusRoyalty);
+            var balance = GetBalance(saleInfo.Seller);
+            SetBalance(saleInfo.Seller, balance + salePriceMinusRoyalty);
         }
         else
         {
@@ -65,17 +66,18 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
             var royaltyTransfer = Transfer(royalty.Recipient, royalty.Amount);
 
             Assert(royaltyTransfer.Success, "Royalty transfer failed.");
+
             Log(new RoyaltyPaidLog { Recipient = royalty.Recipient, Amount = royalty.Amount });
         }
 
-        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender, Seller = saleInfo.Seller });
+        Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender });
     }
 
     private RoyaltyInfo GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
     {
-        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+        var supported = SupportsRoyaltyInfo(contract);
 
-        if (!supportsRoyaltyInfo)
+        if (!supported)
             return new RoyaltyInfo { Recipient = Address.Zero, Amount = 0UL };
 
         var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice });
@@ -191,10 +193,10 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     {
         var cached = GetSupportsRoyalty(contract);
 
-        if (cached != null)
+        if (!string.IsNullOrEmpty(cached))
             return cached == bool.TrueString;
 
-        var result = Call(contract, 0, "SupportsInterface", new object[] { 6 /* IRoyaltyInfo */ });
+        var result = Call(contract, 0, "SupportsInterface", new object[] { 6u /* IRoyaltyInfo */ });
 
         var supported = result.Success && result.ReturnValue is bool value && value;
 
