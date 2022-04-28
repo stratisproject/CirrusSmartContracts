@@ -176,17 +176,18 @@ public class NonFungibleToken : SmartContract
     /// <param name="name">Name of the NFT Contract</param>
     /// <param name="symbol">Symbol of the NFT Contract</param>
     /// <param name="ownerOnlyMinting">True, if only owner allowed to mint tokens</param>
-    /// </param>
-    public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting,Address royaltyRecipent,uint royaltyPercent) : base(state)
+    /// <param name="royaltyRecipient">The address to receive the royalties</param>
+    /// <param name="RoyaltyPercent">Percentage amount using 2 decimals: 100% = 10000, 55.11% = 5511, 0% = 0</param>
+    public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting, Address royaltyRecipent, uint royaltyPercent) : base(state)
     {
-        Assert(royaltyPercent <= 10000, "Royalty percentage too high");
+        Assert(royaltyPercent <= 10000, "Royalty percentage should be smaller than 1000.");
 
         this.SetSupportedInterfaces(TokenInterface.ISupportsInterface, true); // (ERC165) - ISupportsInterface
         this.SetSupportedInterfaces(TokenInterface.INonFungibleToken, true); // (ERC721) - INonFungibleToken,
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenReceiver, false); // (ERC721) - INonFungibleTokenReceiver
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenMetadata, true); // (ERC721) - INonFungibleTokenMetadata
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenEnumerable, false); // (ERC721) - INonFungibleTokenEnumerable
-        this.SetSupportedInterfaces(TokenInterface.IRoyaltyInfo, true); // (EIP2981) - IRoyaltyInfo
+        this.SetSupportedInterfaces(TokenInterface.IRoyaltyInfo, royaltyPercent > 0); // (EIP2981) - IRoyaltyInfo
 
 
         this.Name = name;
@@ -591,18 +592,6 @@ public class NonFungibleToken : SmartContract
         Assert(address != Address.Zero, "The address can not be zero.");
     }
 
-    /// <summary>
-    /// Sets the royalties for this contract
-    /// </summary>
-    /// <param name="recipient">The address to receive the royalties</param>
-    /// <param name="percentage">Percentage amount using 2 decimals: 100% = 10000, 55.11% = 5511, 0% = 0</param>
-    private void SetRoyalties(Address recipient, uint percentage)
-    {
-        Assert(percentage <= 10000, "Royalty percentage too high");
-
-        RoyaltyPercent = percentage;
-        RoyaltyRecipient = recipient;
-    }
 
     /// <summary>
     /// Calculates the royalty information for a given sale price.
@@ -619,7 +608,7 @@ public class NonFungibleToken : SmartContract
         // = 18_446_744 Strax before overflow occurs.
         // Casting back to ulong should succeed as we will never have a percentage > 100.
         var royaltyAmount = (ulong)((UInt128)salePrice * RoyaltyPercent / 10000);
-       
+
         return new object[] { RoyaltyRecipient, royaltyAmount };
     }
 
@@ -684,6 +673,6 @@ public class NonFungibleToken : SmartContract
     {
         public Address Recipient;
 
-        public uint Percentage; 
+        public uint Percentage;
     }
 }
