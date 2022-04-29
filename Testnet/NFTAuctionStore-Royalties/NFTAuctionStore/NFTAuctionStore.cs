@@ -187,7 +187,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
     {
         var cached = GetSupportsRoyalty(contract);
 
-        if (cached != null)
+        if (!string.IsNullOrEmpty(cached))
             return cached == bool.TrueString;
 
         var result = Call(contract, 0, "SupportsInterface", new object[] { 6u /* IRoyaltyInfo */ });
