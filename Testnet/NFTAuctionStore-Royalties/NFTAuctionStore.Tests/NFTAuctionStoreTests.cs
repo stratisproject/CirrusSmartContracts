@@ -427,6 +427,58 @@ namespace NFTAuctionStoreTests
         }
 
         [Fact]
+        public void AuctionEnd_When_Seller_Is_A_Contract_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTAuctionStore(mContractState.Object);
+
+            SetupBlock(101);
+
+            SetupMessage(tokenOwner, 0);
+
+            SetAuctionInfo(new AuctionInfo
+            {
+                Seller = tokenOwner,
+                HighestBid = 100,
+                HighestBidder = buyer,
+                OnAuction = true,
+                EndBlock = 100,
+                StartingPrice = 100
+            });
+
+            SetupTransferToken(contract, buyer, tokenId, TransferResult.Succeed(true));
+
+            SetupTransfer(tokenOwner, 100, TransferResult.Succeed());
+
+            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+
+            state.SetIsContract(tokenOwner, true);
+            state.SetUInt64($"Refund:{tokenOwner}", 100);
+
+            store.AuctionEnd(tokenContract, tokenId);
+
+            store.GetAuctionInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(new AuctionInfo
+                 {
+                     Seller = tokenOwner,
+                     HighestBid = 100,
+                     HighestBidder = buyer,
+                     OnAuction = false,
+                     EndBlock = 100,
+                     StartingPrice = 100,
+                 });
+
+
+            VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
+
+            store.GetRefund(tokenOwner)
+                 .Should()
+                 .Be(200);
+        }
+
+        [Fact]
         public void AuctionEnd_With_Royalty_Success()
         {
             SetupMessage(creator, 0);
@@ -479,6 +531,7 @@ namespace NFTAuctionStoreTests
             VerifyLog(new AuctionEndSucceedLog { Contract = tokenContract, TokenId = tokenId, HighestBid = 100, HighestBidder = buyer });
             VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
         }
+
 
         [Fact]
         public void AuctionEnd_With_Royalty_From_Cache_Success()

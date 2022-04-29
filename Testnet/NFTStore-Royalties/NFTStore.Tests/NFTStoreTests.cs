@@ -318,7 +318,7 @@ namespace NFTStoreTests
         }
 
         [Fact]
-        public void Buy_Token_Buying_From_Contract_Success()
+        public void Buy_When_Seller_Is_A_Contract_Success()
         {
             SetupMessage(creator, 0);
 

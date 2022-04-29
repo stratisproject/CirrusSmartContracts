@@ -106,7 +106,8 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         if (State.IsContract(auction.Seller))
         {
-            SetRefund(auction.Seller, highestBidMinusRoyalty);
+            var balance = GetRefund(auction.Seller);
+            SetRefund(auction.Seller, balance + highestBidMinusRoyalty);
         }
         else
         {
@@ -189,7 +190,7 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         if (cached != null)
             return cached == bool.TrueString;
 
-        var result = Call(contract, 0, "SupportsInterface", new object[] { 6 /* IRoyaltyInfo */ });
+        var result = Call(contract, 0, "SupportsInterface", new object[] { 6u /* IRoyaltyInfo */ });
 
         var supported = result.Success && result.ReturnValue is bool value && value;
 

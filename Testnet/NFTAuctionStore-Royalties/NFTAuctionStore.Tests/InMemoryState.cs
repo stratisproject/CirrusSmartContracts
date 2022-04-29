@@ -8,7 +8,6 @@ namespace NFTAuctionStoreTests
     {
         private readonly Dictionary<string, object> storage = new Dictionary<string, object>();
 
-        public bool IsContractResult { get; set; }
         public void Clear(string key) => storage.Remove(key);
 
         public T GetValue<T>(string key) => (T)storage.GetValueOrDefault(key, default(T));
