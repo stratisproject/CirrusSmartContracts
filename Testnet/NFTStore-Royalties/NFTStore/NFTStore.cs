@@ -7,8 +7,8 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
     private void SetSaleInfo(Address contract, UInt256 tokenId, SaleInfo value) => State.SetStruct($"SaleInfo:{contract}:{tokenId}", value);
     private void ClearSaleInfo(Address contract, UInt256 tokenId) => State.Clear($"SaleInfo:{contract}:{tokenId}");
 
-    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyaltyX:{contract}");
-    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyaltyX:{contract}", value.ToString());
+    private string GetSupportsRoyalty(Address contract) => State.GetString($"SupportsRoyalty:{contract}");
+    private void SetSupportsRoyalty(Address contract, bool value) => State.SetString($"SupportsRoyalty:{contract}", value.ToString());
 
     public ulong CreatedAt
     {
