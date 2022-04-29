@@ -236,8 +236,6 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         public UInt256 TokenId;
         [Index]
         public Address Buyer;
-        [Index]
-        public Address Seller;
     }
 
     public struct RoyaltyPaidLog

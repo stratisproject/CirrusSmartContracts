@@ -310,11 +310,50 @@ namespace NFTStoreTests
 
             store.Buy(tokenContract, tokenId);
 
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Buyer = buyer });
 
             store.GetSaleInfo(tokenContract, tokenId)
                  .Should()
                  .Be(default(SaleInfo));
+        }
+
+        [Fact]
+        public void Buy_Token_Buying_From_Contract_Success()
+        {
+            SetupMessage(creator, 0);
+
+            var store = new NFTStore(mContractState.Object);
+
+            var saleInfo = new SaleInfo
+            {
+                Price = 100,
+                Seller = tokenOwner
+            };
+
+            SetSaleInfo(saleInfo);
+
+            SetupMessage(buyer, 100);
+
+            state.SetIsContract(tokenOwner, true);
+            state.SetUInt64($"Balance:{tokenOwner}", 100);
+
+            SetupSafeTransferToken(contract, buyer, tokenId, TransferResult.Succeed());
+
+            SetupTransfer(tokenOwner, 100, TransferResult.Succeed());
+
+            SetupSupportsRoyaltyInfo(TransferResult.Failed());
+
+            store.Buy(tokenContract, tokenId);
+
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Buyer = buyer });
+
+            store.GetSaleInfo(tokenContract, tokenId)
+                 .Should()
+                 .Be(default(SaleInfo));
+
+            store.GetBalance(tokenOwner)
+                 .Should()
+                 .Be(200);//existing balance + current sale price
         }
 
         [Fact]
@@ -348,7 +387,7 @@ namespace NFTStoreTests
 
             store.Buy(tokenContract, tokenId);
 
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Buyer = buyer });
             VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
 
             store.GetSaleInfo(tokenContract, tokenId)
@@ -391,7 +430,7 @@ namespace NFTStoreTests
 
             store.Buy(tokenContract, tokenId);
 
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Buyer = buyer });
             VerifyLog(new RoyaltyPaidLog { Recipient = royaltyRecipient, Amount = royaltyAmount });
 
             store.GetSaleInfo(tokenContract, tokenId)
@@ -424,7 +463,7 @@ namespace NFTStoreTests
 
             store.Buy(tokenContract, tokenId);
 
-            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Seller = tokenOwner, Buyer = buyer });
+            VerifyLog(new TokenPurchasedLog { Contract = tokenContract, TokenId = tokenId, Buyer = buyer });
 
             store.GetSaleInfo(tokenContract, tokenId)
                  .Should()
@@ -596,7 +635,7 @@ namespace NFTStoreTests
 
         private void SetupSupportsRoyaltyInfo(TransferResult result)
         {
-            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SupportsInterface", new object[] { 6 }, 0))
+            mTransactionExecutor.Setup(m => m.Call(mContractState.Object, tokenContract, 0, "SupportsInterface", new object[] { 6u }, 0))
                     .Returns(result);
         }
 
