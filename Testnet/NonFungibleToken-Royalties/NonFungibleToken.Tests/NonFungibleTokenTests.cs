@@ -43,7 +43,9 @@ public class NonFungibleTokenTests
         var owner = "0x0000000000000000000000000000000000000005".HexToAddress();
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(owner);
 
-        var nonFungibleToken = CreateNonFungibleToken();
+        var royaltyPercent = 10_000u;
+
+        var nonFungibleToken = CreateNonFungibleToken(owner, royaltyPercent);
 
         Assert.True(state.GetBool("SupportedInterface:1"));
         Assert.True(state.GetBool("SupportedInterface:2"));
@@ -54,7 +56,23 @@ public class NonFungibleTokenTests
         Assert.Equal(name, nonFungibleToken.Name);
         Assert.Equal(symbol, nonFungibleToken.Symbol);
         Assert.Equal(owner, nonFungibleToken.Owner);
+        Assert.Equal(owner, state.GetAddress("RoyaltyRecipient"));
+        Assert.Equal(royaltyPercent, state.GetUInt32("RoyaltyPercent"));
+
         Assert.Equal(ownerOnlyMinting, state.GetBool("OwnerOnlyMinting"));
+    }
+
+    [Fact]
+    public void Constructor_SupportedInterface_6_Returns_False_When_Either_RoyaltyParameters_Are_Default()
+    {
+        var owner = "0x0000000000000000000000000000000000000002".HexToAddress();
+        var royaltyAmount = 0u;
+
+        smartContractStateMock.Setup(m => m.Message.Sender).Returns(owner);
+
+        var nonFungibleToken = CreateNonFungibleToken(owner, royaltyAmount);
+
+        Assert.False(state.GetBool("SupportedInterface:6"));
     }
 
     [Fact]

@@ -180,15 +180,16 @@ public class NonFungibleToken : SmartContract
     /// <param name="RoyaltyPercent">Percentage amount using 2 decimals: 100% = 10000, 55.11% = 5511, 0% = 0</param>
     public NonFungibleToken(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting, Address royaltyRecipent, uint royaltyPercent) : base(state)
     {
-        Assert(royaltyPercent <= 10000, "Royalty percentage should be smaller than 1000.");
+        Assert(royaltyPercent <= 10_000, "Royalty percentage should be smaller than 10000.");
+
+        var royaltySupported = royaltyRecipent != Address.Zero && royaltyPercent > 0;
 
         this.SetSupportedInterfaces(TokenInterface.ISupportsInterface, true); // (ERC165) - ISupportsInterface
         this.SetSupportedInterfaces(TokenInterface.INonFungibleToken, true); // (ERC721) - INonFungibleToken,
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenReceiver, false); // (ERC721) - INonFungibleTokenReceiver
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenMetadata, true); // (ERC721) - INonFungibleTokenMetadata
         this.SetSupportedInterfaces(TokenInterface.INonFungibleTokenEnumerable, false); // (ERC721) - INonFungibleTokenEnumerable
-        this.SetSupportedInterfaces(TokenInterface.IRoyaltyInfo, royaltyPercent > 0); // (EIP2981) - IRoyaltyInfo
-
+        this.SetSupportedInterfaces(TokenInterface.IRoyaltyInfo, royaltySupported); // (EIP2981) - IRoyaltyInfo
 
         this.Name = name;
         this.Symbol = symbol;

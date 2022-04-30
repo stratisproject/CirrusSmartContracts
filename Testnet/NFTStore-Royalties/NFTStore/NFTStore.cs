@@ -49,23 +49,15 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
 
         var salePriceMinusRoyalty = saleInfo.Price - royalty.Amount;
 
-        if (State.IsContract(saleInfo.Seller))
-        {
-            var balance = GetBalance(saleInfo.Seller);
-            SetBalance(saleInfo.Seller, balance + salePriceMinusRoyalty);
-        }
-        else
-        {
-            var result = Transfer(saleInfo.Seller, salePriceMinusRoyalty);
+        var transferred = SafeTransfer(saleInfo.Seller, salePriceMinusRoyalty);
 
-            Assert(result.Success, "Transfer failed.");
-        }
+        Assert(transferred, "Transfer failed.");
 
         if (royalty.Amount > 0)
         {
-            var royaltyTransfer = Transfer(royalty.Recipient, royalty.Amount);
+            transferred = SafeTransfer(royalty.Recipient, royalty.Amount);
 
-            Assert(royaltyTransfer.Success, "Royalty transfer failed.");
+            Assert(transferred, "Royalty transfer failed.");
 
             Log(new RoyaltyPaidLog { Recipient = royalty.Recipient, Amount = royalty.Amount });
         }
@@ -73,19 +65,47 @@ public class NFTStore : SmartContract //, INonFungibleTokenReceiver
         Log(new TokenPurchasedLog { Contract = contract, TokenId = tokenId, Buyer = Message.Sender });
     }
 
-    private RoyaltyInfo GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong salePrice)
+    private bool SafeTransfer(Address to, ulong amount)
     {
-        var supported = SupportsRoyaltyInfo(contract);
+        if (State.IsContract(to))
+        {
+            var balance = GetBalance(to) + amount;
 
-        if (!supported)
-            return new RoyaltyInfo { Recipient = Address.Zero, Amount = 0UL };
+            SetBalance(to, balance);
 
-        var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, salePrice });
+            return true;
+        }
+
+        var result = Transfer(to, amount);
+
+        return result.Success;
+    }
+
+    private RoyaltyInfo GetRoyaltyInfo(Address contract, UInt256 tokenId, ulong price)
+    {
+        var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
+
+        if (!supportsRoyaltyInfo)
+            return default(RoyaltyInfo);
+
+        var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, price });
 
         Assert(royaltyCall.Success, "Get royalty info failed.");
 
-        var result = royaltyCall.ReturnValue as object[];
-        return new RoyaltyInfo { Recipient = (Address)result[0], Amount = (ulong)result[1] };
+        if (royaltyCall.ReturnValue is object[] value &&
+            value.Length >= 2 &&
+            value[0] is Address recipient &&
+            value[1] is ulong amount)
+        {
+            return new RoyaltyInfo
+            {
+                Recipient = recipient,
+                Amount = amount
+            };
+        }
+
+
+        return default(RoyaltyInfo);
     }
 
     public void CancelSale(Address contract, UInt256 tokenId)

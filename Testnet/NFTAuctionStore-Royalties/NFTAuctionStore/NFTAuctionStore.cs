@@ -1,5 +1,4 @@
 ﻿using Stratis.SmartContracts;
-using System;
 
 [Deploy]
 public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
@@ -104,29 +103,37 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
 
         var highestBidMinusRoyalty = auction.HighestBid - royalty.Amount;
 
-        if (State.IsContract(auction.Seller))
-        {
-            var balance = GetRefund(auction.Seller);
-            SetRefund(auction.Seller, balance + highestBidMinusRoyalty);
-        }
-        else
-        {
-            var result = Transfer(auction.Seller, highestBidMinusRoyalty);
+        var transferred = SafeTransfer(auction.Seller, highestBidMinusRoyalty);
 
-            Assert(result.Success, "Transfer failed.");
-        }
+        Assert(transferred, "Transfer failed.");
 
         if (royalty.Amount > 0)
         {
-            var royaltyTransfer = Transfer(royalty.Recipient, royalty.Amount);
+            transferred = SafeTransfer(royalty.Recipient, royalty.Amount);
 
-            Assert(royaltyTransfer.Success, "Royalty transfer failed.");
+            Assert(transferred, "Royalty transfer failed.");
             Log(new RoyaltyPaidLog { Recipient = royalty.Recipient, Amount = royalty.Amount });
         }
 
         TransferToken(contract, tokenId, Address, auction.HighestBidder);
 
         Log(new AuctionEndSucceedLog { Contract = contract, TokenId = tokenId, HighestBidder = auction.HighestBidder, HighestBid = auction.HighestBid });
+    }
+
+    private bool SafeTransfer(Address to, ulong amount)
+    {
+        if (State.IsContract(to))
+        {
+            var balance = GetRefund(to) + amount;
+
+            SetRefund(to, balance);
+
+            return true;
+        }
+
+        var result = Transfer(to, amount);
+
+        return result.Success;
     }
 
     public bool OnNonFungibleTokenReceived(Address operatorAddress, Address fromAddress, UInt256 tokenId, byte[] data)
@@ -204,14 +211,26 @@ public class NFTAuctionStore : SmartContract //,INonFungibleTokenReceiver
         var supportsRoyaltyInfo = SupportsRoyaltyInfo(contract);
 
         if (!supportsRoyaltyInfo)
-            return new RoyaltyInfo { Recipient = Address.Zero, Amount = 0UL };
+            return default(RoyaltyInfo);
 
         var royaltyCall = Call(contract, 0, "RoyaltyInfo", new object[] { tokenId, price });
 
         Assert(royaltyCall.Success, "Get royalty info failed.");
 
-        var result = royaltyCall.ReturnValue as object[];
-        return new RoyaltyInfo { Recipient = (Address)result[0], Amount = (ulong)result[1] };
+        if (royaltyCall.ReturnValue is object[] value && 
+            value.Length >= 2 && 
+            value[0] is Address recipient &&
+            value[1] is ulong amount)
+        {
+            return new RoyaltyInfo
+            {
+                Recipient = recipient,
+                Amount = amount
+            };
+        }
+
+
+        return default(RoyaltyInfo);
     }
 
     public struct AuctionStartedLog
