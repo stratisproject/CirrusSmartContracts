@@ -1,4 +1,3 @@
-using AddressMapperTests;
 using Moq;
 using Stratis.SmartContracts;
 using Xunit;

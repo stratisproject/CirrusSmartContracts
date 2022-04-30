@@ -2,12 +2,14 @@
 using System;
 using System.Collections.Generic;
 
-namespace AddressMapperTests
+namespace KeyValueTests
 {
     public class InMemoryState : IPersistentState
     {
         private readonly Dictionary<string, object> storage = new Dictionary<string, object>();
+
         public bool IsContractResult { get; set; }
+
         public void Clear(string key) => storage.Remove(key);
 
         public T GetValue<T>(string key) => (T)storage.GetValueOrDefault(key, default(T));
@@ -17,6 +19,7 @@ namespace AddressMapperTests
             if (!storage.TryAdd(key, value))
                 storage[key] = value;
         }
+
         public Address GetAddress(string key) => GetValue<Address>(key);
 
         public T[] GetArray<T>(string key) => GetValue<T[]>(key);

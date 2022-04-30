@@ -1,7 +1,7 @@
 ﻿using Stratis.SmartContracts;
 using System;
 
-namespace AddressMapperTests
+namespace KeyValueTests
 {
     public static class AddressExtensions
     {
