@@ -1,4 +1,4 @@
-﻿﻿# Hashbattle Smart Contract
+﻿# Hashbattle Smart Contract
 
 **Compiler Version**
 ```
