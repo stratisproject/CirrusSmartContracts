@@ -60,6 +60,8 @@ namespace KeyValueTests
             string setString = state.GetString($"{primaryAddress}:TestKey");
 
             Assert.Equal("TestValue", setString);
+
+            mContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new KeyValueContract.KeyValueChangedLog() { From = primaryAddress, Key = "TestKey", Value = "TestValue" }));
         }
 
         [Fact]

@@ -19,6 +19,8 @@ public class KeyValueContract : SmartContract
         Assert(value.Length <= this.MaxLength, "Value length cannot exceed maximum");
 
         State.SetString($"{Message.Sender}:{key}", value);
+
+        Log(new KeyValueChangedLog { From = Message.Sender, Key = key, Value = value });
     }
 
     public UInt32 MaxLength
@@ -32,5 +34,16 @@ public class KeyValueContract : SmartContract
         Assert(maxLength > 0, "Maximum length must be 1 or more");
 
         this.MaxLength = maxLength;
+    }
+
+    public struct KeyValueChangedLog
+    {
+        [Index]
+        public Address From;
+
+        [Index]
+        public string Key;
+
+        public string Value;
     }
 }
