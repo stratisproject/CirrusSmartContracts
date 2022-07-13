@@ -1,0 +1,2 @@
+﻿# Mintable Token Contract
+
