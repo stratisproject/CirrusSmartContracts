@@ -224,9 +224,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     {
         Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
 
+        var previousOwner = Owner;
+
         Owner = NewOwner;
 
         NewOwner = Address.Zero;
+
+        Log(new OwnershipTransferred() { NewOwner = Owner, PreviousOwner = previousOwner });
     }
 
     public bool GetMinter(Address sender)
@@ -285,6 +289,18 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public UInt256 OldAmount;
 
         public UInt256 Amount;
+    }
+
+    /// <summary>
+    /// Provides a record that ownership was transferred from one account to another.
+    /// </summary>
+    public struct OwnershipTransferred
+    {
+        [Index] 
+        public Address PreviousOwner;
+
+        [Index] 
+        public Address NewOwner;
     }
 
     public struct SupplyChangeLog
