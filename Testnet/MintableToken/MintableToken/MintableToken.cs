@@ -4,7 +4,7 @@ using Stratis.SmartContracts.Standards;
 /// <summary>
 /// Implementation of a mintable token contract for the Stratis Platform.
 /// </summary>
-public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnable
+public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -70,23 +70,24 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         State.SetUInt256($"Balance:{address}", value);
     }
 
-    private bool Transfer(Address from, Address to, UInt256 amount)
+    private bool Transfer(Address from, Address to, UInt256 amount, string metadata)
     {
         if (amount == 0)
         {
-            Log(new TransferLog { From = from, To = to, Amount = 0 });
+            Log(new TransferLog { From = from, To = to, Amount = 0, Metadata = metadata });
 
             return true;
         }
 
         if (from == Address.Zero)
         {
-            TotalSupply += amount;
+            TotalSupply = checked(TotalSupply + amount);
 
             Log(new SupplyChangeLog()
             {
                 PreviousSupply = this.TotalSupply - amount,
-                TotalSupply = this.TotalSupply
+                TotalSupply = this.TotalSupply,
+                Metadata = metadata
             });
         }
         else
@@ -114,7 +115,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
             Log(new SupplyChangeLog()
             {
                 PreviousSupply = this.TotalSupply + amount,
-                TotalSupply = this.TotalSupply
+                TotalSupply = this.TotalSupply,
+                Metadata = metadata
             });
         }
         else
@@ -122,7 +124,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
             SetBalance(to, checked(GetBalance(to) + amount));
         }
 
-        Log(new TransferLog { From = from, To = to, Amount = amount });
+        Log(new TransferLog { From = from, To = to, Amount = amount, Metadata = metadata });
 
         return true;
     }
@@ -132,7 +134,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     {
         Assert(to != Address.Zero, "Transfer to the zero address");
 
-        return Transfer(Message.Sender, to, amount);
+        return Transfer(Message.Sender, to, amount, string.Empty);
     }
 
     /// <inheritdoc />
@@ -141,22 +143,26 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         Assert(from != Address.Zero, "Transfer from the zero address");
         Assert(to != Address.Zero, "Transfer to the zero address");
 
-        return Transfer(from, to, amount);
+        return Transfer(from, to, amount, string.Empty);
     }
 
     public bool MintWithMetadata(Address account, UInt256 amount, string externalTxId)
     {
         Assert(GetMinter(Message.Sender), "Only a minter can call this method");
         Assert(!GetMinted(externalTxId), "Already minted for this external id");
-
+        
         SetMinted(externalTxId);
 
-        return Transfer(Address.Zero, account, amount);
+        return Transfer(Address.Zero, account, amount, externalTxId);
     }
 
-    public bool Burn(UInt256 amount)
+    public bool BurnWithMetadata(UInt256 amount, string externalTxId)
     {
-        return Transfer(Message.Sender, Address.Zero, amount);
+        Assert(!GetBurned(externalTxId), "Already burned for this external id");
+
+        SetBurned(externalTxId);
+
+        return Transfer(Message.Sender, Address.Zero, amount, externalTxId);
     }
 
     /// <inheritdoc />
@@ -211,6 +217,16 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         return State.GetBool($"Minted:{externalTxId}");
     }
 
+    private void SetBurned(string externalTxId)
+    {
+        State.SetBool($"Burned:{externalTxId}", true);
+    }
+
+    private bool GetBurned(string externalTxId)
+    {
+        return State.GetBool($"Burned:{externalTxId}");
+    }
+
     public struct TransferLog
     {
         [Index]
@@ -220,6 +236,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public Address To;
 
         public UInt256 Amount;
+
+        public string Metadata;
     }
 
     public struct ApprovalLog
@@ -240,5 +258,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
+
+        public string Metadata;
     }
 }
