@@ -168,7 +168,11 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// <inheritdoc />
     public bool Approve(Address spender, UInt256 currentAmount, UInt256 amount)
     {
-        Assert(Message.Sender != spender, "Self-allowance not supported");
+        // Approval not required if sender is spender.
+        if (Message.Sender == spender)
+        {
+            return true;
+        }
 
         if (Allowance(Message.Sender, spender) != currentAmount)
         {
@@ -190,7 +194,11 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// <inheritdoc />
     public UInt256 Allowance(Address owner, Address spender)
     {
-        Assert(owner != spender, "Self-allowance not supported");
+        // Owner can spend the full balance.
+        if (owner == spender)
+        {
+            return GetBalance(owner);
+        }
 
         return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
