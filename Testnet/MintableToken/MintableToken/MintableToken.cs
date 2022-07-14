@@ -266,6 +266,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         return State.GetBool($"Burned:{externalTxId}");
     }
 
+    /// <summary>
+    /// Provides a record that coins were transferred from one account to another.
+    /// </summary>
     public struct TransferLog
     {
         [Index]
@@ -279,6 +282,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public string Metadata;
     }
 
+    /// <summary>
+    /// Provides a record of an approval (change) to spend a certain number of coins.
+    /// </summary>
     public struct ApprovalLog
     {
         [Index]
@@ -304,6 +310,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public Address NewOwner;
     }
 
+    /// <summary>
+    /// Provides a record that the total supply changed.
+    /// </summary>
     public struct SupplyChangeLog
     {
         public UInt256 PreviousSupply;
