@@ -15,7 +15,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
     /// <param name="minter">The minter address.</param>
-    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals, Address minter)
+    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals)
         : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
@@ -24,7 +24,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         this.Decimals = decimals;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
-        this.Minter = minter;
+        this.Minter = Message.Sender;
         this.SetBalance(Message.Sender, totalSupply);
     }
 
