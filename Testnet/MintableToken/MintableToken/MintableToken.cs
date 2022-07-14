@@ -4,7 +4,7 @@ using Stratis.SmartContracts.Standards;
 /// <summary>
 /// Implementation of a mintable token contract for the Stratis Platform.
 /// </summary>
-public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata
+public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -23,6 +23,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         this.Symbol = symbol;
         this.Decimals = decimals;
         this.Owner = Message.Sender;
+        this.NewOwner = Address.Zero;
         this.SetBalance(Message.Sender, totalSupply);       
         this.SetMinter(minter, true);       
     }
@@ -53,10 +54,17 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         private set => State.SetUInt256(nameof(this.TotalSupply), value);
     }
 
+    /// <inheritdoc />
     public Address Owner
     {
         get => State.GetAddress(nameof(this.Owner));
         private set => State.SetAddress(nameof(this.Owner), value);
+    }
+
+    public Address NewOwner
+    {
+        get => State.GetAddress(nameof(this.NewOwner));
+        private set => State.SetAddress(nameof(this.NewOwner), value);
     }
 
     /// <inheritdoc />
@@ -201,6 +209,24 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         }
 
         return State.GetUInt256($"Allowance:{owner}:{spender}");
+    }
+
+    /// <inheritdoc />
+    public void SetNewOwner(Address address)
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+
+        NewOwner = address;
+    }
+
+    /// <inheritdoc />
+    public void ClaimOwnership()
+    {
+        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+
+        Owner = NewOwner;
+
+        NewOwner = Address.Zero;
     }
 
     public bool GetMinter(Address sender)
