@@ -24,8 +24,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         this.Decimals = decimals;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
-        this.SetBalance(Message.Sender, totalSupply);       
-        this.SetMinter(minter, true);       
+        this.Minter = minter;
+        this.SetBalance(Message.Sender, totalSupply);
     }
 
     public string Symbol
@@ -65,6 +65,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     {
         get => State.GetAddress(nameof(this.NewOwner));
         private set => State.SetAddress(nameof(this.NewOwner), value);
+    }
+
+    public Address Minter
+    {
+        get => State.GetAddress(nameof(this.Minter));
+        private set => State.SetAddress(nameof(this.Minter), value);
     }
 
     /// <inheritdoc />
@@ -156,7 +162,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
 
     public bool MintWithMetadata(Address account, UInt256 amount, string externalTxId)
     {
-        Assert(GetMinter(Message.Sender), "Only a minter can call this method");
+        Assert(Message.Sender == Minter, "Only the minter can call this method");
         Assert(!GetMinted(externalTxId), "Already minted for this external id");
         
         SetMinted(externalTxId);
@@ -233,16 +239,11 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         Log(new OwnershipTransferred() { NewOwner = Owner, PreviousOwner = previousOwner });
     }
 
-    public bool GetMinter(Address sender)
-    {
-        return State.GetBool($"Minter:{sender}");
-    }
-
-    public void SetMinter(Address sender, bool isMinter)
+    public void SetMinter(Address minter)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
-        State.SetBool($"Minter:{sender}", isMinter);
+        this.Minter = minter;
     }
 
     private void SetMinted(string externalTxId)
