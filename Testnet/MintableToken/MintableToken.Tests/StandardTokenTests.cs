@@ -22,8 +22,6 @@ namespace MintableTokenTests
         private string name;
         private string symbol;
         private byte decimals;
-        private string nativeChain;
-        private string nativeAddress;
 
         public StandardTokenTests()
         {
@@ -40,8 +38,7 @@ namespace MintableTokenTests
             this.name = "Test Token";
             this.symbol = "TST";
             this.decimals = 8;
-            this.nativeChain = "Ethereum";
-            this.nativeAddress = "0xa3c22370de5f9544f0c4de126b1e46ceadf0a51b";
+
         }
 
         [Fact]
