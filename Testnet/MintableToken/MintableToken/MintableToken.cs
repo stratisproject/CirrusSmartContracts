@@ -2,7 +2,7 @@
 using Stratis.SmartContracts.Standards;
 
 /// <summary>
-/// Implementation of a mintable token contract for the Stratis Platform.
+/// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
 public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
@@ -15,9 +15,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-    /// <param name="minter">The minter address.</param>
-    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, byte decimals)
-        : base(smartContractState)
+   public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol,
+        byte decimals) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
@@ -61,7 +60,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         get => State.GetAddress(nameof(this.Owner));
         private set => State.SetAddress(nameof(this.Owner), value);
     }
-
+    
     public Address NewOwner
     {
         get => State.GetAddress(nameof(this.NewOwner));
@@ -85,7 +84,34 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         State.SetUInt256($"Balance:{address}", value);
     }
 
-    private bool Transfer(Address from, Address to, UInt256 amount)
+    /// <inheritdoc />
+    public bool TransferTo(Address to, UInt256 amount)
+    {
+        if (amount == 0)
+        {
+            Log(new TransferLog { From = Message.Sender, To = to, Amount = 0 });
+
+            return true;
+        }
+
+        UInt256 senderBalance = GetBalance(Message.Sender);
+
+        if (senderBalance < amount)
+        {
+            return false;
+        }
+
+        SetBalance(Message.Sender, senderBalance - amount);
+
+        SetBalance(to, checked(GetBalance(to) + amount));
+
+        Log(new TransferLog { From = Message.Sender, To = to, Amount = amount });
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
         if (amount == 0)
         {
@@ -94,48 +120,19 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
             return true;
         }
 
-        if (from == Address.Zero)
+        UInt256 senderAllowance = Allowance(from, Message.Sender);
+        UInt256 fromBalance = GetBalance(from);
+
+        if (senderAllowance < amount || fromBalance < amount)
         {
-            TotalSupply = checked(TotalSupply + amount);
-
-            Log(new SupplyChangeLog()
-            {
-                PreviousSupply = this.TotalSupply - amount,
-                TotalSupply = this.TotalSupply
-            });
-        }
-        else
-        {
-            UInt256 fromBalance = GetBalance(from);
-
-            Assert(amount <= fromBalance, "Amount is greater than balance");
-
-            if (from != Message.Sender)
-            {
-                UInt256 senderAllowance = Allowance(from, Message.Sender);
-
-                Assert(amount <= senderAllowance, "Amount is greater than allowance");
-
-                SetApproval(from, Message.Sender, senderAllowance - amount);
-            }
-
-            SetBalance(from, fromBalance - amount);
+            return false;
         }
 
-        if (to == Address.Zero)
-        {
-            TotalSupply -= amount;
+        SetApproval(from, Message.Sender, senderAllowance - amount);
 
-            Log(new SupplyChangeLog()
-            {
-                PreviousSupply = this.TotalSupply + amount,
-                TotalSupply = this.TotalSupply
-            });
-        }
-        else
-        {
-            SetBalance(to, checked(GetBalance(to) + amount));
-        }
+        SetBalance(from, fromBalance - amount);
+
+        SetBalance(to, checked(GetBalance(to) + amount));
 
         Log(new TransferLog { From = from, To = to, Amount = amount });
 
@@ -143,76 +140,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     }
 
     /// <inheritdoc />
-    public bool TransferTo(Address to, UInt256 amount)
-    {
-        Assert(to != Address.Zero, "Transfer to the zero address");
-
-        return Transfer(Message.Sender, to, amount);
-    }
-
-    /// <inheritdoc />
-    public bool TransferFrom(Address from, Address to, UInt256 amount)
-    {
-        Assert(from != Address.Zero, "Transfer from the zero address");
-        Assert(to != Address.Zero, "Transfer to the zero address");
-
-        return Transfer(from, to, amount);
-    }
-
-    public bool Mint(Address account, UInt256 amount)
-    {
-        Assert(Message.Sender == Minter, "Only the minter can call this method");
-
-        return Transfer(Address.Zero, account, amount);
-    }
-
-    public bool MintWithMetadata(Address account, UInt256 amount, string externalTxId)
-    {
-        Assert(!GetMinted(externalTxId), "Already minted for this external id");
-        
-        SetMinted(externalTxId);
-
-        if (Mint(account, amount))
-        {
-            Log(new MintMetadata() { Amount = amount, Metadata = externalTxId, To = account });
-
-            return true;
-        }
-
-        return false;
-    }
-
-    public bool Burn(UInt256 amount)
-    {
-        return Transfer(Message.Sender, Address.Zero, amount);
-    }
-
-    public bool BurnWithMetadata(UInt256 amount, string externalTxId)
-    {
-        Assert(!GetBurned(externalTxId), "Already burned for this external id");
-
-        SetBurned(externalTxId);
-
-        if (Burn(amount))
-        {
-            Log(new BurnMetadata() { Amount = amount, Metadata = externalTxId, From = Message.Sender });
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /// <inheritdoc />
     public bool Approve(Address spender, UInt256 currentAmount, UInt256 amount)
     {
-        // Approval not required if sender is spender.
-        if (Message.Sender == spender)
+        if (Allowance(Message.Sender, spender) != currentAmount)
         {
-            return true;
+            return false;
         }
-
-        Assert(Allowance(Message.Sender, spender) == currentAmount, "Current amount mismatch");
 
         SetApproval(Message.Sender, spender, amount);
 
@@ -229,12 +162,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// <inheritdoc />
     public UInt256 Allowance(Address owner, Address spender)
     {
-        // Owner can spend the full balance.
-        if (owner == spender)
-        {
-            return GetBalance(owner);
-        }
-
         return State.GetUInt256($"Allowance:{owner}:{spender}");
     }
 
@@ -267,29 +194,64 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         this.Minter = minter;
     }
 
-    private void SetMinted(string externalTxId)
+    private void Mint(Address account, UInt256 amount)
     {
-        State.SetBool($"Minted:{externalTxId}", true);
+        Assert(Message.Sender == Minter, "Only the minter can call this method");
+
+        UInt256 startingBalance = GetBalance(account);
+
+        SetBalance(account, startingBalance + amount);
+
+        Log(new TransferLog() { From = Address.Zero, To = account, Amount = amount });
+
+        this.TotalSupply += amount;
+
+        Log(new SupplyChangeLog()
+        {
+            PreviousSupply = (this.TotalSupply - amount),
+            TotalSupply = this.TotalSupply
+        });
     }
 
-    private bool GetMinted(string externalTxId)
+    /// <inheritdoc />
+    public void MintWithMetadata(Address account, UInt256 amount, string metadata)
     {
-        return State.GetBool($"Minted:{externalTxId}");
+        Mint(account, amount);
+        
+        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
     }
 
-    private void SetBurned(string externalTxId)
+    private bool Burn(UInt256 amount)
     {
-        State.SetBool($"Burned:{externalTxId}", true);
+        if (TransferTo(Address.Zero, amount))
+        {
+            this.TotalSupply -= amount;
+
+            Log(new SupplyChangeLog()
+            {
+                PreviousSupply = (this.TotalSupply + amount),
+                TotalSupply = this.TotalSupply
+            });
+
+            return true;
+        }
+
+        return false;
     }
 
-    private bool GetBurned(string externalTxId)
+    /// <inheritdoc />
+    public bool BurnWithMetadata(UInt256 amount, string metadata)
     {
-        return State.GetBool($"Burned:{externalTxId}");
+        if (Burn(amount))
+        {
+            Log(new BurnMetadata() { From = Message.Sender, Amount = amount, Metadata = metadata });
+
+            return true;
+        }
+
+        return false;
     }
 
-    /// <summary>
-    /// Provides a record that coins were transferred from one account to another.
-    /// </summary>
     public struct TransferLog
     {
         [Index]
@@ -297,24 +259,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
 
         [Index]
         public Address To;
-
-        public UInt256 Amount;
-    }
-
-    public struct BurnMetadata
-    {
-        [Index] public Address From;
-
-        [Index] public string Metadata;
-
-        public UInt256 Amount;
-    }
-
-    public struct MintMetadata
-    {
-        [Index] public Address To;
-
-        [Index] public string Metadata;
 
         public UInt256 Amount;
     }
@@ -340,11 +284,27 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
     /// </summary>
     public struct OwnershipTransferred
     {
-        [Index] 
-        public Address PreviousOwner;
+        [Index] public Address PreviousOwner;
 
-        [Index] 
-        public Address NewOwner;
+        [Index] public Address NewOwner;
+    }
+
+    public struct MintMetadata
+    {
+        [Index] public Address To;
+
+        [Index] public string Metadata;
+
+        public UInt256 Amount;
+    }
+
+    public struct BurnMetadata
+    {
+        [Index] public Address From;
+
+        [Index] public string Metadata;
+
+        public UInt256 Amount;
     }
 
     /// <summary>
@@ -355,7 +315,5 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
-
-        public string Metadata;
     }
 }

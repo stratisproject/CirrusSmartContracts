@@ -195,7 +195,7 @@ namespace MintableTokenTests
             // Setup the balance of the recipient's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{Address.Zero}")).Returns(0);
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.BurnWithMetadata(burnAmount, "ExternalId"));
+            Assert.False(standardToken.BurnWithMetadata(burnAmount, "ExternalId"));
         }
 
         [Fact]

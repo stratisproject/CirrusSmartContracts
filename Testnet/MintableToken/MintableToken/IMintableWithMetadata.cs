@@ -15,5 +15,5 @@ public interface IMintableWithMetadata
     /// <param name="amount">The amount of tokens to mint.</param>
     /// <param name="metadata">Additional data to be recorded with the burn.
     /// The structure and interpretation of this data is unspecified here.</param>
-    bool MintWithMetadata(Address account, UInt256 amount, string metadata);
+    void MintWithMetadata(Address account, UInt256 amount, string metadata);
 }
