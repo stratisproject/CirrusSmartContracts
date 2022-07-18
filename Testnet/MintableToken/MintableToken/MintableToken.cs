@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -194,7 +194,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         this.Minter = minter;
     }
 
-    private void Mint(Address account, UInt256 amount)
+    public void Mint(Address account, UInt256 amount)
     {
         Assert(Message.Sender == Minter, "Only the minter can call this method");
 
@@ -221,7 +221,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintableWithMeta
         Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
     }
 
-    private bool Burn(UInt256 amount)
+    public bool Burn(UInt256 amount)
     {
         if (TransferTo(Address.Zero, amount))
         {
