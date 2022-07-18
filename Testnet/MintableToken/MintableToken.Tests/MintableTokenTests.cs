@@ -35,7 +35,6 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.name = "Test Token";
             this.symbol = "TST";
             this.decimals = 8;
-            this.minter = this.sender;
         }
 
         [Fact]
@@ -44,7 +43,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
             UInt256 totalSupply = 100_000;
-            var mintableToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
             this.mockPersistentState.Verify(s => s.SetUInt256(nameof(mintableToken.TotalSupply), totalSupply));
@@ -56,7 +55,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
 
             // Verify that PersistentState was called with the total supply
             this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.owner}", totalSupply));
@@ -69,7 +68,7 @@ namespace Stratis.SmartContracts.Samples.Tests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.spender}")).Returns(balance);
@@ -85,7 +84,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             mintableToken.Approve(this.spender, 0, approval);
 
@@ -103,7 +102,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -124,7 +123,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -142,7 +141,7 @@ namespace Stratis.SmartContracts.Samples.Tests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             mintableToken.Allowance(this.owner, this.spender);
 
@@ -158,7 +157,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             Assert.True(mintableToken.TransferTo(this.destination, amount));
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.TransferLog { From = this.sender, To = this.destination, Amount = amount }));
@@ -175,7 +174,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the sender's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
@@ -205,7 +204,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
@@ -227,7 +226,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(senderBalance);
@@ -255,7 +254,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
@@ -301,7 +300,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             Assert.True(mintableToken.TransferFrom(this.owner, this.destination, amount));
 
@@ -319,7 +318,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -356,7 +355,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -384,7 +383,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -413,7 +412,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(ownerBalance);
@@ -445,7 +444,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             int callOrder = 1;
 
@@ -507,7 +506,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
@@ -543,7 +542,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
@@ -590,7 +589,7 @@ namespace Stratis.SmartContracts.Samples.Tests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals, this.minter);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
 
             // Verify we set the name and the symbol
             this.mockPersistentState.Verify(s => s.SetString(nameof(mintableToken.Name), this.name));

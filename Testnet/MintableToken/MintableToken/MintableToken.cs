@@ -4,6 +4,7 @@ using Stratis.SmartContracts.Standards;
 /// <summary>
 /// Implementation of a mintable token contract for the Stratis Platform.
 /// </summary>
+[Deploy]
 public class MintableToken : SmartContract, IStandardToken256, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
 {
     /// <summary>
