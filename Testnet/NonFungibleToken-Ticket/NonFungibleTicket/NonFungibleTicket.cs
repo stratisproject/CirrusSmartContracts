@@ -5,8 +5,8 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
 {
     private const int ByteSize = 256;
     
-    public NonFungibleTicket(ISmartContractState state, string name, string symbol, bool ownerOnlyMinting)
-        : base(state, name, symbol, ownerOnlyMinting)
+    public NonFungibleTicket(ISmartContractState state, string name, string symbol)
+        : base(state, name, symbol, true)
     {
         SetSupportedInterfaces(TokenInterface.IRedeemableTicketPerks, true); // Redeemable ticket perks
     }
