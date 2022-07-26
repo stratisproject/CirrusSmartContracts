@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NonFungibleTicket", "NonFungibleTicket\NonFungibleTicket.csproj", "{71600BA5-D603-4A7B-B40E-5D22B8419257}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NonFungibleTicket.Tests", "NonFungibleTicket.Tests\NonFungibleTicket.Tests.csproj", "{6229C49C-4E86-4AD1-9AD1-11ED75065077}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{71600BA5-D603-4A7B-B40E-5D22B8419257}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71600BA5-D603-4A7B-B40E-5D22B8419257}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71600BA5-D603-4A7B-B40E-5D22B8419257}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71600BA5-D603-4A7B-B40E-5D22B8419257}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6229C49C-4E86-4AD1-9AD1-11ED75065077}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6229C49C-4E86-4AD1-9AD1-11ED75065077}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6229C49C-4E86-4AD1-9AD1-11ED75065077}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6229C49C-4E86-4AD1-9AD1-11ED75065077}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
