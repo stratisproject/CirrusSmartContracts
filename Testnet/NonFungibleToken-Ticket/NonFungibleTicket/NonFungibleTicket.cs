@@ -30,6 +30,7 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
     {
         EnsureOwnerOnly();
         EnsureTokenHasBeenMinted(tokenId);
+        Assert(perkIndexes.Length > 0, "Must provide at least one perk to redeem.");
         var redemptions = GetRedemptionsExecute(tokenId);
         foreach (var perkIndex in perkIndexes)
         {
