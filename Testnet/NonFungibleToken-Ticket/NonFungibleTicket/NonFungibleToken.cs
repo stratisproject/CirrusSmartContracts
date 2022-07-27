@@ -142,7 +142,7 @@ public class NonFungibleToken : SmartContract, ISupportsInterface, INonFungibleT
     /// <summary>
     /// The next token id which is going to be minted
     /// </summary>
-    private UInt256 TokenIdCounter
+    protected UInt256 TokenIdCounter
     {
         get => State.GetUInt256(nameof(TokenIdCounter));
         set => State.SetUInt256(nameof(TokenIdCounter), value);

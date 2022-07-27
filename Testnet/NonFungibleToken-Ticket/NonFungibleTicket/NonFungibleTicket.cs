@@ -14,25 +14,44 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
     /// <inheritdoc />
     public bool[] GetRedemptions(UInt256 tokenId)
     {
-        return State.GetArray<bool>($"Redemptions:{tokenId}") ?? new bool[ByteSize];
+        EnsureTokenHasBeenMinted(tokenId);
+        return GetRedemptionsExecute(tokenId);
     }
 
     /// <inheritdoc />
     public bool IsRedeemed(UInt256 tokenId, byte perkIndex)
     {
-        return State.GetArray<bool>($"Redemptions:{tokenId}")?[perkIndex] ?? false;
+        EnsureTokenHasBeenMinted(tokenId);
+        return GetRedemptionsExecute(tokenId)?[perkIndex] ?? false;
     }
 
     /// <inheritdoc />
-    public void RedeemPerk(UInt256 tokenId, byte perkIndex)
+    public void RedeemPerks(UInt256 tokenId, byte[] perkIndexes)
     {
         EnsureOwnerOnly();
-        var redemptions = State.GetArray<bool>($"Redemptions:{tokenId}") ?? new bool[ByteSize];
-        Assert(!redemptions[perkIndex], "Perk already redeemed.");
-        redemptions[perkIndex] = true;
+        EnsureTokenHasBeenMinted(tokenId);
+        var redemptions = GetRedemptionsExecute(tokenId);
+        foreach (var perkIndex in perkIndexes)
+        {
+            Assert(!redemptions[perkIndex], $"Perk at index {perkIndex} already redeemed.");
+            redemptions[perkIndex] = true;
+            Log(new PerkRedeemedLog { NftId = tokenId, PerkIndex = perkIndex });
+        }
         State.SetArray($"Redemptions:{tokenId}", redemptions);
-        Log(new PerkRedeemedLog { NftId = tokenId, PerkIndex = perkIndex });
     }
+
+    /// <summary>
+    /// Retrieves redemptions from state if set; otherwise falls back to the zero-redemptions value
+    /// </summary>
+    /// <param name="tokenId">Id of the NFT</param>
+    /// <returns>An array of redemption values corresponding to metadata attributes</returns>
+    private bool[] GetRedemptionsExecute(UInt256 tokenId)
+    {
+        var redemptions = State.GetArray<bool>($"Redemptions:{tokenId}");
+        return redemptions.Length != 0 ? redemptions : new bool[ByteSize];
+    }
+    
+    private void EnsureTokenHasBeenMinted(UInt256 tokenId) => Assert(TokenIdCounter >= tokenId, "Token id does not exist");
 
     /// <summary>
     /// A log that is omitted when a perk is redeemed
