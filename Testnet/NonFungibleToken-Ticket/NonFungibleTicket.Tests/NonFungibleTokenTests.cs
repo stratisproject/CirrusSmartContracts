@@ -3,10 +3,11 @@ using Moq;
 using Moq.Language.Flow;
 using Stratis.SmartContracts;
 using System;
+using NonFungibleTicketContract.Tests;
 using Xunit;
 using static NonFungibleToken;
 
-namespace NonFungibleTicketContract.Tests
+namespace NonFungibleTokenContract.Tests
 {
     public class NonFungibleTokenTests
     {
@@ -42,7 +43,7 @@ namespace NonFungibleTicketContract.Tests
             var owner = "0x0000000000000000000000000000000000000005".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(owner);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.True(state.GetBool("SupportedInterface:1"));
             Assert.True(state.GetBool("SupportedInterface:2"));
@@ -63,7 +64,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, owner, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SetPendingOwner(newOwner);
 
@@ -87,7 +88,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, owner, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, newOwner, 0));
 
@@ -105,7 +106,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, owner, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SetPendingOwner(newOwner);
 
@@ -123,7 +124,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, owner, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SetPendingOwner(newOwner);
 
@@ -149,7 +150,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.SupportsInterface(2);
 
@@ -162,7 +163,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
             state.SetBool("SupportedInterface:2", false);
 
             var result = nonFungibleToken.SupportsInterface(3);
@@ -176,7 +177,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.SupportsInterface(6);
 
@@ -190,7 +191,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.GetApproved(1));
         }
@@ -202,7 +203,7 @@ namespace NonFungibleTicketContract.Tests
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
             state.SetAddress("IdToOwner:1", "0x0000000000000000000000000000000000000005".HexToAddress());
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.GetApproved(1);
 
@@ -220,7 +221,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
             var result = nonFungibleToken.GetApproved(1);
 
             Assert.Equal(approvalAddress, result);
@@ -235,7 +236,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.IsApprovedForAll(ownerAddress, operatorAddresss);
 
@@ -251,7 +252,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetBool($"OwnerToOperator:{ownerAddress}:{operatorAddresss}", false);
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.IsApprovedForAll(ownerAddress, operatorAddresss);
 
@@ -266,7 +267,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.IsApprovedForAll(ownerAddress, operatorAddresss);
 
@@ -279,7 +280,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.OwnerOf(1));
         }
@@ -291,7 +292,7 @@ namespace NonFungibleTicketContract.Tests
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
             state.SetAddress("IdToOwner:1", Address.Zero);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.OwnerOf(1));
         }
@@ -304,7 +305,7 @@ namespace NonFungibleTicketContract.Tests
 
             var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
             state.SetAddress("IdToOwner:1", ownerAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.OwnerOf(1);
 
@@ -317,7 +318,7 @@ namespace NonFungibleTicketContract.Tests
             var sender = "0x0000000000000000000000000000000000000002".HexToAddress();
             smartContractStateMock.SetupGet(m => m.Message).Returns(new Message(contractAddress, sender, 0));
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => { nonFungibleToken.BalanceOf(Address.Zero); });
         }
@@ -330,7 +331,7 @@ namespace NonFungibleTicketContract.Tests
 
             var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.BalanceOf(ownerAddress);
 
@@ -345,7 +346,7 @@ namespace NonFungibleTicketContract.Tests
 
             var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
             state.SetUInt256($"Balance:{ownerAddress}", 15);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var result = nonFungibleToken.BalanceOf(ownerAddress);
 
@@ -360,7 +361,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SetApprovalForAll(operatorAddress, true);
 
@@ -375,7 +376,7 @@ namespace NonFungibleTicketContract.Tests
             var someAddress = "0x0000000000000000000000000000000000000008".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Approve(someAddress, 1));
         }
@@ -388,7 +389,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetAddress("IdToOwner:1", ownerAddress);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.Approve(someAddress, 1);
 
@@ -403,7 +404,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetAddress("IdToOwner:1", ownerAddress);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Approve(ownerAddress, 1));
         }
@@ -418,7 +419,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetBool($"OwnerToOperator:{ownerAddress}:{operatorAddress}", true);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.Approve(someAddress, 1);
 
@@ -436,7 +437,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetBool($"OwnerToOperator:{ownerAddress}:{operatorAddress}", true);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Approve(someAddress, 1));
         }
@@ -451,7 +452,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.TransferFrom(ownerAddress, targetAddress, 1);
 
@@ -471,7 +472,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(Address.Zero);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferFrom(Address.Zero, targetAddress, 1));
         }
@@ -489,7 +490,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(approvalAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.TransferFrom(ownerAddress, targetAddress, 1);
 
@@ -512,7 +513,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.TransferFrom(ownerAddress, targetAddress, 1);
 
@@ -534,7 +535,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(invalidSenderAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferFrom(ownerAddress, targetAddress, 1));
         }
@@ -549,7 +550,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferFrom(notOwningAddress, targetAddress, 1));
         }
@@ -562,7 +563,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.TransferFrom(ownerAddress, Address.Zero, 1));
         }
@@ -577,7 +578,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
 
@@ -586,7 +587,7 @@ namespace NonFungibleTicketContract.Tests
             Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -600,7 +601,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(approvalAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
 
@@ -609,7 +610,7 @@ namespace NonFungibleTicketContract.Tests
             Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -623,7 +624,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
 
@@ -634,7 +635,7 @@ namespace NonFungibleTicketContract.Tests
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
 
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -647,9 +648,9 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
-            SetupForOnNonFungibleTicketReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
+            SetupForOnNonFungibleTokenReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
 
@@ -672,9 +673,9 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(approvalAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
-            SetupForOnNonFungibleTicketReceived(targetAddress, approvalAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
+            SetupForOnNonFungibleTokenReceived(targetAddress, approvalAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
 
@@ -697,9 +698,9 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
-            SetupForOnNonFungibleTicketReceived(targetAddress, operatorAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
+            SetupForOnNonFungibleTokenReceived(targetAddress, operatorAddress, ownerAddress, 1).Returns(TransferResult.Transferred(true));
 
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1);
@@ -721,7 +722,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(invalidSenderAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1));
         }
@@ -735,7 +736,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(Address.Zero);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(Address.Zero, targetAddress, 1));
         }
@@ -750,7 +751,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(notOwningAddress, targetAddress, 1));
         }
@@ -764,16 +765,16 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
-            SetupForOnNonFungibleTicketReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(false));
+            SetupForOnNonFungibleTokenReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(false));
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1));
         }
 
-        private IReturnsThrows<IInternalTransactionExecutor, ITransferResult> SetupForOnNonFungibleTicketReceived(Address targetAddress, Address @operator, Address from, UInt256 tokenId)
+        private IReturnsThrows<IInternalTransactionExecutor, ITransferResult> SetupForOnNonFungibleTokenReceived(Address targetAddress, Address @operator, Address from, UInt256 tokenId)
         {
-            return transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", It.IsAny<object[]>(), 0ul))
+            return transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", It.IsAny<object[]>(), 0ul))
                                                 .Callback<ISmartContractState, Address, ulong, string, object[], ulong>((a, b, c, d, callParams, f) =>
                                                 {
                                                     Assert.True(@operator.Equals(callParams[0]));
@@ -792,9 +793,9 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
-            SetupForOnNonFungibleTicketReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(1));
+            SetupForOnNonFungibleTokenReceived(targetAddress, ownerAddress, ownerAddress, 1).Returns(TransferResult.Transferred(1));
 
             Assert.Throws<InvalidCastException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1));
         }
@@ -807,7 +808,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, Address.Zero, 1));
         }
@@ -821,7 +822,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, new byte[1] { 0xff });
 
@@ -830,7 +831,7 @@ namespace NonFungibleTicketContract.Tests
             Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -845,7 +846,7 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(approvalAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, new byte[1] { 0xff });
 
@@ -854,7 +855,7 @@ namespace NonFungibleTicketContract.Tests
             Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -868,7 +869,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, new byte[1] { 0xff });
 
@@ -879,7 +880,7 @@ namespace NonFungibleTicketContract.Tests
 
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
 
-            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTicketReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
+            transactionExecutorMock.Verify(t => t.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), "OnNonFungibleTokenReceived", It.IsAny<object[]>(), It.IsAny<ulong>()), Times.Never);
         }
 
         [Fact]
@@ -892,12 +893,12 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var data = new byte[] { 12 };
             var callParamsExpected = new object[] { ownerAddress, ownerAddress, (UInt256)1, data };
 
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", callParamsExpected, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", callParamsExpected, 0))
                                         .Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, data);
@@ -921,12 +922,12 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(approvalAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var data = new byte[] { 12 };
             var callParamsExpected = new object[] { approvalAddress, ownerAddress, (UInt256)1, data };
 
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", callParamsExpected, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", callParamsExpected, 0))
                                         .Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, data);
@@ -950,12 +951,12 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(operatorAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var data = new byte[] { 12 };
             var callParamsExpected = new object[] { operatorAddress, ownerAddress, (UInt256)1, data };
 
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", callParamsExpected, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", callParamsExpected, 0))
                                         .Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, data);
@@ -978,7 +979,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(invalidSenderAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, new byte[1] { 0xff }));
         }
@@ -992,7 +993,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(Address.Zero);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(Address.Zero, targetAddress, 1, new byte[1] { 0xff }));
         }
@@ -1007,7 +1008,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(notOwningAddress, targetAddress, 1, new byte[1] { 0xff }));
         }
@@ -1021,12 +1022,12 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             var data = new byte[] { 12 };
             var callParamsExpected = new object[] { ownerAddress, ownerAddress, (UInt256)1, data };
 
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", callParamsExpected, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", callParamsExpected, 0))
                                         .Returns(TransferResult.Transferred(false));
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, data));
@@ -1041,12 +1042,12 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.IsContractResult = true;
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
 
             var data = new byte[] { 12 };
             var callParamsExpected = new object[] { ownerAddress, ownerAddress, (UInt256)1, data };
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", callParamsExpected, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", callParamsExpected, 0))
                                         .Returns(TransferResult.Transferred(1));
 
             Assert.Throws<InvalidCastException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, targetAddress, 1, data));
@@ -1060,7 +1061,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetUInt256($"Balance:{ownerAddress}", 1);
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.SafeTransferFrom(ownerAddress, Address.Zero, 1, new byte[1] { 0xff }));
         }
@@ -1072,7 +1073,7 @@ namespace NonFungibleTicketContract.Tests
             var userAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(userAddress);
 
@@ -1084,7 +1085,7 @@ namespace NonFungibleTicketContract.Tests
         {
             var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Mint(Address.Zero, GetTokenURI(1)));
         }
@@ -1099,7 +1100,7 @@ namespace NonFungibleTicketContract.Tests
             var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(targetAddress);
             nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
@@ -1119,7 +1120,7 @@ namespace NonFungibleTicketContract.Tests
             var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.Mint(targetAddress, GetTokenURI(1));
 
@@ -1141,10 +1142,10 @@ namespace NonFungibleTicketContract.Tests
 
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
             var data = new byte[] { 12 };
             var parameter = new object[] { ownerAddress, Address.Zero, (UInt256)1, data };
-            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTicketReceived", parameter, 0))
+            transactionExecutorMock.Setup(t => t.Call(It.IsAny<ISmartContractState>(), targetAddress, 0, "OnNonFungibleTokenReceived", parameter, 0))
                                         .Returns(TransferResult.Transferred(true));
 
             nonFungibleToken.SafeMint(targetAddress, GetTokenURI(1), data);
@@ -1163,7 +1164,7 @@ namespace NonFungibleTicketContract.Tests
         {
             var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Burn(0));
         }
@@ -1176,7 +1177,7 @@ namespace NonFungibleTicketContract.Tests
             smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
             state.SetAddress("IdToOwner:0", anotherTokenOwner);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             Assert.Throws<SmartContractAssertException>(() => nonFungibleToken.Burn(0));
         }
@@ -1189,7 +1190,7 @@ namespace NonFungibleTicketContract.Tests
             state.SetAddress("IdToOwner:1", ownerAddress);
             state.SetUInt256($"Balance:{ownerAddress}", 1);
 
-            var nonFungibleToken = CreateNonFungibleTicket();
+            var nonFungibleToken = CreateNonFungibleToken();
 
             nonFungibleToken.Burn(1);
 
@@ -1199,7 +1200,7 @@ namespace NonFungibleTicketContract.Tests
             contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = Address.Zero, TokenId = 1 }));
         }
 
-        private NonFungibleToken CreateNonFungibleTicket()
+        private NonFungibleToken CreateNonFungibleToken()
         {
             return new NonFungibleToken(smartContractStateMock.Object, name, symbol, ownerOnlyMinting);
         }

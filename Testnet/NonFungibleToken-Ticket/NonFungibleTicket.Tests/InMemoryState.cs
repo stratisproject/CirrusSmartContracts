@@ -21,7 +21,7 @@ namespace NonFungibleTicketContract.Tests
         }
         public Address GetAddress(string key) => GetValue<Address>(key);
 
-        public T[] GetArray<T>(string key) => GetValue<T[]>(key);
+        public T[] GetArray<T>(string key) => GetValue<T[]>(key) ?? Array.Empty<T>();
 
         public bool GetBool(string key) => GetValue<bool>(key);
 

@@ -1,7 +1,5 @@
 ﻿using Stratis.SmartContracts;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace NonFungibleTicketContract.Tests
 {
