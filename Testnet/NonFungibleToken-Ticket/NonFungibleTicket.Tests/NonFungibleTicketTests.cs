@@ -147,21 +147,18 @@ namespace NonFungibleTicketContract.Tests
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
                 .WithMessage("Must provide at least one perk to redeem.");
-        }
+        } 
 
         [Fact]
-        public void RedeemPerks_PerkAlreadyRedeemed_AssertFailure()
+        public void RedeemPerks_Success_SetState()
         {
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
             nft.AssignRedeemRole(owner);
-            nft.RedeemPerks(1, new byte[] { 4 });
-            nft.Invoking(token => token.RedeemPerks(1, new byte[] { 1, 4, 8 }))
-                .Should()
-                .ThrowExactly<SmartContractAssertException>()
-                .WithMessage("Perk at index 4 already redeemed.");
-        }
+            nft.RedeemPerks(1, new byte[] { 0 });
+            state.GetArray<bool>("Redemptions:1")[0].Should().Be(true);
+        } 
 
         [Fact]
         public void AssignRedeemRole_NotOwner_AssertFailure()
@@ -187,6 +184,16 @@ namespace NonFungibleTicketContract.Tests
         }
 
         [Fact]
+        public void AssignRedeemRole_Success_SetState()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            var address = "0x0000000024000000000300000000000000000006".HexToAddress();
+            nft.AssignRedeemRole(address);
+            state.GetBool($"Redeemer:{address}").Should().Be(true);
+        }
+
+        [Fact]
         public void RevokeRedeemRole_NotOwner_AssertFailure()
         {
             var nft = CreateNonFungibleTicket();
@@ -206,6 +213,17 @@ namespace NonFungibleTicketContract.Tests
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
                 .WithMessage("Redeem role is not assigned to this address.");
+        }
+
+        [Fact]
+        public void RevokeRedeemRole_Success_SetState()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            var address = "0x0000000024000000000300000000000000000006".HexToAddress();
+            nft.AssignRedeemRole(address);
+            nft.RevokeRedeemRole(address);
+            state.GetBool($"Redeemer:{address}").Should().Be(false);
         }
 
         [Fact]
