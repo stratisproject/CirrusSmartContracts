@@ -5,5 +5,6 @@ public enum TokenInterface
     INonFungibleTokenReceiver = 3,
     INonFungibleTokenMetadata = 4,
     INonFungibleTokenEnumerable = 5,
-    IRedeemableTicketPerks = 6
+    IRedeemableTicketPerks = 6,
+    IAuthorizableRedemptions = 7
 }

@@ -39,6 +39,7 @@ namespace NonFungibleTicketContract.Tests
         {
             CreateNonFungibleTicket();
             Assert.True(state.GetBool($"SupportedInterface:{(int)TokenInterface.IRedeemableTicketPerks}"));
+            Assert.True(state.GetBool($"SupportedInterface:{(int)TokenInterface.IAuthorizableRedemptions}"));
             Assert.True(state.GetBool("OwnerOnlyMinting"));
         }
 
@@ -51,7 +52,7 @@ namespace NonFungibleTicketContract.Tests
             nft.Invoking(token => token.GetRedemptions(5))
                .Should()
                .ThrowExactly<SmartContractAssertException>()
-               .WithMessage("Token id does not exist");
+               .WithMessage("Token id does not exist.");
         }
 
         [Fact]
@@ -69,6 +70,7 @@ namespace NonFungibleTicketContract.Tests
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
+            nft.AssignRedeemRole(owner);
             nft.RedeemPerks(1, new byte[] { 1, 4, 8 });
             var redeemedPerks = new bool[256];
             redeemedPerks[1] = true;
@@ -86,7 +88,7 @@ namespace NonFungibleTicketContract.Tests
             nft.Invoking(token => token.IsRedeemed(5, 0))
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
-                .WithMessage("Token id does not exist");
+                .WithMessage("Token id does not exist.");
         }
 
         [Fact]
@@ -104,6 +106,7 @@ namespace NonFungibleTicketContract.Tests
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
+            nft.AssignRedeemRole(owner);
             nft.RedeemPerks(1, new byte[] { 5 });
             nft.IsRedeemed(1, 5).Should().Be(true);
         }
@@ -114,23 +117,23 @@ namespace NonFungibleTicketContract.Tests
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
+            nft.AssignRedeemRole(owner);
             nft.Invoking(token => token.RedeemPerks(5, new byte[] { 0 }))
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
-                .WithMessage("Token id does not exist");
+                .WithMessage("Token id does not exist.");
         }
 
         [Fact]
-        public void RedeemPerks_NotContractOwner_AssertFailure()
+        public void RedeemPerks_NotAssignedRedeemRole_AssertFailure()
         {
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
-            message.SetupGet(callTo => callTo.Sender).Returns("0x0000000000000050000000003000000400000008".HexToAddress());
             nft.Invoking(token => token.RedeemPerks(5, new byte[] { 0 }))
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
-                .WithMessage("The method is owner only.");
+                .WithMessage("Only assigned addresses can redeem perks.");
         }
 
         [Fact]
@@ -139,6 +142,7 @@ namespace NonFungibleTicketContract.Tests
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
+            nft.AssignRedeemRole(owner);
             nft.Invoking(token => token.RedeemPerks(1, Array.Empty<byte>()))
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
@@ -151,11 +155,74 @@ namespace NonFungibleTicketContract.Tests
             var nft = CreateNonFungibleTicket();
             message.SetupGet(callTo => callTo.Sender).Returns(owner);
             nft.Mint("0x0000000000000000000000000000000000000005".HexToAddress(), "https://nft.data/1");
+            nft.AssignRedeemRole(owner);
             nft.RedeemPerks(1, new byte[] { 4 });
             nft.Invoking(token => token.RedeemPerks(1, new byte[] { 1, 4, 8 }))
                 .Should()
                 .ThrowExactly<SmartContractAssertException>()
                 .WithMessage("Perk at index 4 already redeemed.");
+        }
+
+        [Fact]
+        public void AssignRedeemRole_NotOwner_AssertFailure()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns("0x0000000024000000000300000000000000000005".HexToAddress());
+            nft.Invoking(token => token.AssignRedeemRole("0x0000000024000000000300000000000000000006".HexToAddress()))
+               .Should()
+               .ThrowExactly<SmartContractAssertException>()
+               .WithMessage("The method is owner only.");
+        }
+
+        [Fact]
+        public void AssignRedeemRole_AlreadyAssigned_AssertFailure()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            nft.AssignRedeemRole("0x0000000024000000000300000000000000000006".HexToAddress());
+            nft.Invoking(token => token.AssignRedeemRole("0x0000000024000000000300000000000000000006".HexToAddress()))
+                .Should()
+                .ThrowExactly<SmartContractAssertException>()
+                .WithMessage("Redeem role is already assigned to this address.");
+        }
+
+        [Fact]
+        public void RevokeRedeemRole_NotOwner_AssertFailure()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns("0x0000000024000000000300000000000000000005".HexToAddress());
+            nft.Invoking(token => token.RevokeRedeemRole("0x0000000024000000000300000000000000000006".HexToAddress()))
+                .Should()
+                .ThrowExactly<SmartContractAssertException>()
+                .WithMessage("The method is owner only.");
+        }
+
+        [Fact]
+        public void RevokeRedeemRole_NotAssigned_AssertFailure()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            nft.Invoking(token => token.RevokeRedeemRole("0x0000000024000000000300000000000000000006".HexToAddress()))
+                .Should()
+                .ThrowExactly<SmartContractAssertException>()
+                .WithMessage("Redeem role is not assigned to this address.");
+        }
+
+        [Fact]
+        public void CanRedeemPerks_NotAssignedRedeemRole_ReturnFalse()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            nft.CanRedeemPerks(owner).Should().Be(false);
+        }
+
+        [Fact]
+        public void CanRedeemPerks_AssignedRedeemRole_ReturnTrue()
+        {
+            var nft = CreateNonFungibleTicket();
+            message.SetupGet(callTo => callTo.Sender).Returns(owner);
+            nft.AssignRedeemRole(owner);
+            nft.CanRedeemPerks(owner).Should().Be(true);
         }
         
         private NonFungibleTicket CreateNonFungibleTicket() => new NonFungibleTicket(smartContractStateMock.Object, name, symbol);

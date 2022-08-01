@@ -1,14 +1,15 @@
 using Stratis.SmartContracts;
 
 [Deploy]
-public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
+public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks, IAuthorizableRedemptions
 {
     private const int ByteSize = 256;
     
     public NonFungibleTicket(ISmartContractState state, string name, string symbol)
         : base(state, name, symbol, true)
     {
-        SetSupportedInterfaces(TokenInterface.IRedeemableTicketPerks, true); // Redeemable ticket perks
+        SetSupportedInterfaces(TokenInterface.IRedeemableTicketPerks, true);
+        SetSupportedInterfaces(TokenInterface.IAuthorizableRedemptions, true);
     }
 
     /// <inheritdoc />
@@ -28,7 +29,7 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
     /// <inheritdoc />
     public void RedeemPerks(UInt256 tokenId, byte[] perkIndexes)
     {
-        EnsureOwnerOnly();
+        Assert(CanRedeemPerks(Message.Sender), "Only assigned addresses can redeem perks.");
         EnsureTokenHasBeenMinted(tokenId);
         Assert(perkIndexes.Length > 0, "Must provide at least one perk to redeem.");
         var redemptions = GetRedemptionsExecute(tokenId);
@@ -36,10 +37,31 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
         {
             Assert(!redemptions[perkIndex], $"Perk at index {perkIndex} already redeemed.");
             redemptions[perkIndex] = true;
-            Log(new PerkRedeemedLog { NftId = tokenId, PerkIndex = perkIndex });
+            Log(new PerkRedeemedLog { NftId = tokenId, PerkIndex = perkIndex, Redeemer = Message.Sender });
         }
         State.SetArray($"Redemptions:{tokenId}", redemptions);
     }
+    
+    /// <inheritdoc />
+    public void AssignRedeemRole(Address address)
+    {
+        EnsureOwnerOnly();
+        Assert(!CanRedeemPerks(address), "Redeem role is already assigned to this address.");
+        Log(new RoleAssignedLog { Address = address });
+        State.SetBool($"Redeemer:{address}", true);
+    }
+
+    /// <inheritdoc />
+    public void RevokeRedeemRole(Address address)
+    {
+        EnsureOwnerOnly();
+        Assert(CanRedeemPerks(address), "Redeem role is not assigned to this address.");
+        Log(new RoleRevokedLog { Address = address });
+        State.SetBool($"Redeemer:{address}", false);
+    }
+
+    /// <inheritdoc />
+    public bool CanRedeemPerks(Address address) => State.GetBool($"Redeemer:{address}");
 
     /// <summary>
     /// Retrieves redemptions from state if set; otherwise falls back to the zero-redemptions value
@@ -52,7 +74,7 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
         return redemptions.Length != 0 ? redemptions : new bool[ByteSize];
     }
     
-    private void EnsureTokenHasBeenMinted(UInt256 tokenId) => Assert(TokenIdCounter >= tokenId, "Token id does not exist");
+    private void EnsureTokenHasBeenMinted(UInt256 tokenId) => Assert(TokenIdCounter >= tokenId, "Token id does not exist.");
 
     /// <summary>
     /// A log that is omitted when a perk is redeemed
@@ -68,5 +90,32 @@ public class NonFungibleTicket : NonFungibleToken, IRedeemableTicketPerks
         /// Index of the perk in the NFT attributes
         /// </summary>
         [Index] public byte PerkIndex;
+
+        /// <summary>
+        /// Address of the staff member that redeemed the perk
+        /// </summary>
+        public Address Redeemer;
+    }
+
+    /// <summary>
+    /// A log that is omitted when a redeem role is assigned
+    /// </summary>
+    public struct RoleAssignedLog
+    {
+        /// <summary>
+        /// Address that the role is assigned to
+        /// </summary>
+        public Address Address;
+    }
+
+    /// <summary>
+    /// A log that is omitted when a redeem role is revoked
+    /// </summary>
+    public struct RoleRevokedLog
+    {
+        /// <summary>
+        /// Address that the role is revoked from
+        /// </summary>
+        public Address Address;
     }
 }
