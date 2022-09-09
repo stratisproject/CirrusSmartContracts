@@ -8,6 +8,7 @@ public class MultisigContract : SmartContract
     public const string ConfirmationPrefix = "C";
     public const string ConfirmationCountPrefix = "N";
     public const string TransactionPrefix = "T";
+    public const string TransactionIndexPrefix = "I";
 
     public MultisigContract(ISmartContractState smartContractState, byte[] addresses, uint required) : base(smartContractState)
     {
@@ -155,6 +156,57 @@ public class MultisigContract : SmartContract
     }
 
     /// <summary>
+    /// Submits method and parameter metadata describing a contract call that the multisig contract should invoke once enough nodes have called this method.
+    /// </summary>
+    /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
+    /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
+    /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
+    /// <returns>The transactionId of the submitted multisig transaction.</returns>
+    /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction. Subsequent callers provide additional confirmations only.</remarks>
+    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data)
+    {
+        EnsureOwnersOnly();
+
+        Transaction tx = new Transaction()
+        {
+            Destination = destination,
+            Executed = false,
+            Value = 0,
+            MethodName = methodName,
+            Parameters = data
+        };
+
+        ulong transactionId = GetTransactionId(tx);
+        if (transactionId == 0)
+        {
+            TransactionCount++;
+            transactionId = TransactionCount;
+            State.SetStruct($"{TransactionPrefix}:{transactionId}", tx);
+            Log(new Submission() { TransactionId = transactionId });
+            SetTransactionId(tx, transactionId);
+        }
+
+        Confirm(transactionId);
+
+        return transactionId;
+    }
+
+    private string GetTransactionIndexKey(Transaction tx)
+    {
+        return $"{TransactionIndexPrefix}:{tx.Destination}:{tx.Value}:{tx.MethodName}:{Serializer.ToUInt256(Keccak256(tx.Parameters))}";
+    }
+
+    private ulong GetTransactionId(Transaction tx)
+    {
+        return State.GetUInt64(GetTransactionIndexKey(tx));
+    }
+
+    private void SetTransactionId(Transaction tx, ulong transactionId)
+    {
+        State.SetUInt64(GetTransactionIndexKey(tx), transactionId);
+    }
+
+    /// <summary>
     /// Called by contract owners to indicate that they accept the proposed method invocation provided via <see cref="Submit"/>.
     /// </summary>
     /// <param name="transactionId">The transactionId of the submitted multisig transaction.</param>
@@ -173,7 +225,8 @@ public class MultisigContract : SmartContract
 
         Log(new Confirmation() { Sender = Message.Sender, TransactionId = transactionId });
 
-        if (confirmationCount < Required)
+        // Only perform the call when the quorum is reached. If additional confirmations happen we want to ignore those.
+        if (confirmationCount != Required)
             return;
 
         // If there were sufficient confirmations then automatically execute the transaction.
