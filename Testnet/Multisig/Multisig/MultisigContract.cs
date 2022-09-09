@@ -225,8 +225,7 @@ public class MultisigContract : SmartContract
 
         Log(new Confirmation() { Sender = Message.Sender, TransactionId = transactionId });
 
-        // Only perform the call when the quorum is reached. If additional confirmations happen we want to ignore those.
-        if (confirmationCount != Required)
+        if (confirmationCount < Required)
             return;
 
         // If there were sufficient confirmations then automatically execute the transaction.
