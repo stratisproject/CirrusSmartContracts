@@ -167,23 +167,21 @@ public class MultisigContract : SmartContract
     {
         EnsureOwnersOnly();
 
-        Transaction tx = new Transaction()
-        {
-            Destination = destination,
-            Executed = false,
-            Value = 0,
-            MethodName = methodName,
-            Parameters = data
-        };
-
-        ulong transactionId = GetTransactionId(tx);
+        ulong transactionId = GetTransactionId(destination, methodName, data);
         if (transactionId == 0)
         {
             TransactionCount++;
             transactionId = TransactionCount;
-            State.SetStruct($"{TransactionPrefix}:{transactionId}", tx);
+            State.SetStruct($"{TransactionPrefix}:{TransactionCount}", new Transaction()
+            {
+                Destination = destination,
+                Executed = false,
+                Value = 0,
+                MethodName = methodName,
+                Parameters = data
+            });
             Log(new Submission() { TransactionId = transactionId });
-            SetTransactionId(tx, transactionId);
+            SetTransactionId(destination, methodName, data, transactionId);
         }
 
         Confirm(transactionId);
@@ -191,19 +189,19 @@ public class MultisigContract : SmartContract
         return transactionId;
     }
 
-    private string GetTransactionIndexKey(Transaction tx)
+    private string GetTransactionIndexKey(Address destination, string methodName, byte[] parameters)
     {
-        return $"{TransactionIndexPrefix}:{tx.Destination}:{tx.Value}:{tx.MethodName}:{Serializer.ToUInt256(Keccak256(tx.Parameters))}";
+        return $"{TransactionIndexPrefix}:{destination}:{methodName}:{Serializer.ToUInt256(Keccak256(parameters))}";
     }
 
-    private ulong GetTransactionId(Transaction tx)
+    public ulong GetTransactionId(Address destination, string methodName, byte[] parameters)
     {
-        return State.GetUInt64(GetTransactionIndexKey(tx));
+        return State.GetUInt64(GetTransactionIndexKey(destination, methodName, parameters));
     }
 
-    private void SetTransactionId(Transaction tx, ulong transactionId)
+    private void SetTransactionId(Address destination, string methodName, byte[] parameters, ulong transactionId)
     {
-        State.SetUInt64(GetTransactionIndexKey(tx), transactionId);
+        State.SetUInt64(GetTransactionIndexKey(destination, methodName, parameters), transactionId);
     }
 
     /// <summary>
