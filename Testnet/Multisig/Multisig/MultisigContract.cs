@@ -161,13 +161,14 @@ public class MultisigContract : SmartContract
     /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
     /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
     /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
+    /// <param name="nonce">A unique value required if multiple identical calls need to be submitted - i.e. if the parameters are not already unique. Can be an empty string otherwise.</param>
     /// <returns>The transactionId of the submitted multisig transaction.</returns>
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction. Subsequent callers provide additional confirmations only.</remarks>
-    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data)
+    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, string nonce)
     {
         EnsureOwnersOnly();
 
-        ulong transactionId = GetTransactionId(destination, methodName, data);
+        ulong transactionId = GetTransactionId(destination, methodName, data, nonce);
         if (transactionId == 0)
         {
             TransactionCount++;
@@ -181,7 +182,7 @@ public class MultisigContract : SmartContract
                 Parameters = data
             });
             Log(new Submission() { TransactionId = transactionId });
-            SetTransactionId(destination, methodName, data, transactionId);
+            SetTransactionId(destination, methodName, data, nonce, transactionId);
         }
 
         Confirm(transactionId);
@@ -189,19 +190,19 @@ public class MultisigContract : SmartContract
         return transactionId;
     }
 
-    private string GetTransactionIndexKey(Address destination, string methodName, byte[] parameters)
+    private string GetTransactionIndexKey(Address destination, string methodName, byte[] parameters, string nonce)
     {
-        return $"{TransactionIndexPrefix}:{destination}:{methodName}:{Serializer.ToUInt256(Keccak256(parameters))}";
+        return $"{TransactionIndexPrefix}:{destination}:{methodName}:{Serializer.ToUInt256(Keccak256(parameters))}:{nonce}";
     }
 
-    public ulong GetTransactionId(Address destination, string methodName, byte[] parameters)
+    public ulong GetTransactionId(Address destination, string methodName, byte[] parameters, string nonce)
     {
-        return State.GetUInt64(GetTransactionIndexKey(destination, methodName, parameters));
+        return State.GetUInt64(GetTransactionIndexKey(destination, methodName, parameters, nonce));
     }
 
-    private void SetTransactionId(Address destination, string methodName, byte[] parameters, ulong transactionId)
+    private void SetTransactionId(Address destination, string methodName, byte[] parameters, string nonce, ulong transactionId)
     {
-        State.SetUInt64(GetTransactionIndexKey(destination, methodName, parameters), transactionId);
+        State.SetUInt64(GetTransactionIndexKey(destination, methodName, parameters, nonce), transactionId);
     }
 
     /// <summary>
