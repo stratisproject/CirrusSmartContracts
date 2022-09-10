@@ -161,14 +161,14 @@ public class MultisigContract : SmartContract
     /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
     /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
     /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
-    /// <param name="nonce">A unique value required if multiple identical calls need to be submitted - i.e. if the parameters are not already unique. Can be an empty string otherwise.</param>
+    /// <param name="callCUID">A "chain unique identifier" that uniquely identifies a contract call (per-instance) on the chain. Use a unique seed to calculate a CUID for your use-case to avoid overlaps with other implementations.</param>
     /// <returns>The transactionId of the submitted multisig transaction.</returns>
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction. Subsequent callers provide additional confirmations only.</remarks>
-    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, string nonce)
+    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, UInt256 callCUID)
     {
         EnsureOwnersOnly();
 
-        ulong transactionId = GetTransactionId(destination, methodName, data, nonce);
+        ulong transactionId = GetTransactionId(callCUID);
         if (transactionId == 0)
         {
             TransactionCount++;
@@ -182,7 +182,7 @@ public class MultisigContract : SmartContract
                 Parameters = data
             });
             Log(new Submission() { TransactionId = transactionId });
-            SetTransactionId(destination, methodName, data, nonce, transactionId);
+            SetTransactionId(callCUID, transactionId);
         }
 
         Confirm(transactionId);
@@ -190,19 +190,14 @@ public class MultisigContract : SmartContract
         return transactionId;
     }
 
-    private string GetTransactionIndexKey(Address destination, string methodName, byte[] parameters, string nonce)
+    public ulong GetTransactionId(UInt256 callCUID)
     {
-        return $"{TransactionIndexPrefix}:{destination}:{methodName}:{Serializer.ToUInt256(Keccak256(parameters))}:{nonce}";
+        return State.GetUInt64($"{TransactionIndexPrefix}:{callCUID}");
     }
 
-    public ulong GetTransactionId(Address destination, string methodName, byte[] parameters, string nonce)
+    private void SetTransactionId(UInt256 callCUID, ulong transactionId)
     {
-        return State.GetUInt64(GetTransactionIndexKey(destination, methodName, parameters, nonce));
-    }
-
-    private void SetTransactionId(Address destination, string methodName, byte[] parameters, string nonce, ulong transactionId)
-    {
-        State.SetUInt64(GetTransactionIndexKey(destination, methodName, parameters, nonce), transactionId);
+        State.SetUInt64($"{TransactionIndexPrefix}:{callCUID}", transactionId);
     }
 
     /// <summary>
