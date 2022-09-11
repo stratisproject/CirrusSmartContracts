@@ -166,22 +166,11 @@ public class MultisigContract : SmartContract
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction. Subsequent callers provide additional confirmations only.</remarks>
     public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, UInt256 callCUID)
     {
-        EnsureOwnersOnly();
-
         ulong transactionId = GetTransactionId(callCUID);
+
         if (transactionId == 0)
         {
-            TransactionCount++;
-            transactionId = TransactionCount;
-            State.SetStruct($"{TransactionPrefix}:{TransactionCount}", new Transaction()
-            {
-                Destination = destination,
-                Executed = false,
-                Value = 0,
-                MethodName = methodName,
-                Parameters = data
-            });
-            Log(new Submission() { TransactionId = transactionId });
+            transactionId = Submit(destination, methodName, data);
             SetTransactionId(callCUID, transactionId);
         }
 
