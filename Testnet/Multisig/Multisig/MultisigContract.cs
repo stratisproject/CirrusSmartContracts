@@ -173,6 +173,11 @@ public class MultisigContract : SmartContract
             transactionId = Submit(destination, methodName, data);
             SetTransactionId(callCUID, transactionId);
         }
+        else
+        {
+            Transaction tx = GetTransaction(transactionId);
+            Assert(tx.Destination == destination && tx.MethodName == methodName && Keccak256(tx.Parameters) == Keccak256(data));
+        }
 
         Confirm(transactionId);
 
