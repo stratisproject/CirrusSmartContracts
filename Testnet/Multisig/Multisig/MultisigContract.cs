@@ -156,14 +156,13 @@ public class MultisigContract : SmartContract
     }
 
     /// <summary>
-    /// Submits method and parameter metadata describing a contract call that the multisig contract should invoke once enough nodes have called this method.
+    /// Either calls <see cref="Submit"/> or <see cref="Confirm"/> depending on whether it's the first or subsequent invocation for the given contract-call identified by <paramref name="callCUID"/>.
     /// </summary>
     /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
     /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
     /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
-    /// <param name="callCUID">A "chain unique identifier" that uniquely identifies a contract call (per-instance) on the chain. Use a unique seed to calculate a CUID for your use-case to avoid overlaps with other implementations.</param>
+    /// <param name="callCUID">A "chain unique identifier" that uniquely identifies the contract call. Use a unique seed to calculate a CUID for your use-case to avoid overlaps with other implementations.</param>
     /// <returns>The transactionId of the submitted multisig transaction.</returns>
-    /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction. Subsequent callers provide additional confirmations only.</remarks>
     public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, UInt256 callCUID)
     {
         ulong transactionId = GetTransactionId(callCUID);
