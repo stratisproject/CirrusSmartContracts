@@ -175,12 +175,23 @@ public class MultisigContract : SmartContract
         else
         {
             Transaction tx = GetTransaction(transactionId);
-            Assert(tx.Destination == destination && tx.MethodName == methodName && Keccak256(tx.Parameters) == Keccak256(data));
+            Assert(tx.Destination == destination && tx.MethodName == methodName && ArraysMatch(tx.Parameters, data));
+            Confirm(transactionId);
         }
 
-        Confirm(transactionId);
-
         return transactionId;
+    }
+
+    private bool ArraysMatch(byte[] arr1, byte[] arr2)
+    {
+        if (arr1.Length != arr2.Length)
+            return false;
+
+        for (int i = 0; i < arr1.Length; i++)
+            if (arr1[i] != arr2[i])
+                return false;
+
+        return true;
     }
 
     public ulong GetTransactionId(UInt256 callCUID)
