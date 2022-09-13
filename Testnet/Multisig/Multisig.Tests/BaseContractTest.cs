@@ -46,6 +46,7 @@ namespace Multisig.Tests
         protected MultisigContract CreateNewMultisigContract()
         {
             MockContractState.Setup(x => x.Message).Returns(new Message(Contract, Owner, 0));
+            MockContractState.Setup(x => x.InternalHashHelper).Returns(new InternalHashHelper());
 
             var addresses = new[] {AddressOne, AddressTwo, AddressThree};
             var bytes = Serializer.Serialize(addresses);
