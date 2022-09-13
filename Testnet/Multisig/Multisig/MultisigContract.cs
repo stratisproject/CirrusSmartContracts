@@ -135,6 +135,8 @@ public class MultisigContract : SmartContract
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction.</remarks>
     public ulong Submit(Address destination, string methodName, byte[] data)
     {
+        Assert(destination != null && methodName != null && data != null);
+
         EnsureOwnersOnly();
 
         TransactionCount++;
@@ -175,7 +177,7 @@ public class MultisigContract : SmartContract
         else
         {
             Transaction tx = GetTransaction(transactionId);
-            Assert(tx.Destination == destination && tx.MethodName == methodName && ArraysMatch(tx.Parameters, data));
+            Assert(tx.Destination == destination && tx.MethodName == methodName && data != null && ArraysMatch(tx.Parameters, data));
             Confirm(transactionId);
         }
 
