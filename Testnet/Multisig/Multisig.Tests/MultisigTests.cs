@@ -380,6 +380,27 @@ namespace Multisig.Tests
         }
 
         [Fact]
+        public void GetTransaction_AfterSufficientlyConfirmingTransaction_ReturnsExecutedTransaction2()
+        {
+            var multiSigContract = CreateNewMultisigContract();
+
+            SetupMessage(Contract, AddressOne);
+
+            var cuid = new UInt256("12345678901234567890123456789012");
+
+            ulong transactionId = multiSigContract.SubmitOrConfirm(Contract, "TestMethod", new byte[] { 0 }, cuid);
+
+            SetupMessage(Contract, AddressTwo);
+
+            multiSigContract.SubmitOrConfirm(Contract, "TestMethod", new byte[] { 0 }, cuid);
+
+            MultisigContract.Transaction result = multiSigContract.GetTransaction(transactionId);
+
+            result.Destination.Should().Be(Contract);
+            result.Executed.Should().BeTrue();
+        }
+
+        [Fact]
         public void ChangeRequirement_ByContractAddress_Succeeds()
         {
             var multiSigContract = CreateNewMultisigContract();
