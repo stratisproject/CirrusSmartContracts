@@ -11,10 +11,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
-    /// <param name="totalSupply">The total token supply.</param>
-    /// <param name="name">The name of the token.</param>
-    /// <param name="symbol">The symbol used to identify the token.</param>
-    /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
+    /// <param name="authorizationLimit">Any amounts greater or equal to this will require authorization.</param>
+    /// <param name="identityContract">The address of the identity contract.</param>
    public MintableTokenInvoice(ISmartContractState smartContractState, UInt256 authorizationLimit, Address identityContract) : base(smartContractState)
    {
         this.Owner = Message.Sender;
