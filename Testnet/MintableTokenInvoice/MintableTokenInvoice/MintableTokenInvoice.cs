@@ -68,8 +68,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
    {
         Address transactionReference = GetTransactionReference(uniqueNumber);
 
-        var invoice = RetrieveInvoice(transactionReference);
-        Assert(invoice.To != Address.Zero, "Transaction reference already exists");
+        var invoiceBytes = RetrieveInvoice(transactionReference);
+        Assert(invoiceBytes == null, "Transaction reference already exists");
 
         // KYC CHECK. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, (uint)0 /* TODO: TOPIC */ });
@@ -86,24 +86,32 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         Assert(Serializer.ToBool((byte[])result.ReturnValue), "Your KYC status is not valid.");
 
-        // Hash the transaction reference to get the invoice reference.
-        // This avoids the transaction reference being exposed in the SC state.
-        var invoiceReference = Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
-        invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
+        var invoiceReference = GetInvoiceReference(transactionReference);
+        var invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
 
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
 
         return true;
    }
 
-   /// <inheritdoc />
-   public Invoice RetrieveInvoice(Address transactionReference)
-   {
+    private UInt256 GetInvoiceReference(Address transactionReference)
+    {
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
-        var invoiceReference = Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
+        return Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
+    }
 
-        return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
+    /// <inheritdoc />
+    public byte[] RetrieveInvoice(Address transactionReference)
+   {
+        var invoiceReference = GetInvoiceReference(transactionReference);
+
+        var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
+
+        if (invoice.To == Address.Zero)
+            return null;
+
+        return Serializer.Serialize(invoice);
    }
 
     private void EnsureOwnerOnly()
@@ -115,9 +123,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        // Hash the transaction reference to get the invoice reference.
-        // This avoids the transaction reference being exposed in the SC state.
-        var invoiceReference = Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
+        var invoiceReference = GetInvoiceReference(transactionReference);
 
         State.SetBool($"Authorized:{invoiceReference}", true);
 
@@ -126,13 +132,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public bool IsAuthorized(Address transactionReference)
     {
-        Invoice invoice = RetrieveInvoice(transactionReference);
+        var invoiceReference = GetInvoiceReference(transactionReference);
+        var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
         if (invoice.Amount < AuthorizationLimit)
             return true;
-
-        // Hash the transaction reference to get the invoice reference.
-        // This avoids the transaction reference being exposed in the SC state.
-        var invoiceReference = Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
 
         return State.GetBool($"Authorized:{invoiceReference}");
     }
