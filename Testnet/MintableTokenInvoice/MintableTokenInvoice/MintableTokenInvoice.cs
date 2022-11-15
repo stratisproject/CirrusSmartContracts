@@ -14,11 +14,12 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-   public MintableTokenInvoice(ISmartContractState smartContractState) : base(smartContractState)
+   public MintableTokenInvoice(ISmartContractState smartContractState, UInt256 authorizationLimit, Address identityContract) : base(smartContractState)
    {
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
-        this.AuthorizationLimit = 0;
+        this.AuthorizationLimit = authorizationLimit;
+        this.IdentityContract = identityContract;
     }
 
     /// <inheritdoc />
@@ -38,6 +39,12 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         get => State.GetUInt256(nameof(this.AuthorizationLimit));
         private set => State.SetUInt256(nameof(this.AuthorizationLimit), value);
+    }
+
+    public Address IdentityContract
+    {
+        get => State.GetAddress(nameof(this.IdentityContract));
+        private set => State.SetAddress(nameof(this.IdentityContract), value);
     }
 
     private struct TransactionReferenceTemplate
@@ -63,8 +70,20 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         var invoice = RetrieveInvoice(transactionReference);
         Assert(invoice.To != Address.Zero, "Transaction reference already exists");
 
-        // TODO: KYC CHECK. Call Identity contract.
-        // byte[] GetClaim(Address issuedTo, uint topic)
+        // KYC CHECK. Call Identity contract.
+        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, (uint)0 /* TODO: TOPIC */ });
+        if (result?.Success ?? false)
+        {
+            Log(new Execution() { Sender = Message.Sender, TransactionReference = transactionReference });
+        }
+        else
+        {
+            Log(new ExecutionFailure() { Sender = Message.Sender, TransactionReference = transactionReference });
+
+            return false;
+        }
+
+        Assert(Serializer.ToBool((byte[])result.ReturnValue), "Your KYC status is not valid.");
 
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
@@ -126,6 +145,14 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
+    public void SetIdentityContract(Address identityContract)
+    {
+        EnsureOwnerOnly();
+
+        IdentityContract = identityContract;
+    }
+
+    /// <inheritdoc />
     public void SetNewOwner(Address address)
     {
         EnsureOwnerOnly();
@@ -162,5 +189,17 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public string Symbol;
         public UInt256 Amount;
         public Address To;
+    }
+
+    public struct Execution
+    {
+        [Index] public Address Sender;
+        [Index] public Address TransactionReference;
+    }
+
+    public struct ExecutionFailure
+    {
+        [Index] public Address Sender;
+        [Index] public Address TransactionReference;
     }
 }

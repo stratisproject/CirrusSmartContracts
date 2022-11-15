@@ -37,7 +37,7 @@ namespace MintableTokenInvoiceTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableTokenInvoice(this.mockContractState.Object);
+            var standardToken = new MintableTokenInvoice(this.mockContractState.Object, UInt256.Zero, Address.Zero);
 
             // Verify that PersistentState was called with the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.owner));
@@ -49,7 +49,7 @@ namespace MintableTokenInvoiceTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableTokenInvoice(this.mockContractState.Object);
+            var standardToken = new MintableTokenInvoice(this.mockContractState.Object, UInt256.Zero, Address.Zero);
 
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
@@ -73,7 +73,7 @@ namespace MintableTokenInvoiceTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableTokenInvoice(this.mockContractState.Object);
+            var standardToken = new MintableTokenInvoice(this.mockContractState.Object, UInt256.Zero, Address.Zero);
 
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
