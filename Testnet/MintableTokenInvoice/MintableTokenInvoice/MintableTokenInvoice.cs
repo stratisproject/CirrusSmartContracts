@@ -1,4 +1,5 @@
 ﻿using Stratis.SmartContracts;
+using System;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -57,7 +58,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         var template = new TransactionReferenceTemplate() { randomSeed = uniqueNumber, address = Message.Sender };
 
-        var transactionReference = Serializer.Serialize(template);
+        var transactionReference = Keccak256(Serializer.Serialize(template));
+
+        Array.Resize(ref transactionReference, 20);
 
         return Serializer.ToAddress(transactionReference);
     }
