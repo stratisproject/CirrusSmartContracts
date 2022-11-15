@@ -110,7 +110,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     private void EnsureOwnerOnly()
     {
-        Assert(Owner == Message.Sender, "The method can be called by only owner.");
+        Assert(Owner == Message.Sender, "Only the owner can call this method.");
     }
 
     public bool AuthorizeInvoice(Address transactionReference)
