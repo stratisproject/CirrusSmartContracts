@@ -70,48 +70,53 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return Serializer.ToAddress(transactionReference);
     }
 
-    private bool ValidateKYC(Address transactionReference)
+    private void ValidateKYC(UInt256 invoiceReference)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, KYCProvider });
-        if (result?.Success ?? false)
+        if (!(result?.Success ?? false))
         {
-            Log(new Execution() { Sender = Message.Sender, TransactionReference = transactionReference });
+            string reason = "Could not determine KYC status";
+            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Assert(false, reason);
         }
-        else
-        {
-            Log(new ExecutionFailure() { Sender = Message.Sender, TransactionReference = transactionReference });
-
-            return false;
-        }
-
-        if (result.ReturnValue == null)
-            return false;
 
         // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
         // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
-        return Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved");
+        if (result.ReturnValue == null || !Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"))
+        {
+            string reason = "Your KYC status is not valid";
+            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Assert(false, reason);
+        }
     }
 
     /// <inheritdoc />
     public bool CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
    {
         Address transactionReference = GetTransactionReference(uniqueNumber);
+        var invoiceReference = GetInvoiceReference(transactionReference);
 
         var invoiceBytes = RetrieveInvoice(transactionReference);
-        Assert(invoiceBytes == null, "Transaction reference already exists");
+        if (invoiceBytes == null)
+        {
+            string reason = "Transaction reference already exists";
+            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Assert(false, reason);
+        }
 
-        Assert(ValidateKYC(transactionReference), "Your KYC status is not valid");
+        ValidateKYC(invoiceReference);
 
-        var invoiceReference = GetInvoiceReference(transactionReference);
         var invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
 
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
 
+        Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = true });
+
         return true;
    }
 
-    private UInt256 GetInvoiceReference(Address transactionReference)
+    public UInt256 GetInvoiceReference(Address transactionReference)
     {
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
@@ -120,7 +125,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     /// <inheritdoc />
     public byte[] RetrieveInvoice(Address transactionReference)
-   {
+    {
         var invoiceReference = GetInvoiceReference(transactionReference);
 
         var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
@@ -129,7 +134,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
             return null;
 
         return Serializer.Serialize(invoice);
-   }
+    }
 
     private void EnsureOwnerOnly()
     {
@@ -232,16 +237,11 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address To;
     }
 
-    public struct Execution
+    public struct CreateInvoiceResult
     {
-        [Index] public Address Sender;
-        [Index] public Address TransactionReference;
-    }
-
-    public struct ExecutionFailure
-    {
-        [Index] public Address Sender;
-        [Index] public Address TransactionReference;
+        [Index] public UInt256 InvoiceReference;
+        public bool Success;
+        public string Reason;
     }
 
     public struct ChangeAuthorizationLimit
