@@ -70,10 +70,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return Serializer.ToAddress(transactionReference);
     }
 
-    private void ValidateKYC(UInt256 invoiceReference)
+    private void ValidateKYC(Address sender, UInt256 invoiceReference)
     {
         // KYC check. Call Identity contract.
-        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, KYCProvider });
+        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
         if (!(result?.Success ?? false))
         {
             string reason = "Could not determine KYC status";
@@ -93,7 +93,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     /// <inheritdoc />
     public bool CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
-   {
+    {
         Address transactionReference = GetTransactionReference(uniqueNumber);
         var invoiceReference = GetInvoiceReference(transactionReference);
 
@@ -105,7 +105,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
             Assert(false, reason);
         }
 
-        ValidateKYC(invoiceReference);
+        ValidateKYC(Message.Sender, invoiceReference);
 
         var invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
 
@@ -114,7 +114,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = true });
 
         return true;
-   }
+    }
 
     public UInt256 GetInvoiceReference(Address transactionReference)
     {
@@ -124,7 +124,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public byte[] RetrieveInvoice(Address transactionReference)
+    public byte[] RetrieveInvoice(Address transactionReference, bool recheckKYC)
     {
         var invoiceReference = GetInvoiceReference(transactionReference);
 
@@ -132,6 +132,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         if (invoice.To == Address.Zero)
             return null;
+
+        // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
+        if (recheckKYC)
+            ValidateKYC(invoice.To, invoiceReference);
 
         return Serializer.Serialize(invoice);
     }
