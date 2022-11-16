@@ -63,16 +63,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return Serializer.ToAddress(transactionReference);
     }
 
-    /// <inheritdoc />
-    public bool CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
-   {
-        Address transactionReference = GetTransactionReference(uniqueNumber);
-
-        var invoiceBytes = RetrieveInvoice(transactionReference);
-        Assert(invoiceBytes == null, "Transaction reference already exists");
-
+    private bool ValidateKYC(Address transactionReference)
+    {
         // KYC CHECK. Call Identity contract.
-        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, (uint)0 /* TODO: TOPIC */ });
+        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, (uint)3 /* Shufti */ });
         if (result?.Success ?? false)
         {
             Log(new Execution() { Sender = Message.Sender, TransactionReference = transactionReference });
@@ -84,7 +78,23 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
             return false;
         }
 
-        Assert(Serializer.ToBool((byte[])result.ReturnValue), "Your KYC status is not valid.");
+        if (result.ReturnValue == null)
+            return false;
+
+        var claim = Serializer.ToStruct<Claim>((byte[])result.ReturnValue);
+
+        return claim.Key == "Identity Approved" && !claim.IsRevoked;
+    }
+
+    /// <inheritdoc />
+    public bool CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
+   {
+        Address transactionReference = GetTransactionReference(uniqueNumber);
+
+        var invoiceBytes = RetrieveInvoice(transactionReference);
+        Assert(invoiceBytes == null, "Transaction reference already exists");
+
+        Assert(ValidateKYC(transactionReference), "Your KYC status is not valid");
 
         var invoiceReference = GetInvoiceReference(transactionReference);
         var invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
@@ -125,7 +135,11 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
+        var wasAuthorized = State.GetBool($"Authorized:{invoiceReference}");
+
         State.SetBool($"Authorized:{invoiceReference}", true);
+
+        Log(new Authorize() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = wasAuthorized });
 
         return true;
     }
@@ -145,6 +159,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
+        Log(new SetLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
+
         AuthorizationLimit = newLimit;
     }
 
@@ -152,6 +168,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     public void SetIdentityContract(Address identityContract)
     {
         EnsureOwnerOnly();
+
+        Log(new SetContract() { OldContract = IdentityContract, NewContract = identityContract });
 
         IdentityContract = identityContract;
     }
@@ -178,13 +196,19 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
+    public struct Claim
+    {
+        public string Key;
+        public string Description;
+        public bool IsRevoked;
+    }
+
     /// <summary>
     /// Provides a record that ownership was transferred from one account to another.
     /// </summary>
     public struct OwnershipTransferred
     {
         [Index] public Address PreviousOwner;
-
         [Index] public Address NewOwner;
     }
 
@@ -205,5 +229,24 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         [Index] public Address Sender;
         [Index] public Address TransactionReference;
+    }
+
+    public struct SetLimit
+    {
+        public UInt256 OldLimit;
+        public UInt256 NewLimit;
+    }
+
+    public struct SetContract
+    {
+        public Address OldContract;
+        public Address NewContract;
+    }
+
+    public struct Authorize
+    {
+        [Index] public UInt256 InvoiceReference;
+        public bool OldAuthorized;
+        public bool NewAuthorized;
     }
 }
