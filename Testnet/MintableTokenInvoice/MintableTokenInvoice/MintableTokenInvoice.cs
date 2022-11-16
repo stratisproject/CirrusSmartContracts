@@ -19,7 +19,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         this.NewOwner = Address.Zero;
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
-        this.KYCProvider = 3 /* Shufti */;
+        this.KYCProvider = 3 /* ClaimTopic.Shufti */;
     }
 
     /// <inheritdoc />
