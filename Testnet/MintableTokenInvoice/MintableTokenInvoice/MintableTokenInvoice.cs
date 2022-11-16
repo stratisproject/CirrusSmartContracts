@@ -77,7 +77,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         if (!(result?.Success ?? false))
         {
             string reason = "Could not determine KYC status";
-            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
             Assert(false, reason);
         }
 
@@ -86,7 +86,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         if (result.ReturnValue == null || !Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"))
         {
             string reason = "Your KYC status is not valid";
-            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
             Assert(false, reason);
         }
     }
@@ -101,7 +101,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         if (invoiceBytes == null)
         {
             string reason = "Transaction reference already exists";
-            Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
+            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
             Assert(false, reason);
         }
 
@@ -111,7 +111,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
 
-        Log(new CreateInvoiceResult() { InvoiceReference = invoiceReference, Success = true });
+        Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
 
         return true;
     }
@@ -241,7 +241,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address To;
     }
 
-    public struct CreateInvoiceResult
+    public struct InvoiceResult
     {
         [Index] public UInt256 InvoiceReference;
         public bool Success;
