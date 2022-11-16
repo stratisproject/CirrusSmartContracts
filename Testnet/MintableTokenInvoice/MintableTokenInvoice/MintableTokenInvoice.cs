@@ -97,7 +97,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Address transactionReference = GetTransactionReference(uniqueNumber);
         var invoiceReference = GetInvoiceReference(transactionReference);
 
-        var invoiceBytes = RetrieveInvoice(transactionReference);
+        var invoiceBytes = RetrieveInvoice(transactionReference, false);
         if (invoiceBytes == null)
         {
             string reason = "Transaction reference already exists";
