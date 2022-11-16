@@ -19,6 +19,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         this.NewOwner = Address.Zero;
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
+        this.KYCProvider = 3 /* Shufti */;
     }
 
     /// <inheritdoc />
@@ -46,6 +47,12 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         private set => State.SetAddress(nameof(this.IdentityContract), value);
     }
 
+    public uint KYCProvider
+    {
+        get => State.GetUInt32(nameof(KYCProvider));
+        private set => State.SetUInt32(nameof(this.KYCProvider), value);
+    }
+
     private struct TransactionReferenceTemplate
     {
         public UInt256 randomSeed;
@@ -65,8 +72,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     private bool ValidateKYC(Address transactionReference)
     {
-        // KYC CHECK. Call Identity contract.
-        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, (uint)3 /* Shufti */ });
+        // KYC check. Call Identity contract.
+        ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { Message.Sender, KYCProvider });
         if (result?.Success ?? false)
         {
             Log(new Execution() { Sender = Message.Sender, TransactionReference = transactionReference });
@@ -175,6 +182,16 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
+    public void SetKYCProvider(uint kycProvider)
+    {
+        EnsureOwnerOnly();
+
+        Log(new SetProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
+
+        KYCProvider = kycProvider;
+    }
+
+    /// <inheritdoc />
     public void SetNewOwner(Address address)
     {
         EnsureOwnerOnly();
@@ -235,6 +252,12 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         public UInt256 OldLimit;
         public UInt256 NewLimit;
+    }
+
+    public struct SetProvider
+    {
+        public uint OldProvider;
+        public uint NewProvider;
     }
 
     public struct SetContract
