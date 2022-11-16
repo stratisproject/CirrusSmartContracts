@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
     <PackageReference Include="Moq" Version="4.12.0" />
     <PackageReference Include="Stratis.Bitcoin.Features.SmartContracts" Version="0.0.6-beta" />
+    <PackageReference Include="Stratis.SmartContracts" Version="2.0.0" />
     <PackageReference Include="Stratis.SmartContracts.Networks" Version="0.0.1-beta" />
     <PackageReference Include="xunit" Version="2.4.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />

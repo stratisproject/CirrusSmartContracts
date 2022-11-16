@@ -1,10 +1,27 @@
 using Moq;
+using NBitcoin.DataEncoders;
+using Newtonsoft.Json;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
+using Stratis.SmartContracts.CLR.Serialization;
 using Xunit;
 
 namespace MintableTokenInvoiceTests
 {
+    // Claim as defined by Identity Server.
+    public class Claim
+    {
+        public Claim()
+        {
+        }
+
+        public string Key { get; set; }
+
+        public string Description { get; set; }
+
+        public bool IsRevoked { get; set; }
+    }
+
     /// <summary>
     /// These tests validate the functionality that differs between the original standard token and the extended version.
     /// </summary>
@@ -81,6 +98,24 @@ namespace MintableTokenInvoiceTests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
             Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.SetNewOwner(this.destination));
+        }
+
+        [Fact]
+        public void Can_Deserialize_Claim()
+        {
+            // First serialize the claim data as the IdentityServer would do it when calling "AddClaim".
+            var claim = new Claim() { Key = "Identity Approved", Description = "Identity Approved", IsRevoked = false };
+
+            var bytes = new ASCIIEncoder().DecodeData(JsonConvert.SerializeObject(claim));
+
+            // Can we deserialize and test the retrieved claim data from within the contract?
+            var network = new Stratis.SmartContracts.Networks.SmartContractsPoATest();
+
+            var primitiveSerializer = new ContractPrimitiveSerializer(network);
+
+            var json = primitiveSerializer.Deserialize<string>(bytes);
+
+            Assert.Contains("Identity Approved", json);
         }
     }
 }

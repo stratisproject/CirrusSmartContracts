@@ -88,9 +88,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         if (result.ReturnValue == null)
             return false;
 
-        var claim = Serializer.ToStruct<Claim>((byte[])result.ReturnValue);
-
-        return claim.Key == "Identity Approved" && !claim.IsRevoked;
+        // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
+        // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
+        return Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved");
     }
 
     /// <inheritdoc />
@@ -213,13 +213,6 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
-    public struct Claim
-    {
-        public string Key;
-        public string Description;
-        public bool IsRevoked;
-    }
-
     /// <summary>
     /// Provides a record that ownership was transferred from one account to another.
     /// </summary>
@@ -229,6 +222,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         [Index] public Address NewOwner;
     }
 
+    /// <summary>
+    /// Holds the details for the minting operation.
+    /// </summary>
     public struct Invoice
     {
         public string Symbol;
