@@ -146,7 +146,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         State.SetBool($"Authorized:{invoiceReference}", true);
 
-        Log(new Authorize() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = wasAuthorized });
+        Log(new ChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = wasAuthorized });
 
         return true;
     }
@@ -166,7 +166,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new SetLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
+        Log(new ChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
 
         AuthorizationLimit = newLimit;
     }
@@ -176,7 +176,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new SetContract() { OldContract = IdentityContract, NewContract = identityContract });
+        Log(new ChangeIdentityContract() { OldContract = IdentityContract, NewContract = identityContract });
 
         IdentityContract = identityContract;
     }
@@ -186,7 +186,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new SetProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
+        Log(new ChangeKYCProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
 
         KYCProvider = kycProvider;
     }
@@ -248,25 +248,25 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         [Index] public Address TransactionReference;
     }
 
-    public struct SetLimit
+    public struct ChangeAuthorizationLimit
     {
         public UInt256 OldLimit;
         public UInt256 NewLimit;
     }
 
-    public struct SetProvider
+    public struct ChangeKYCProvider
     {
         public uint OldProvider;
         public uint NewProvider;
     }
 
-    public struct SetContract
+    public struct ChangeIdentityContract
     {
         public Address OldContract;
         public Address NewContract;
     }
 
-    public struct Authorize
+    public struct ChangeInvoiceAuthorization
     {
         [Index] public UInt256 InvoiceReference;
         public bool OldAuthorized;
