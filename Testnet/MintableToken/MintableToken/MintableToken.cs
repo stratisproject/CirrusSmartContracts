@@ -15,8 +15,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <param name="globalSupply">The global token supply, including foreign chains.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
-    /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, UInt256 globalSupply, string name, string symbol) : base(smartContractState)
+    /// <param name="nativeChain">The blockchain name of the token's native chain.</param>
+    /// <param name="nativeAddress">The contract address of the token's native blockchain if available.</param>
+    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, UInt256 globalSupply, string name, string symbol, string nativeChain, string nativeAddress) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.GlobalSupply = globalSupply;
@@ -24,6 +25,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         this.Symbol = symbol;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
+        this.NativeChain = nativeChain;
+        this.NativeAddress = nativeAddress;
         this.Interflux = Address.Zero;
         this.Decimals = 8;
         this.SetBalance(Message.Sender, totalSupply);
@@ -74,6 +77,19 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         get => State.GetAddress(nameof(this.NewOwner));
         private set => State.SetAddress(nameof(this.NewOwner), value);
     }
+
+    public string NativeChain
+    {
+        get => State.GetString(nameof(this.NativeChain));
+        private set => State.SetString(nameof(this.NativeChain), value);
+    }
+
+    public string NativeAddress
+    {
+        get => State.GetString(nameof(this.NativeAddress));
+        private set => State.SetString(nameof(this.NativeAddress), value);
+    }
+
 
     public Address Interflux
     {
