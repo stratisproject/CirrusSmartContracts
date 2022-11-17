@@ -5,26 +5,27 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership, IMinter
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="totalSupply">The total token supply.</param>
+    /// <param name="globalSupply">The global token supply, including foreign chains.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-   public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol,
-        byte decimals) : base(smartContractState)
+    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, UInt256 globalSupply, string name, string symbol) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
+        this.GlobalSupply = globalSupply;
         this.Name = name;
         this.Symbol = symbol;
-        this.Decimals = decimals;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
-        this.Minter = Message.Sender;
+        this.Interflux = Address.Zero;
+        this.Decimals = 8;
         this.SetBalance(Message.Sender, totalSupply);
     }
 
@@ -55,6 +56,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     }
 
     /// <inheritdoc />
+    public UInt256 GlobalSupply
+    {
+        get => State.GetUInt256(nameof(this.GlobalSupply));
+        private set => State.SetUInt256(nameof(this.GlobalSupply), value);
+    }
+
+    /// <inheritdoc />
     public Address Owner
     {
         get => State.GetAddress(nameof(this.Owner));
@@ -67,10 +75,10 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         private set => State.SetAddress(nameof(this.NewOwner), value);
     }
 
-    public Address Minter
+    public Address Interflux
     {
-        get => State.GetAddress(nameof(this.Minter));
-        private set => State.SetAddress(nameof(this.Minter), value);
+        get => State.GetAddress(nameof(this.Interflux));
+        private set => State.SetAddress(nameof(this.Interflux), value);
     }
 
     /// <inheritdoc />
@@ -187,17 +195,40 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
-    public void SetMinter(Address minter)
+    public void SetInterflux(Address interflux)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
-        this.Minter = minter;
+        this.Interflux = interflux;
     }
 
     public void Mint(Address account, UInt256 amount)
     {
-        Assert(Message.Sender == Minter, "Only the minter can call this method");
+        Assert(Message.Sender == Interflux, "Only Interflux can call this method");
 
+        InternalMint(account, amount);
+    }
+
+    /// <inheritdoc />
+    public void MintWithMetadata(Address account, UInt256 amount, string metadata)
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+
+        InternalMint(account, amount);
+
+        this.GlobalSupply += amount;
+
+        Log(new GlobalSupplyChangeLog()
+        {
+            PreviousSupply = (this.GlobalSupply - amount),
+            GlobalSupply = this.GlobalSupply
+        });
+
+        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
+    }
+
+    private void InternalMint(Address account, UInt256 amount)
+    {
         UInt256 startingBalance = GetBalance(account);
 
         SetBalance(account, startingBalance + amount);
@@ -211,14 +242,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
             PreviousSupply = (this.TotalSupply - amount),
             TotalSupply = this.TotalSupply
         });
-    }
-
-    /// <inheritdoc />
-    public void MintWithMetadata(Address account, UInt256 amount, string metadata)
-    {
-        Mint(account, amount);
-
-        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
     }
 
     public bool Burn(UInt256 amount)
@@ -315,5 +338,15 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
+    }
+
+    /// <summary>
+    /// Provides a record that the global supply changed.
+    /// </summary>
+    public struct GlobalSupplyChangeLog
+    {
+        public UInt256 PreviousSupply;
+
+        public UInt256 GlobalSupply;
     }
 }
