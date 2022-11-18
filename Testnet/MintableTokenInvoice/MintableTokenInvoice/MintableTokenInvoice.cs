@@ -97,6 +97,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Address transactionReference = GetTransactionReference(uniqueNumber);
         var invoiceReference = GetInvoiceReference(transactionReference);
 
+        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
+
         var invoiceBytes = RetrieveInvoice(transactionReference, false);
         if (invoiceBytes == null)
         {
@@ -151,6 +153,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
+        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
+
         var wasAuthorized = State.GetBool($"Authorized:{invoiceReference}");
 
         State.SetBool($"Authorized:{invoiceReference}", true);
@@ -163,6 +167,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     public bool IsAuthorized(Address transactionReference)
     {
         var invoiceReference = GetInvoiceReference(transactionReference);
+
+        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
+
         var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
         if (invoice.Amount < AuthorizationLimit)
             return true;
@@ -178,6 +185,24 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Log(new ChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
 
         AuthorizationLimit = newLimit;
+    }
+
+    public void SetOutcome(Address transactionReference, string outcome)
+    {
+        EnsureOwnerOnly();
+
+        var invoiceReference = GetInvoiceReference(transactionReference);
+        State.SetString($"Outcome:{invoiceReference}", outcome);
+    }
+
+    public string GetOutcomeInternal(UInt256 invoiceReference)
+    {
+        return State.GetString($"Outcome:{invoiceReference}");
+    }
+
+    public string GetOutcome(Address transactionReference)
+    {
+        return GetOutcomeInternal(GetInvoiceReference(transactionReference));
     }
 
     /// <inheritdoc />
