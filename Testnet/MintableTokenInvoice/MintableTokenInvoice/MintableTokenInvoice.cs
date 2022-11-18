@@ -63,14 +63,27 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         var template = new TransactionReferenceTemplate() { randomSeed = uniqueNumber, address = Message.Sender };
 
-        var transactionReference = Keccak256(Serializer.Serialize(template));
+        var res = Serializer.Serialize(template);
+
+        var transactionReference = Keccak256(res);
 
         Array.Resize(ref transactionReference, 20);
 
         return Serializer.ToAddress(transactionReference);
     }
 
-    private void ValidateKYC(Address sender, UInt256 invoiceReference)
+    private Address GetInvoiceReference(Address transactionReference)
+    {
+        // Hash the transaction reference to get the invoice reference.
+        // This avoids the transaction reference being exposed in the SC state.
+        var invoiceReference = Keccak256(Serializer.Serialize(transactionReference));
+
+        Array.Resize(ref invoiceReference, 20);
+
+        return Serializer.ToAddress(invoiceReference);
+    }
+
+    private void ValidateKYC(Address sender, Address invoiceReference)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
@@ -92,9 +105,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public bool CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
+    public Address CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
     {
         Address transactionReference = GetTransactionReference(uniqueNumber);
+
         var invoiceReference = GetInvoiceReference(transactionReference);
 
         var invoice = GetInvoice(invoiceReference);
@@ -116,24 +130,17 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
 
-        return true;
+        return transactionReference;
     }
 
-    private void SetInvoice(UInt256 invoiceReference, Invoice invoice)
+    private void SetInvoice(Address invoiceReference, Invoice invoice)
     {
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
     }
 
-    private Invoice GetInvoice(UInt256 invoiceReference)
+    private Invoice GetInvoice(Address invoiceReference)
     {
         return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
-    }
-
-    public UInt256 GetInvoiceReference(Address transactionReference)
-    {
-        // Hash the transaction reference to get the invoice reference.
-        // This avoids the transaction reference being exposed in the SC state.
-        return Serializer.ToUInt256(Keccak256(Serializer.Serialize(transactionReference)));
     }
 
     /// <inheritdoc />
@@ -264,7 +271,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct InvoiceResult
     {
-        [Index] public UInt256 InvoiceReference;
+        [Index] public Address InvoiceReference;
         public bool Success;
         public string Reason;
     }
@@ -289,7 +296,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct ChangeInvoiceAuthorization
     {
-        [Index] public UInt256 InvoiceReference;
+        [Index] public Address InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
     }
