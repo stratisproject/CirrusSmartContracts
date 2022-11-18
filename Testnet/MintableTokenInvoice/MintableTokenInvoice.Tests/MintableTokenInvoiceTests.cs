@@ -4,6 +4,7 @@ using NBitcoin.DataEncoders;
 using Newtonsoft.Json;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
+using Stratis.SmartContracts.CLR.Serialization;
 using Xunit;
 
 namespace MintableTokenInvoiceTests
@@ -20,6 +21,15 @@ namespace MintableTokenInvoiceTests
         public string Description { get; set; }
 
         public bool IsRevoked { get; set; }
+    }
+
+    public struct Invoice
+    {
+        public string Symbol;
+        public UInt256 Amount;
+        public Address To;
+        public string Outcome;
+        public bool IsAuthorized;
     }
 
     /// <summary>
@@ -89,6 +99,18 @@ namespace MintableTokenInvoiceTests
             var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber);
 
             Assert.Equal("0C5EC92AA9457FCBE9F8CCC536C52B8F160A2A41", transactionReference.ToString());
+
+            var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(transactionReference, true);
+
+            var reference = Encoders.Base58.EncodeData(transactionReference.ToUint160().ToBytes());
+
+            var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
+
+            Assert.Equal(100, invoice.Amount);
+            Assert.Equal("GBPT", invoice.Symbol);
+            Assert.Equal(this.AddressOne, invoice.To);
+            Assert.True(invoice.IsAuthorized);
+            Assert.Null(invoice.Outcome);
         }
     }
 }
