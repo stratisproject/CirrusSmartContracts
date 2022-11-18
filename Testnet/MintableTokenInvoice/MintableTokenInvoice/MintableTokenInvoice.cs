@@ -97,10 +97,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Address transactionReference = GetTransactionReference(uniqueNumber);
         var invoiceReference = GetInvoiceReference(transactionReference);
 
-        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
-
-        var invoiceBytes = RetrieveInvoice(transactionReference, false);
-        if (invoiceBytes == null)
+        var invoice = GetInvoice(invoiceReference);
+        if (invoice.To != Address.Zero || !string.IsNullOrEmpty(invoice.Outcome))
         {
             string reason = "Transaction reference already exists";
             Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
@@ -109,13 +107,26 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         ValidateKYC(Message.Sender, invoiceReference);
 
-        var invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
+        invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
 
-        State.SetStruct($"Invoice:{invoiceReference}", invoice);
+        if (invoice.Amount < AuthorizationLimit)
+            invoice.IsAuthorized = true;
+
+        SetInvoice(invoiceReference, invoice);
 
         Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
 
         return true;
+    }
+
+    private void SetInvoice(UInt256 invoiceReference, Invoice invoice)
+    {
+        State.SetStruct($"Invoice:{invoiceReference}", invoice);
+    }
+
+    private Invoice GetInvoice(UInt256 invoiceReference)
+    {
+        return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
     }
 
     public UInt256 GetInvoiceReference(Address transactionReference)
@@ -130,14 +141,15 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         var invoiceReference = GetInvoiceReference(transactionReference);
 
-        var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
+        var invoice = GetInvoice(invoiceReference);
 
-        if (invoice.To == Address.Zero)
-            return null;
-
-        // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
-        if (recheckKYC)
-            ValidateKYC(invoice.To, invoiceReference);
+        // Only recheck KYC on invoices that have not yet been processed.
+        if (recheckKYC && invoice.To != null && string.IsNullOrEmpty(invoice.Outcome))
+        {
+            // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
+            if (recheckKYC)
+                ValidateKYC(invoice.To, invoiceReference);
+        }
 
         return Serializer.Serialize(invoice);
     }
@@ -153,28 +165,17 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
-        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
+        var invoice = GetInvoice(invoiceReference);
 
-        var wasAuthorized = State.GetBool($"Authorized:{invoiceReference}");
+        Assert(invoice.To != Address.Zero, "The invoice does not exist.");
+        Assert(!string.IsNullOrEmpty(invoice.Outcome), "The transaction has already been processed.");
 
-        State.SetBool($"Authorized:{invoiceReference}", true);
+        invoice.IsAuthorized = true;
+        SetInvoice(invoiceReference, invoice);
 
-        Log(new ChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = wasAuthorized });
+        Log(new ChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = invoice.IsAuthorized });
 
         return true;
-    }
-
-    public bool IsAuthorized(Address transactionReference)
-    {
-        var invoiceReference = GetInvoiceReference(transactionReference);
-
-        Assert(GetOutcomeInternal(invoiceReference) == null, "The request has already been processed.");
-
-        var invoice = State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
-        if (invoice.Amount < AuthorizationLimit)
-            return true;
-
-        return State.GetBool($"Authorized:{invoiceReference}");
     }
 
     /// <inheritdoc />
@@ -192,17 +193,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         EnsureOwnerOnly();
 
         var invoiceReference = GetInvoiceReference(transactionReference);
-        State.SetString($"Outcome:{invoiceReference}", outcome);
-    }
 
-    public string GetOutcomeInternal(UInt256 invoiceReference)
-    {
-        return State.GetString($"Outcome:{invoiceReference}");
-    }
-
-    public string GetOutcome(Address transactionReference)
-    {
-        return GetOutcomeInternal(GetInvoiceReference(transactionReference));
+        var invoice = GetInvoice(invoiceReference);
+        invoice.Outcome = outcome;
+        SetInvoice(invoiceReference, invoice);
     }
 
     /// <inheritdoc />
@@ -264,6 +258,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public string Symbol;
         public UInt256 Amount;
         public Address To;
+        public string Outcome;
+        public bool IsAuthorized;
     }
 
     public struct InvoiceResult
