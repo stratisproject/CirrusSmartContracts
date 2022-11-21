@@ -126,7 +126,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
             Assert(invoice.To != Message.Sender || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
-            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = invoice.Amount < AuthorizationLimit };
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using NBitcoin.DataEncoders;
+using NBitcoin.OpenAsset;
 using Newtonsoft.Json;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
@@ -110,6 +111,50 @@ namespace MintableTokenInvoiceTests
             Assert.Equal(this.AddressOne, invoice.To);
             Assert.True(invoice.IsAuthorized);
             Assert.Null(invoice.Outcome);
+        }
+
+
+        [Fact]
+        public void CantCreateInvoiceIfNotKYCed()
+        {
+            var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+            UInt128 uniqueNumber = 1;
+
+            this.SetupMessage(this.Contract, this.AddressOne);
+
+            this.MockInternalExecutor
+                .Setup(x => x.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<ulong>()))
+                .Returns((ISmartContractState state, Address address, ulong amount, string methodName, object[] args, ulong gasLimit) =>
+                {
+                    return null;
+                });
+
+            var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber));
+            Assert.Contains("verification", ex.Message);
+        }
+
+        [Fact]
+        public void CantCreateInvoiceIfNotAuthorized()
+        {
+            var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+            UInt128 uniqueNumber = 1;
+
+            this.SetupMessage(this.Contract, this.AddressOne);
+
+            var claim = new Claim() { Description = "Identity Approved", IsRevoked = false, Key = "Identity Approved" };
+            var claimBytes = new ASCIIEncoder().DecodeData(JsonConvert.SerializeObject(claim));
+
+            this.MockInternalExecutor
+                .Setup(x => x.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<ulong>()))
+                .Returns((ISmartContractState state, Address address, ulong amount, string methodName, object[] args, ulong gasLimit) =>
+                {
+                    return TransferResult.Transferred(claimBytes);
+                });
+
+            var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 2000, uniqueNumber));
+            Assert.Contains("authorization", ex.Message);
         }
     }
 }
