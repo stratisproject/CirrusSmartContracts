@@ -1,75 +1,87 @@
-﻿using System;
+﻿namespace MintableTokenInvoiceTests;
+
+using System;
 using Moq;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
 using Stratis.SmartContracts.CLR.Serialization;
 
-namespace MintableTokenInvoiceTests
+public class BaseContractTest
 {
-    public class BaseContractTest
+    protected Mock<ISmartContractState> MockContractState { get; private set; }
+
+    protected Mock<IContractLogger> MockContractLogger { get; private set; }
+
+    protected Mock<IInternalTransactionExecutor> MockInternalExecutor { get; private set; }
+
+    protected InMemoryState PersistentState { get; private set; }
+
+    protected ISerializer Serializer { get; private set; }
+
+    protected Address Contract { get; private set; }
+
+    protected Address Owner { get; private set; }
+
+    protected Address AddressOne { get; private set; }
+
+    protected Address AddressTwo { get; private set; }
+
+    protected Address AddressThree { get; private set; }
+
+    protected Address AddressFour { get; private set; }
+
+    protected Address AddressFive { get; private set; }
+
+    protected Address AddressSix { get; private set; }
+
+    protected Address IdentityContract { get; private set; }
+
+    protected BaseContractTest()
     {
-        private readonly Mock<ISmartContractState> MockContractState;
-        private readonly Mock<IContractLogger> MockContractLogger;
-        protected readonly Mock<IInternalTransactionExecutor> MockInternalExecutor;
-        private readonly InMemoryState PersistentState;
-        protected readonly ISerializer Serializer;
-        protected readonly Address Contract;
-        protected readonly Address Owner;
-        protected readonly Address AddressOne;
-        protected readonly Address AddressTwo;
-        protected readonly Address AddressThree;
-        protected readonly Address AddressFour;
-        protected readonly Address AddressFive;
-        protected readonly Address AddressSix;
-        protected readonly Address IdentityContract;
+        this.Serializer = new Serializer(new ContractPrimitiveSerializerV2(null)); // new SmartContractsPoARegTest()
+        this.PersistentState = new InMemoryState();
+        this.MockContractLogger = new Mock<IContractLogger>();
+        this.MockContractState = new Mock<ISmartContractState>();
+        this.MockInternalExecutor = new Mock<IInternalTransactionExecutor>();
+        this.MockContractState.Setup(x => x.PersistentState).Returns(this.PersistentState);
+        this.MockContractState.Setup(x => x.ContractLogger).Returns(this.MockContractLogger.Object);
+        this.MockContractState.Setup(x => x.InternalTransactionExecutor).Returns(this.MockInternalExecutor.Object);
+        this.MockContractState.Setup(x => x.Serializer).Returns(this.Serializer);
+        this.Contract = "0x0000000000000000000000000000000000000001".HexToAddress();
+        this.Owner = "0x0000000000000000000000000000000000000002".HexToAddress();
+        this.AddressOne = "0x0000000000000000000000000000000000000003".HexToAddress();
+        this.AddressTwo = "0x0000000000000000000000000000000000000004".HexToAddress();
+        this.AddressThree = "0x0000000000000000000000000000000000000005".HexToAddress();
+        this.AddressFour = "0x0000000000000000000000000000000000000006".HexToAddress();
+        this.AddressFive = "0x0000000000000000000000000000000000000007".HexToAddress();
+        this.AddressSix = "0x0000000000000000000000000000000000000008".HexToAddress();
+        this.IdentityContract = "0x000000000000000000000000000000000000000F".HexToAddress();
+    }
 
-        protected BaseContractTest()
-        {
-            Serializer = new Serializer(new ContractPrimitiveSerializerV2(null)); // new SmartContractsPoARegTest()
-            PersistentState = new InMemoryState();
-            MockContractLogger = new Mock<IContractLogger>();
-            MockContractState = new Mock<ISmartContractState>();
-            MockInternalExecutor = new Mock<IInternalTransactionExecutor>();
-            MockContractState.Setup(x => x.PersistentState).Returns(PersistentState);
-            MockContractState.Setup(x => x.ContractLogger).Returns(MockContractLogger.Object);
-            MockContractState.Setup(x => x.InternalTransactionExecutor).Returns(MockInternalExecutor.Object);
-            MockContractState.Setup(x => x.Serializer).Returns(Serializer);
-            Contract = "0x0000000000000000000000000000000000000001".HexToAddress();
-            Owner = "0x0000000000000000000000000000000000000002".HexToAddress();
-            AddressOne = "0x0000000000000000000000000000000000000003".HexToAddress();
-            AddressTwo = "0x0000000000000000000000000000000000000004".HexToAddress();
-            AddressThree = "0x0000000000000000000000000000000000000005".HexToAddress();
-            AddressFour = "0x0000000000000000000000000000000000000006".HexToAddress();
-            AddressFive = "0x0000000000000000000000000000000000000007".HexToAddress();
-            AddressSix = "0x0000000000000000000000000000000000000008".HexToAddress();
-            IdentityContract = "0x000000000000000000000000000000000000000F".HexToAddress();
-        }
+    protected MintableTokenInvoice CreateNewMintableTokenContract()
+    {
+        this.MockContractState.Setup(x => x.Message).Returns(new Message(this.Contract, this.Owner, 0));
+        this.MockContractState.Setup(x => x.InternalHashHelper).Returns(new InternalHashHelper());
 
-        protected MintableTokenInvoice CreateNewMintableTokenContract()
-        {
-            MockContractState.Setup(x => x.Message).Returns(new Message(Contract, Owner, 0));
-            MockContractState.Setup(x => x.InternalHashHelper).Returns(new InternalHashHelper());
+        var addresses = new[] { this.AddressOne, this.AddressTwo, this.AddressThree };
+        var bytes = this.Serializer.Serialize(addresses);
 
-            var addresses = new[] { AddressOne, AddressTwo, AddressThree };
-            var bytes = Serializer.Serialize(addresses);
-            uint required = 2;
+        return new MintableTokenInvoice(this.MockContractState.Object, 1000, this.IdentityContract);
+    }
 
-            return new MintableTokenInvoice(MockContractState.Object, 1000, IdentityContract);
-        }
+    protected void SetupMessage(Address contractAddress, Address sender, ulong value = 0)
+    {
+        this.MockContractState.Setup(x => x.Message).Returns(new Message(contractAddress, sender, value));
+    }
 
-        protected void SetupMessage(Address contractAddress, Address sender, ulong value = 0)
-        {
-            MockContractState.Setup(x => x.Message).Returns(new Message(contractAddress, sender, value));
-        }
+    protected void SetupBlock(ulong blockNumber)
+    {
+        this.MockContractState.Setup(x => x.Block.Number).Returns(blockNumber);
+    }
 
-        protected void SetupBlock(ulong blockNumber)
-        {
-            MockContractState.Setup(x => x.Block.Number).Returns(blockNumber);
-        }
-
-        protected void VerifyLog<T>(T expectedLog, Func<Times> times) where T : struct
-        {
-            MockContractLogger.Verify(x => x.Log(MockContractState.Object, expectedLog), times);
-        }
+    protected void VerifyLog<T>(T expectedLog, Func<Times> times) 
+        where T : struct
+    {
+        this.MockContractLogger.Verify(x => x.Log(this.MockContractState.Object, expectedLog), times);
     }
 }
