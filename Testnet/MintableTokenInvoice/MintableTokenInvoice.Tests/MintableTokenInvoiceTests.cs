@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
 using Stratis.SmartContracts.CLR.Serialization;
+using System;
 using Xunit;
 
 namespace MintableTokenInvoiceTests
@@ -82,7 +83,7 @@ namespace MintableTokenInvoiceTests
         {
             var mintableTokenInvoice = this.CreateNewMintableTokenContract();
 
-            UInt256 uniqueNumber = 1;
+            UInt128 uniqueNumber = 1;
 
             this.SetupMessage(this.Contract, this.AddressOne);
 
@@ -97,10 +98,11 @@ namespace MintableTokenInvoiceTests
                 });
 
             var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber);
+            var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
-            Assert.Equal("0C5EC92AA9457FCBE9F8CCC536C52B8F160A2A41", transactionReference.ToString());
+            Assert.Equal("C26D01CA652A8FE7CB11427925C35B81FAE01917", transactionReference.ToString());
 
-            var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(transactionReference, true);
+            var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
 
             var reference = Encoders.Base58.EncodeData(transactionReference.ToUint160().ToBytes());
 

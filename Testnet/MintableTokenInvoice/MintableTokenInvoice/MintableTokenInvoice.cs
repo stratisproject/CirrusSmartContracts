@@ -82,7 +82,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return Serializer.ToAddress(transactionReference);
     }
 
-    private UInt128 GetInvoiceReference(Address transactionReference)
+    public UInt128 GetInvoiceReference(Address transactionReference)
     {
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
