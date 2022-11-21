@@ -53,15 +53,25 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         private set => State.SetUInt32(nameof(this.KYCProvider), value);
     }
 
+    private void SetInvoice(UInt128 invoiceReference, Invoice invoice)
+    {
+        State.SetStruct($"Invoice:{invoiceReference}", invoice);
+    }
+
+    private Invoice GetInvoice(UInt128 invoiceReference)
+    {
+        return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
+    }
+
     private struct TransactionReferenceTemplate
     {
-        public UInt256 randomSeed;
+        public UInt128 uniqueNumber;
         public Address address;
     }
 
-    public Address GetTransactionReference(UInt256 uniqueNumber)
+    public Address GetTransactionReference(UInt128 uniqueNumber)
     {
-        var template = new TransactionReferenceTemplate() { randomSeed = uniqueNumber, address = Message.Sender };
+        var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = Message.Sender };
 
         var res = Serializer.Serialize(template);
 
@@ -72,18 +82,18 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return Serializer.ToAddress(transactionReference);
     }
 
-    private Address GetInvoiceReference(Address transactionReference)
+    private UInt128 GetInvoiceReference(Address transactionReference)
     {
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
         var invoiceReference = Keccak256(Serializer.Serialize(transactionReference));
 
-        Array.Resize(ref invoiceReference, 20);
+        Array.Resize(ref invoiceReference, 16);
 
-        return Serializer.ToAddress(invoiceReference);
+        return Serializer.ToUInt128(invoiceReference);
     }
 
-    private void ValidateKYC(Address sender, Address invoiceReference)
+    private string ValidateKYC(Address sender, UInt128 invoiceReference)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
@@ -91,7 +101,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         {
             string reason = "Could not determine KYC status";
             Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            Assert(false, reason);
+            return reason;
         }
 
         // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
@@ -100,58 +110,51 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         {
             string reason = "Your KYC status is not valid";
             Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            Assert(false, reason);
+            return reason;
         }
+
+        return string.Empty;
     }
 
     /// <inheritdoc />
-    public Address CreateInvoice(string symbol, UInt256 amount, UInt256 uniqueNumber)
+    public Address CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
     {
         Address transactionReference = GetTransactionReference(uniqueNumber);
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
+        // Ensure that this method can be called multiple times until all issues are resolved.
         var invoice = GetInvoice(invoiceReference);
-        if (invoice.To != Address.Zero || !string.IsNullOrEmpty(invoice.Outcome))
-        {
-            string reason = "Transaction reference already exists";
-            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            Assert(false, reason);
-        }
+        if (invoice.To != Address.Zero)
+            // If called with the same unique number then the details should not change.
+            Assert(invoice.To != Message.Sender || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
+        else
+            // Allow the outcome of an invoice to be set when only references have been provided.
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = invoice.Amount < AuthorizationLimit };
 
-        ValidateKYC(Message.Sender, invoiceReference);
+        // If the invoice already has an outcome then just return it.
+        Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
 
-        invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender };
-
-        if (invoice.Amount < AuthorizationLimit)
-            invoice.IsAuthorized = true;
+        string result = ValidateKYC(Message.Sender, invoiceReference);
+        Assert(string.IsNullOrEmpty(result), "Obtain KYC verification for this address and then resubmit this request.");
 
         SetInvoice(invoiceReference, invoice);
 
+        Assert(invoice.IsAuthorized, $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.");
+
         Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
 
+        // Only provide the transaction reference if all checks pass.
         return transactionReference;
     }
 
-    private void SetInvoice(Address invoiceReference, Invoice invoice)
-    {
-        State.SetStruct($"Invoice:{invoiceReference}", invoice);
-    }
-
-    private Invoice GetInvoice(Address invoiceReference)
-    {
-        return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
-    }
-
     /// <inheritdoc />
-    public byte[] RetrieveInvoice(Address transactionReference, bool recheckKYC)
+    public byte[] RetrieveInvoice(UInt128 invoiceReference, bool recheckKYC)
     {
-        var invoiceReference = GetInvoiceReference(transactionReference);
-
         var invoice = GetInvoice(invoiceReference);
 
         // Only recheck KYC on invoices that have not yet been processed.
-        if (recheckKYC && invoice.To != null && string.IsNullOrEmpty(invoice.Outcome))
+        if (recheckKYC && invoice.To != Address.Zero && string.IsNullOrEmpty(invoice.Outcome))
         {
             // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
             if (recheckKYC)
@@ -166,11 +169,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Assert(Owner == Message.Sender, "Only the owner can call this method.");
     }
 
-    public bool AuthorizeInvoice(Address transactionReference)
+    public bool AuthorizeInvoice(UInt128 invoiceReference)
     {
         EnsureOwnerOnly();
-
-        var invoiceReference = GetInvoiceReference(transactionReference);
 
         var invoice = GetInvoice(invoiceReference);
 
@@ -271,7 +272,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct InvoiceResult
     {
-        [Index] public Address InvoiceReference;
+        [Index] public UInt128 InvoiceReference;
         public bool Success;
         public string Reason;
     }
@@ -296,7 +297,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct ChangeInvoiceAuthorization
     {
-        [Index] public Address InvoiceReference;
+        [Index] public UInt128 InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
     }
