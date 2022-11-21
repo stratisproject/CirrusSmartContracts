@@ -100,12 +100,9 @@ namespace MintableTokenInvoiceTests
             var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber);
             var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
-            Assert.Equal("C26D01CA652A8FE7CB11427925C35B81FAE01917", transactionReference.ToString());
+            Assert.Equal("REF925543804354", transactionReference.ToString());
 
             var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
-
-            var reference = Encoders.Base58.EncodeData(transactionReference.ToUint160().ToBytes());
-
             var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
 
             Assert.Equal(100, invoice.Amount);

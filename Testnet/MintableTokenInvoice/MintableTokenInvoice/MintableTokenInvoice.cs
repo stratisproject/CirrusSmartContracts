@@ -53,12 +53,12 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         private set => State.SetUInt32(nameof(this.KYCProvider), value);
     }
 
-    private void SetInvoice(UInt128 invoiceReference, Invoice invoice)
+    private void SetInvoice(string invoiceReference, Invoice invoice)
     {
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
     }
 
-    private Invoice GetInvoice(UInt128 invoiceReference)
+    private Invoice GetInvoice(string invoiceReference)
     {
         return State.GetStruct<Invoice>($"Invoice:{invoiceReference}");
     }
@@ -69,7 +69,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address address;
     }
 
-    public Address GetTransactionReference(UInt128 uniqueNumber)
+    public string GetTransactionReference(UInt128 uniqueNumber)
     {
         var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = Message.Sender };
 
@@ -77,23 +77,19 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var transactionReference = Keccak256(res);
 
-        Array.Resize(ref transactionReference, 20);
-
-        return Serializer.ToAddress(transactionReference);
+        return $"REF{(Serializer.ToUInt256(transactionReference) % 1000000000000).ToString()}";
     }
 
-    public UInt128 GetInvoiceReference(Address transactionReference)
+    public string GetInvoiceReference(string transactionReference)
     {
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
         var invoiceReference = Keccak256(Serializer.Serialize(transactionReference));
 
-        Array.Resize(ref invoiceReference, 16);
-
-        return Serializer.ToUInt128(invoiceReference);
+        return $"INV{(Serializer.ToUInt256(invoiceReference) % 1000000000000).ToString()}";
     }
 
-    private string ValidateKYC(Address sender, UInt128 invoiceReference)
+    private string ValidateKYC(Address sender, string invoiceReference)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
@@ -117,9 +113,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public Address CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
+    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
     {
-        Address transactionReference = GetTransactionReference(uniqueNumber);
+        string transactionReference = GetTransactionReference(uniqueNumber);
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
@@ -149,7 +145,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public byte[] RetrieveInvoice(UInt128 invoiceReference, bool recheckKYC)
+    public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {
         var invoice = GetInvoice(invoiceReference);
 
@@ -169,7 +165,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Assert(Owner == Message.Sender, "Only the owner can call this method.");
     }
 
-    public bool AuthorizeInvoice(UInt128 invoiceReference)
+    public bool AuthorizeInvoice(string invoiceReference)
     {
         EnsureOwnerOnly();
 
@@ -196,7 +192,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         AuthorizationLimit = newLimit;
     }
 
-    public void SetOutcome(Address transactionReference, string outcome)
+    public void SetOutcome(string transactionReference, string outcome)
     {
         EnsureOwnerOnly();
 
@@ -272,7 +268,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct InvoiceResult
     {
-        [Index] public UInt128 InvoiceReference;
+        [Index] public string InvoiceReference;
         public bool Success;
         public string Reason;
     }
@@ -297,7 +293,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct ChangeInvoiceAuthorization
     {
-        [Index] public UInt128 InvoiceReference;
+        [Index] public string InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
     }
