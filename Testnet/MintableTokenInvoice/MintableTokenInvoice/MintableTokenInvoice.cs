@@ -77,7 +77,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var transactionReference = Keccak256(res);
 
-        return $"REF{(Serializer.ToUInt256(transactionReference) % 1000000000000).ToString()}";
+        return $"REF{((Serializer.ToUInt256(transactionReference) % 10000000000) * 97 + 1)}";
     }
 
     public string GetInvoiceReference(string transactionReference)
@@ -86,7 +86,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         // This avoids the transaction reference being exposed in the SC state.
         var invoiceReference = Keccak256(Serializer.Serialize(transactionReference));
 
-        return $"INV{(Serializer.ToUInt256(invoiceReference) % 1000000000000).ToString()}";
+        return $"INV{((Serializer.ToUInt256(invoiceReference) % 10000000000) * 97 + 1)}";
     }
 
     private string ValidateKYC(Address sender, string invoiceReference)
