@@ -98,7 +98,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber);
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
-        Assert.Equal("REF:5377-4902-2339", transactionReference.ToString());
+        Assert.Equal("REF-5377-4902-2339", transactionReference.ToString());
 
         var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
         var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
