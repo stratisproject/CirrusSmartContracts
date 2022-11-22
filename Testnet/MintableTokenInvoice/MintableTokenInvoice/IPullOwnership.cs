@@ -11,7 +11,7 @@ public interface IPullOwnership
     /// <summary>
     /// Assign ownership tentatively.
     /// </summary>
-    /// <param name="newOwner">The address of the new owner.</param>
+    /// <param name="address">The address of the new owner.</param>
     void SetNewOwner(Address address);
 
     /// <summary>
