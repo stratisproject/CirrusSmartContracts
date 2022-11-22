@@ -153,4 +153,33 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 2000, uniqueNumber));
         Assert.Contains("authorization", ex.Message);
     }
+
+    [Fact]
+    public void CantCreateInvoiceIfDidNotExist()
+    {
+        var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+        UInt128 uniqueNumber = 1;
+
+        var claim = new Claim() { Description = "Identity Approved", IsRevoked = false, Key = "Identity Approved" };
+        var claimBytes = new ASCIIEncoder().DecodeData(JsonConvert.SerializeObject(claim));
+
+        this.MockInternalExecutor
+            .Setup(x => x.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<ulong>()))
+            .Returns((ISmartContractState state, Address address, ulong amount, string methodName, object[] args, ulong gasLimit) =>
+            {
+                return TransferResult.Transferred(claimBytes);
+            });
+
+
+        // The minters will set this status for any payment reference that could not be processed.
+        // We don't want to process these payments at a later stage as they may get refunded.
+        mintableTokenInvoice.SetOutcome("REF-5377-4902-2339", "Payment could not be processed");
+
+        this.SetupMessage(this.Contract, this.AddressOne);
+
+        // Check that we don't "create" an invoice for a payment reference associated with an existing outcome.
+        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 200, uniqueNumber));
+        Assert.Contains("processed", ex.Message);
+    }
 }
