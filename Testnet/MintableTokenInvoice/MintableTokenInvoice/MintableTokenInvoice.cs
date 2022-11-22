@@ -69,7 +69,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address address;
     }
 
-    public string GetTransactionReference(UInt128 uniqueNumber)
+    private string GetTransactionReference(UInt128 uniqueNumber)
     {
         var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = Message.Sender };
 
@@ -86,7 +86,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         // Hash the transaction reference to get the invoice reference.
         // This avoids the transaction reference being exposed in the SC state.
         var temp = Keccak256(Serializer.Serialize(transactionReference));
-        var invoiceReference = $"{((Serializer.ToUInt256(temp) % 10000000000) * 97 + 1)}".PadLeft(12, '0');
+        var invoiceReference = $"{((Serializer.ToUInt256(temp) % 10000000000) * 97 + 42)}".PadLeft(12, '0');
 
         return $"INV-{invoiceReference.Substring(0, 4)}-{invoiceReference.Substring(4, 4)}-{invoiceReference.Substring(8, 4)}";
     }

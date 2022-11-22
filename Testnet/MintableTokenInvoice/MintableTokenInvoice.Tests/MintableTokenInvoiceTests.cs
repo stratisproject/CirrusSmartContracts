@@ -98,7 +98,15 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber);
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
+        Assert.Equal("INV-1760-4750-2039", invoiceReference.ToString());
+
+        // 42 is checksum for INV numbers.
+        Assert.Equal(42UL, ulong.Parse(invoiceReference.Replace("-", string.Empty)[3..]) % 97);
+
         Assert.Equal("REF-5377-4902-2339", transactionReference.ToString());
+
+        // 1 is checksum for REF numbers.
+        Assert.Equal(1UL, ulong.Parse(transactionReference.Replace("-", string.Empty)[3..]) % 97);
 
         var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
         var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
@@ -181,5 +189,35 @@ public class MintableTokenInvoiceTests : BaseContractTest
         // Check that we don't "create" an invoice for a payment reference associated with an existing outcome.
         var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 200, uniqueNumber));
         Assert.Contains("processed", ex.Message);
+    }
+
+    [Fact]
+    public void CanSetIdentityContract()
+    {
+        var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+        mintableTokenInvoice.SetIdentityContract(this.Contract);
+
+        Assert.Equal(this.Contract, mintableTokenInvoice.IdentityContract);
+    }
+
+    [Fact]
+    public void CanSetKYCProvider()
+    {
+        var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+        mintableTokenInvoice.SetKYCProvider(2);
+
+        Assert.Equal((uint)2, mintableTokenInvoice.KYCProvider);
+    }
+
+    [Fact]
+    public void CanSetAuthorizationLimit()
+    {
+        var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+        mintableTokenInvoice.SetAuthorizationLimit(300);
+
+        Assert.Equal((UInt256)300, mintableTokenInvoice.AuthorizationLimit);
     }
 }
