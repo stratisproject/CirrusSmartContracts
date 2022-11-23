@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership, IBlackList
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -111,6 +111,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public bool TransferTo(Address to, UInt256 amount)
     {
+        Assert(!GetBlackListed(Message.Sender));
+
         if (amount == 0)
         {
             Log(new TransferLog { From = Message.Sender, To = to, Amount = 0 });
@@ -137,6 +139,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
+        Assert(!GetBlackListed(from));
+
         if (amount == 0)
         {
             Log(new TransferLog { From = from, To = to, Amount = 0 });
@@ -161,6 +165,56 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Log(new TransferLog { From = from, To = to, Amount = amount });
 
         return true;
+    }
+
+    private void OnlyOwner()
+    {
+        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+    }
+
+    public void AddBlackList(Address address)
+    {
+        OnlyOwner();
+
+        SetBlackListed(address, true);
+
+        Log(new AddedBlackListLog() { BlackListedUser = address });
+    }
+
+    public void RemoveBlackList(Address address)
+    {
+        OnlyOwner();
+
+        SetBlackListed(address, false);
+
+        Log(new RemovedBlackListLog() { BlackListedUser = address });
+    }
+
+    public void DestroyBlackFunds(Address address)
+    {
+        OnlyOwner();
+
+        Assert(GetBlackListed(address));
+
+        UInt256 dirtyFunds = GetBalance(address);
+        SetBalance(address, UInt256.Zero);
+        TotalSupply -= dirtyFunds;
+        GlobalSupply -= dirtyFunds;
+
+        Log(new DestroyBlackFundsLog() { BlackListedUser = address, DirtyFunds = dirtyFunds });
+    }
+
+    private void SetBlackListed(Address address, bool blackList)
+    {
+        if (!blackList)
+            State.Clear($"Blacklisted:{address}");
+        else
+            State.SetBool($"Blacklisted:{address}", blackList);
+    }
+
+    private bool GetBlackListed(Address address)
+    {
+        return State.GetBool($"Blacklisted:{address}");
     }
 
     /// <inheritdoc />
@@ -192,7 +246,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void SetNewOwner(Address address)
     {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
+        OnlyOwner();
 
         NewOwner = address;
     }
@@ -213,7 +267,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     public void SetInterflux(Address interflux)
     {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
+        OnlyOwner();
 
         this.Interflux = interflux;
     }
@@ -364,5 +418,22 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public UInt256 PreviousSupply;
 
         public UInt256 GlobalSupply;
+    }
+
+    public struct AddedBlackListLog
+    {
+        [Index] public Address BlackListedUser;
+    }
+
+    public struct RemovedBlackListLog
+    {
+        [Index] public Address BlackListedUser;
+    }
+
+    public struct DestroyBlackFundsLog
+    {
+        [Index] public Address BlackListedUser;
+
+        public UInt256 DirtyFunds;
     }
 }
