@@ -12,15 +12,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="totalSupply">The total token supply.</param>
-    /// <param name="globalSupply">The global token supply, including foreign chains.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="nativeChain">The blockchain name of the token's native chain.</param>
     /// <param name="nativeAddress">The contract address of the token's native blockchain if available.</param>
-    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, UInt256 globalSupply, string name, string symbol, string nativeChain, string nativeAddress) : base(smartContractState)
+    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol, string nativeChain, string nativeAddress) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
-        this.GlobalSupply = globalSupply;
         this.Name = name;
         this.Symbol = symbol;
         this.Owner = Message.Sender;
@@ -56,13 +54,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         get => State.GetUInt256(nameof(this.TotalSupply));
         private set => State.SetUInt256(nameof(this.TotalSupply), value);
-    }
-
-    /// <inheritdoc />
-    public UInt256 GlobalSupply
-    {
-        get => State.GetUInt256(nameof(this.GlobalSupply));
-        private set => State.SetUInt256(nameof(this.GlobalSupply), value);
     }
 
     /// <inheritdoc />
@@ -199,7 +190,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         UInt256 dirtyFunds = GetBalance(address);
         SetBalance(address, UInt256.Zero);
         TotalSupply -= dirtyFunds;
-        GlobalSupply -= dirtyFunds;
 
         Log(new DestroyBlackFundsLog() { BlackListedUser = address, DirtyFunds = dirtyFunds });
     }
@@ -285,14 +275,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
         InternalMint(account, amount);
-
-        this.GlobalSupply += amount;
-
-        Log(new GlobalSupplyChangeLog()
-        {
-            PreviousSupply = (this.GlobalSupply - amount),
-            GlobalSupply = this.GlobalSupply
-        });
 
         Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
     }
@@ -408,16 +390,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
-    }
-
-    /// <summary>
-    /// Provides a record that the global supply changed.
-    /// </summary>
-    public struct GlobalSupplyChangeLog
-    {
-        public UInt256 PreviousSupply;
-
-        public UInt256 GlobalSupply;
     }
 
     public struct AddedBlackListLog
