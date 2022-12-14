@@ -25,7 +25,7 @@ public class IdentityProvider : SmartContract
 
     private void EnsureOwnerOnly()
     {
-        Assert(Owner == Message.Sender,"The method can be called by only owner.");
+        Assert(Owner == Message.Sender,"The method can be called only by owner.");
     }
 
     public void AddClaim(Address issuedTo, uint topic, byte[] data)
