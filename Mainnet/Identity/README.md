@@ -5,7 +5,7 @@ Identity contract that enables decentralised claim management for users
 ```
 **Compiler Version**
 ```
-ontrac
+v2.0.0
 ```
 **Contract Hash**
 ```
