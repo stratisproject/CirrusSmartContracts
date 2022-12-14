@@ -2,14 +2,20 @@
 
 /// <summary>
 /// A constrained version of ERC780.
-/// contract only holds claims from one identity provider, the "Owner".
+/// This contract only holds claims from one identity provider, the "Owner".
 /// </summary>
 public class IdentityProvider : SmartContract
 {
     private Address Owner
     {
-        get => State.GetAddress(nameof(Owner));
-        set => State.SetAddress(nameof(Owner), value);
+        get
+        {
+            return this.PersistentState.GetAddress(nameof(Owner));
+        }
+        set
+        {
+            this.PersistentState.SetAddress(nameof(Owner), value);
+        }
     }
 
     public IdentityProvider(ISmartContractState state) : base(state)
@@ -19,47 +25,57 @@ public class IdentityProvider : SmartContract
 
     public void ChangeOwner(Address newOwner)
     {
-        EnsureOwnerOnly();
-        Owner = newOwner;
-    }
-
-    private void EnsureOwnerOnly()
-    {
-        Assert(Owner == Message.Sender,"The method can be called by only owner.");
+        Assert(this.Owner == Message.Sender);
+        this.Owner = newOwner;
     }
 
     public void AddClaim(Address issuedTo, uint topic, byte[] data)
     {
-        EnsureOwnerOnly();
+        Assert(this.Owner == Message.Sender);
 
-        byte[] oldData = GetClaim(issuedTo, topic);
+        byte[] oldData = this.GetClaim(issuedTo, topic);
+        bool exists = oldData != null;
 
-        SetClaim(issuedTo, topic, data);
+        // This exact claim value is stored already. Nothing to change.
+        if (exists && ByteArrayCompare(oldData, data))
+            return;
 
-        Log(new ClaimChanged
+        this.SetClaim(issuedTo, topic, data);
+
+        if (exists)
         {
-            IssuedTo = issuedTo,
-            Topic = topic,
-            Data = data,
-            OldData = oldData
-        });
+            this.Log(new ClaimChanged
+            {
+                IssuedTo = issuedTo,
+                Topic = topic,
+                Data = data
+            });
+        }
+        else
+        {
+            this.Log(new ClaimAdded
+            {
+                IssuedTo = issuedTo,
+                Topic = topic,
+                Data = data
+            });
+        }
     }
 
     public void RemoveClaim(Address issuedTo, uint topic)
     {
-        EnsureOwnerOnly();
+        Assert(this.Owner == Message.Sender);
 
         // Nothing to delete.
-        byte[] oldData = GetClaim(issuedTo, topic);
-
-        if (oldData.Length == 0)
+        byte[] oldData = this.GetClaim(issuedTo, topic);
+        if (oldData == null)
         {
             return;
         }
 
-        ClearClaim(issuedTo, topic);
+        this.PersistentState.Clear($"Claim[{issuedTo}][{topic}]");
 
-        Log(new ClaimRemoved
+        this.Log(new ClaimRemoved
         {
             IssuedTo = issuedTo,
             Topic = topic,
@@ -69,19 +85,40 @@ public class IdentityProvider : SmartContract
 
     public byte[] GetClaim(Address issuedTo, uint topic)
     {
-        return State.GetBytes($"Claim[{issuedTo}][{topic}]");
+        return this.PersistentState.GetBytes($"Claim[{issuedTo}][{topic}]");
     }
 
     private void SetClaim(Address issuedTo, uint topic, byte[] data)
     {
-        State.SetBytes($"Claim[{issuedTo}][{topic}]", data);
+        this.PersistentState.SetBytes($"Claim[{issuedTo}][{topic}]", data);
     }
 
-    private void ClearClaim(Address issuedTo, uint topic)
+    #region Utils
+
+    static bool ByteArrayCompare(byte[] a1, byte[] a2)
     {
-        State.Clear($"Claim[{issuedTo}][{topic}]");
+        if (a1.Length != a2.Length)
+            return false;
+
+        for (int i = 0; i < a1.Length; i++)
+            if (a1[i] != a2[i])
+                return false;
+
+        return true;
     }
+
+    #endregion
+
     #region Events
+
+    public struct ClaimAdded
+    {
+        [Index]
+        public Address IssuedTo;
+        [Index]
+        public uint Topic;
+        public byte[] Data;
+    }
 
     public struct ClaimRemoved
     {
@@ -99,8 +136,8 @@ public class IdentityProvider : SmartContract
         [Index]
         public uint Topic;
         public byte[] Data;
-        public byte[] OldData;
     }
+
 
     #endregion
 }
