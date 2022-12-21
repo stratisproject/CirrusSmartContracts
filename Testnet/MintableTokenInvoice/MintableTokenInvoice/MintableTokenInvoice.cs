@@ -1,5 +1,5 @@
 ﻿using Stratis.SmartContracts;
-using System;
+using Stratis.SCL.Crypto;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -69,9 +69,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address address;
     }
 
-    private string GetTransactionReference(UInt128 uniqueNumber)
+    private string GetTransactionReference(UInt128 uniqueNumber, Address address)
     {
-        var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = Message.Sender };
+        var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = address };
 
         var res = Serializer.Serialize(template);
 
@@ -91,33 +91,28 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return $"INV-{invoiceReference.Substring(0, 4)}-{invoiceReference.Substring(4, 4)}-{invoiceReference.Substring(8, 4)}";
     }
 
-    private string ValidateKYC(Address sender, string invoiceReference)
+    private string ValidateKYC(Address sender)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
         if (!(result?.Success ?? false))
         {
-            string reason = "Could not determine KYC status";
-            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            return reason;
+            return "Could not determine KYC status";
         }
 
         // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
         // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
         if (result.ReturnValue == null || !Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"))
         {
-            string reason = "Your KYC status is not valid";
-            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            return reason;
+            return "Your KYC status is not valid";
         }
 
         return string.Empty;
     }
 
-    /// <inheritdoc />
-    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
+    private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber)
     {
-        string transactionReference = GetTransactionReference(uniqueNumber);
+        string transactionReference = GetTransactionReference(uniqueNumber, address);
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
@@ -125,15 +120,15 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         var invoice = GetInvoice(invoiceReference);
         if (invoice.To != Address.Zero)
             // If called with the same unique number then the details should not change.
-            Assert(invoice.To != Message.Sender || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
+            Assert(invoice.To != address || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
-            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = address, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
 
-        string result = ValidateKYC(Message.Sender, invoiceReference);
+        string result = ValidateKYC(address);
         Assert(string.IsNullOrEmpty(result), "Obtain KYC verification for this address and then resubmit this request.");
 
         SetInvoice(invoiceReference, invoice);
@@ -147,6 +142,30 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
+    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
+    {
+        return CreateInvoiceInternal(Message.Sender, symbol, amount, uniqueNumber);
+    }
+
+    private struct SignatureTemplate
+    {
+        public UInt128 uniqueNumber;
+        public Address address;
+        public string symbol;
+        public UInt256 amount;
+    }
+
+    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, byte[] signature)
+    {
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, address = address, amount = amount, symbol = symbol };
+        var res = Serializer.Serialize(template);
+        Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
+        Assert(signer == address, "Invalid signature.");
+
+        return CreateInvoiceInternal(address, symbol, amount, uniqueNumber);
+    }
+
+    /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {
         var invoice = GetInvoice(invoiceReference);
@@ -156,7 +175,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         {
             // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
             if (recheckKYC)
-                ValidateKYC(invoice.To, invoiceReference);
+                ValidateKYC(invoice.To);
         }
 
         return Serializer.Serialize(invoice);

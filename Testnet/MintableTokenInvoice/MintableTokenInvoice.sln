@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintableTokenInvoice", "Min
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintableTokenInvoice.Tests", "MintableTokenInvoice.Tests\MintableTokenInvoice.Tests.csproj", "{9F6CE3D7-0AD9-425E-8EDE-998F4CAF3716}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stratis.SmartContracts.CLR", "..\..\..\StratisFullNode-1\src\Stratis.SmartContracts.CLR\Stratis.SmartContracts.CLR.csproj", "{1966EF54-4233-41F6-986C-190194ED5B52}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{9F6CE3D7-0AD9-425E-8EDE-998F4CAF3716}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F6CE3D7-0AD9-425E-8EDE-998F4CAF3716}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F6CE3D7-0AD9-425E-8EDE-998F4CAF3716}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1966EF54-4233-41F6-986C-190194ED5B52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1966EF54-4233-41F6-986C-190194ED5B52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1966EF54-4233-41F6-986C-190194ED5B52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1966EF54-4233-41F6-986C-190194ED5B52}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
