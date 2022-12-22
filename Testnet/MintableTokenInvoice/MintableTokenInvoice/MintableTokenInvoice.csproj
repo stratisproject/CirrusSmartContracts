@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\StratisFullNode-1\src\Stratis.SmartContracts.CLR\Stratis.SmartContracts.CLR.csproj" />
+    <ProjectReference Include="..\..\..\..\StratisFullNode-1\src\Stratis.SCL\Stratis.SCL.csproj" />
   </ItemGroup>
 
 </Project>
