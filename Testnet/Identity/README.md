@@ -1,6 +1,6 @@
 ﻿# Identity Contract
 
-Identity contract that enables decentralised claim management for users
+Identity contract that enables decentralised claim management for users.
 It is a version of ERC 780 for claim management on the Stratis Platform. Particularly it is like a KYC claim to validate the identity of an individual whether he/she owns a given address.
 
 **Compiler Version**
@@ -20,7 +20,7 @@ v2.0.0
 
 Parameters are not required to deploy this contract.
 The address used to deploy the contract on the blockchain becomes the owner of the contract. The owner will get special privileges. 
-- Owner can change the ownership to another
+- Owner can change the ownership to another address
 - Owner can Add a Claim on the Blockchain
 - Owner can remove the claim
 
