@@ -26,6 +26,7 @@ Parameter required:
 - `String Symbol`: The symbol of the token that is used to identify the token
 
 - `Byte Decimal`: The amount of decimals for display and calculation purposes
+
 Once deployed, the Address used to create the contract will be assigned to the total token supply.
 
 **TransferTo**
