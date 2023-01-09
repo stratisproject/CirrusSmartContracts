@@ -45,8 +45,8 @@ The owner of the contract can change the ownership of the contract to another ad
 
 **GetPrimaryAddress**
 
-`GetPrimaryAddress` method gives the primary address based on the supplied secondary address. This method call requires secondary address to be passed as parameter in the method call.
+The `GetPrimaryAddress` method gives the primary address based on the supplied secondary address. This method call requires secondary address to be passed as parameter in the method call.
 
 **GetSecondaryAddress**
 
-`GetSecondaryAddress` method gives mapped secondary address. This method call must supply the primary address.
+The `GetSecondaryAddress` method gives mapped secondary address. This method call must supply the primary address.
