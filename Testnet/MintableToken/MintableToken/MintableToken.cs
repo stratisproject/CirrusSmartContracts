@@ -160,7 +160,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     private void OnlyOwner()
     {
-        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
     }
 
     public void AddBlackList(Address address)
