@@ -260,3 +260,6 @@ paket-files/
 __pycache__/
 *.pyc
 Testnet/AddressMapper/readme.ps1
+
+# macOS
+.DS_Store
