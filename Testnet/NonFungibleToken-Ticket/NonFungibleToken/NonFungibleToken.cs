@@ -95,6 +95,20 @@ public class NonFungibleToken : SmartContract
     private void SetOwnerToOperator(Address owner, Address operatorAddress, bool value) => State.SetBool($"OwnerToOperator:{owner}:{operatorAddress}", value);
 
     /// <summary>
+    /// Gets IsUsed state for the token.
+    /// </summary>
+    /// <param name="tokenId">Token ID.</param>
+    /// <returns>A value indicating if the ticket token was marked as used or not.</returns>
+    private bool GetIsUsed(UInt256 tokenId) => State.GetBool($"IsUsed:{tokenId}");
+
+    /// <summary>
+    /// Sets IsUsed state for the token.
+    /// </summary>
+    /// <param name="tokenId">Token ID.</param>
+    /// <param name="value">New value indicating was ticket used or not.</param>
+    private void SetIsUsed(UInt256 tokenId, bool value) => State.SetBool($"IsUsed:{tokenId}", value);
+
+    /// <summary>
     /// Owner of the contract is responsible to for minting/burning 
     /// </summary>
     public Address Owner
@@ -168,7 +182,8 @@ public class NonFungibleToken : SmartContract
     /// <param name="tokenId">Ticket ID</param>
     public void MarkAsUsed(UInt256 tokenId)
     {
-        State.SetBool($"IsUsed:{tokenId}", true);
+        EnsureOwnerOnly();
+        this.SetIsUsed(tokenId, true);
     }
 
     /// <summary>
@@ -178,7 +193,7 @@ public class NonFungibleToken : SmartContract
     /// <returns></returns>
     public bool IsUsed(UInt256 tokenId)
     {
-        return State.GetBool($"IsUsed:{tokenId}");
+        return this.GetIsUsed(tokenId);
     }
 
     /// <summary>
