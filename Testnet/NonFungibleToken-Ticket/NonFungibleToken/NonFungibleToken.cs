@@ -184,6 +184,7 @@ public class NonFungibleToken : SmartContract
     {
         EnsureOwnerOnly();
         this.SetIsUsed(tokenId, true);
+        this.LogMarkAsUsed(tokenId);
     }
 
     /// <summary>
@@ -446,6 +447,14 @@ public class NonFungibleToken : SmartContract
         Log(new ApprovalForAllLog() { Owner = owner, Operator = operatorAddress, Approved = approved });
     }
 
+    /// <summary>
+    /// This logs when the token was marked as used.
+    /// </summary>
+    /// <param name="tokenId">Ticket ID.</param>
+    private void LogMarkAsUsed(UInt256 tokenId)
+    {
+        Log(new MarkAsUsedLog() { TokenId = tokenId });
+    }
 
     /// <summary>
     /// Guarantees that the <see cref="Message.Sender"/> is an owner or operator of the given NFT.
@@ -650,4 +659,9 @@ public class NonFungibleToken : SmartContract
         public Address PendingOwner;
     }
 
+    public struct MarkAsUsedLog
+    {
+        [Index]
+        public UInt256 TokenId;
+    }
 }
