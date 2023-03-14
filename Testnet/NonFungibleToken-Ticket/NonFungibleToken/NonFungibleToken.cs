@@ -183,8 +183,8 @@ public class NonFungibleToken : SmartContract
     public void MarkAsUsed(UInt256 tokenId)
     {
         EnsureOwnerOnly();
-        this.SetIsUsed(tokenId, true);
-        this.LogMarkAsUsed(tokenId);
+        SetIsUsed(tokenId, true);
+        LogMarkAsUsed(tokenId);
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public class NonFungibleToken : SmartContract
     /// <returns></returns>
     public bool IsUsed(UInt256 tokenId)
     {
-        return this.GetIsUsed(tokenId);
+        return GetIsUsed(tokenId);
     }
 
     /// <summary>
