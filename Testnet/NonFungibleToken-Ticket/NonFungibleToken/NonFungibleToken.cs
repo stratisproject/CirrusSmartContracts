@@ -450,7 +450,7 @@ public class NonFungibleToken : SmartContract
     /// <summary>
     /// This logs when the token was marked as used.
     /// </summary>
-    /// <param name="tokenId">Ticket ID.</param>
+    /// <param name="tokenId">Token ID.</param>
     private void LogMarkAsUsed(UInt256 tokenId)
     {
         Log(new MarkAsUsedLog() { TokenId = tokenId });
