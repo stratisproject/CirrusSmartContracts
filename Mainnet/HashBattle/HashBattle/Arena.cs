@@ -11,6 +11,7 @@ public class Arena : SmartContract
     : base(smartContractState)
     {
         BattleOwner = Message.Sender;
+        NextBattleId = 1;
     }
 
     /// <summary>
@@ -22,34 +23,74 @@ public class Arena : SmartContract
         set => PersistentState.SetAddress(nameof(BattleOwner), value);
     }
 
+    public Address PendingBattleOwner
+    {
+        get => PersistentState.GetAddress(nameof(PendingBattleOwner));
+        private set => PersistentState.SetAddress(nameof(PendingBattleOwner), value);
+    }
+
+    public void SetPendingBattleOwnership(Address pendingBattleOwner)
+    {
+        Assert(Message.Sender == BattleOwner, "UNAUTHORIZED");
+
+        PendingBattleOwner = pendingBattleOwner;
+
+        Log(new SetPendingDeployerOwnershipLog { From = Message.Sender, To = pendingBattleOwner });
+    }
+
+    public void ClaimPendingbattleOwnership()
+    {
+        var pendingBattleOwner = PendingBattleOwner;
+
+        Assert(Message.Sender == pendingBattleOwner, "UNAUTHORIZED");
+
+        var oldOwner = BattleOwner;
+
+        BattleOwner = pendingBattleOwner;
+        PendingBattleOwner = Address.Zero;
+
+        Log(new ClaimPendingDeployerOwnershipLog { From = oldOwner, To = pendingBattleOwner });
+    }
+
+    /// <summary>
+    /// Set the unique battleid of each battle
+    /// </summary>
+    public ulong NextBattleId
+    {
+        get => PersistentState.GetUInt64(ArenaStateKeys.NextBattleId);
+        private set => PersistentState.SetUInt64(ArenaStateKeys.NextBattleId, value);
+    }
+
     /// <summary>
     /// Battle owner will start the battle
     /// </summary>
-    public bool StartBattle(ulong battleId, ulong fee)
+    public ulong StartBattle(ulong fee)
     {
         Assert(Message.Sender == BattleOwner, "Only battle owner can start game.");
 
+        ulong battleId = NextBattleId;
+        NextBattleId += 1;
+
         var battle = new BattleMain();
         battle.BattleId = battleId;
-        battle.MaxUsers = 4;
         battle.Fee = fee;
-        battle.Users = new Address[battle.MaxUsers];
+        battle.Users = new Address[MaxUsers];
         SetBattle(battleId, battle);
 
-        Log(battle);
-        return true;
+        Log(new BattleEventLog { Event = "Start", BattleId = battleId, Address = Message.Sender });
+        return battleId;
     }
 
     /// <summary>
     /// 4 different user will enter the battle
     /// </summary>
-    public bool EnterBattle(ulong battleId, uint userindex)
+    public void EnterBattle(ulong battleId)
     {
         var battle = GetBattle(battleId);
 
         Assert(battle.Winner == Address.Zero, "Battle ended.");
 
-        Assert(battle.Fee == Message.Value, "Battle amount is not matching.");
+        Assert(battle.Fee == Message.Value, "Battle fee is not matching with entry fee paid.");
 
         var user = GetUser(battleId, Message.Sender);
 
@@ -59,17 +100,19 @@ public class Arena : SmartContract
 
         SetUser(battleId, Message.Sender, user);
 
+        uint userindex = GetUserIndex(battleId);
         battle.Users.SetValue(user.Address, userindex);
+        SetUserIndex(battleId, (userindex + 1));
+
         SetBattle(battleId, battle);
 
-        Log(battle);
-        return true;
+        Log(new BattleEventLog { Event = "Enter", BattleId = battleId, Address = Message.Sender });
     }
 
     /// <summary>
     /// 4 different user will end the battle and submit the score
     /// </summary>
-    public bool EndBattle(Address userAddress, ulong battleId, uint score, bool IsBattleOver)
+    public void EndBattle(Address userAddress, ulong battleId, uint score)
     {
         Assert(Message.Sender == BattleOwner, "Only battle owner can end game.");
 
@@ -86,11 +129,13 @@ public class Arena : SmartContract
 
         SetUser(battleId, userAddress, user);
 
-        if (IsBattleOver)
+        uint ScoreSubmittedCount = GetScoreSubmittedCount(battleId);
+        ScoreSubmittedCount += 1;
+        if (ScoreSubmittedCount == MaxUsers)
             ProcessWinner(battle);
 
-        Log(user);
-        return true;
+        SetScoreSubmittedCount(battleId, ScoreSubmittedCount);
+        Log(new BattleEventLog { Event = "End", BattleId = battleId, Address = Message.Sender });
     }
 
     /// <summary>
@@ -99,7 +144,6 @@ public class Arena : SmartContract
     public Address GetWinner(ulong battleId)
     {
         var battle = GetBattle(battleId);
-        Log(battle);
         return battle.Winner;
     }
 
@@ -108,22 +152,10 @@ public class Arena : SmartContract
     /// </summary>
     private void ProcessWinner(BattleMain battle)
     {
-        if (battle.Users.Length <= 4)
-        {
-            foreach (Address userAddress in battle.Users)
-            {
-                var user = GetUser(battle.BattleId, userAddress);
-                if (!user.ScoreSubmitted)
-                    return;
-            }
-        }
         uint winnerIndex = GetWinnerIndex(battle.BattleId, battle.Users);
-        if (battle.Winner == Address.Zero)
-        {
-            battle.Winner = battle.Users[winnerIndex];
-            SetBattle(battle.BattleId, battle);
-            ProcessPrize(battle.BattleId);
-        }
+        battle.Winner = battle.Users[winnerIndex];
+        SetBattle(battle.BattleId, battle);
+        ProcessPrize(battle.BattleId);
     }
 
     /// <summary>
@@ -151,44 +183,75 @@ public class Arena : SmartContract
     private void ProcessPrize(ulong battleid)
     {
         var battle = GetBattle(battleid);
-        ulong prize = battle.Fee * (battle.MaxUsers - 1);
+        ulong prize = battle.Fee * (MaxUsers - 1);
         Transfer(battle.Winner, prize);
         Transfer(BattleOwner, battle.Fee);
     }
-
     private void SetUser(ulong battleid, Address address, BattleUser user)
     {
         PersistentState.SetStruct($"user:{battleid}:{address}", user);
     }
-
     private BattleUser GetUser(ulong battleid, Address address)
     {
         return PersistentState.GetStruct<BattleUser>($"user:{battleid}:{address}");
     }
-
     private void SetBattle(ulong battleid, BattleMain battle)
     {
         PersistentState.SetStruct($"battle:{battleid}", battle);
     }
-
     private BattleMain GetBattle(ulong battleid)
     {
         return PersistentState.GetStruct<BattleMain>($"battle:{battleid}");
     }
+    private void SetUserIndex(ulong battleid, uint userindex)
+    {
+        PersistentState.SetUInt32($"user:{battleid}", userindex);
+    }
+    private uint GetUserIndex(ulong battleid)
+    {
+        return PersistentState.GetUInt32($"user:{battleid}");
+    }
+    private void SetScoreSubmittedCount(ulong battleid, uint scoresubmitcount)
+    {
+        PersistentState.SetUInt32($"scoresubmit:{battleid}", scoresubmitcount);
+    }
+    private uint GetScoreSubmittedCount(ulong battleid)
+    {
+        return PersistentState.GetUInt32($"scoresubmit:{battleid}");
+    }
 
+    private const uint MaxUsers = 4;
     public struct BattleMain
     {
         public ulong BattleId;
         public Address Winner;
         public Address[] Users;
-        public uint MaxUsers;
         public ulong Fee;
     }
-
     public struct BattleUser
     {
         public Address Address;
         public uint Score;
         public bool ScoreSubmitted;
+    }
+    public struct ArenaStateKeys
+    {
+        public const string NextBattleId = "AA";
+    }
+    public struct ClaimPendingDeployerOwnershipLog
+    {
+        [Index] public Address From;
+        [Index] public Address To;
+    }
+    public struct SetPendingDeployerOwnershipLog
+    {
+        [Index] public Address From;
+        [Index] public Address To;
+    }
+    public struct BattleEventLog
+    {
+        [Index] public string Event;
+        [Index] public ulong BattleId;
+        [Index] public Address Address;
     }
 }
