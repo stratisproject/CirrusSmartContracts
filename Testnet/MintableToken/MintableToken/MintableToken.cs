@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IBurnableWithMetadata, IPullOwnership, IMinter
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IMinter
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -196,7 +196,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     public void Mint(Address account, UInt256 amount)
     {
-        Assert(Message.Sender == Minter, "Only the minter can call this method");
+        Assert(Message.Sender == Minter || Message.Sender == Owner, "Only the minter or owner can call this method");
 
         UInt256 startingBalance = GetBalance(account);
 
@@ -219,6 +219,14 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Mint(account, amount);
 
         Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
+    }
+
+    /// <inheritdoc />
+    public void MintWithMetadataForNetwork(string account, UInt256 amount, string metadata, string network)
+    {
+        MintWithMetadata(Owner, amount, metadata);
+
+        Log(new CrosschainLog() { Network = network, Address = account });
     }
 
     public bool Burn(UInt256 amount)
@@ -315,5 +323,11 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
+    }
+
+    public struct CrosschainLog
+    {
+        [Index] public string Network;
+        public string Address;
     }
 }
