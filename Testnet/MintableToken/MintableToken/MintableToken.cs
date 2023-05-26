@@ -1,6 +1,5 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
-using System.Net;
 
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
@@ -239,7 +238,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void MintWithMetadataForNetwork(string account, UInt256 amount, string metadata, string network)
     {
-        MintWithMetadata(Owner, amount, metadata);
+        MintWithMetadata(Interflux, amount, metadata);
 
         Log(new CrosschainLog() { Network = network, Address = account });
     }
