@@ -98,7 +98,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public bool TransferTo(Address to, UInt256 amount)
     {
-        BeforeTokenTransfer(Message.Sender, to, amount);
+        BeforeTokenTransfer(Message.Sender, to);
 
         if (amount == 0)
         {
@@ -126,7 +126,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
-        BeforeTokenTransfer(from, to, amount);
+        BeforeTokenTransfer(from, to);
 
         if (amount == 0)
         {
@@ -298,12 +298,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return true;
     }
 
-    private void BeforeTokenTransfer(Address from, Address to, UInt256 amount)
+    private void BeforeTokenTransfer(Address from, Address to)
     {
         Assert(!GetBlackListed(from) && !GetBlackListed(to), "This address is blacklisted");
     }
 
-public struct TransferLog
+    public struct TransferLog
     {
         [Index]
         public Address From;
