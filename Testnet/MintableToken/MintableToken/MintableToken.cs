@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IMinter
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IInterflux, IBlackListable
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -24,7 +24,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         this.Decimals = decimals;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
-        this.Minter = Message.Sender;
+        this.Interflux = Message.Sender;
         this.SetBalance(Message.Sender, totalSupply);
     }
 
@@ -67,10 +67,10 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         private set => State.SetAddress(nameof(this.NewOwner), value);
     }
 
-    public Address Minter
+    public Address Interflux
     {
-        get => State.GetAddress(nameof(this.Minter));
-        private set => State.SetAddress(nameof(this.Minter), value);
+        get => State.GetAddress(nameof(this.Interflux));
+        private set => State.SetAddress(nameof(this.Interflux), value);
     }
 
     /// <inheritdoc />
@@ -84,9 +84,21 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         State.SetUInt256($"Balance:{address}", value);
     }
 
+    private bool GetBlackListed(Address address)
+    {
+        return State.GetBool($"BlackListed:{address}");
+    }
+
+    private void SetBlackListed(Address address, bool value)
+    {
+        State.SetBool($"BlackListed:{address}", value);
+    }
+
     /// <inheritdoc />
     public bool TransferTo(Address to, UInt256 amount)
     {
+        BeforeTokenTransfer(Message.Sender, to, amount);
+
         if (amount == 0)
         {
             Log(new TransferLog { From = Message.Sender, To = to, Amount = 0 });
@@ -113,6 +125,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
+        BeforeTokenTransfer(from, to, amount);
+
         if (amount == 0)
         {
             Log(new TransferLog { From = from, To = to, Amount = 0 });
@@ -187,16 +201,16 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
-    public void SetMinter(Address minter)
+    public void SetInterflux(Address interflux)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
-        this.Minter = minter;
+        this.Interflux = interflux;
     }
 
     public void Mint(Address account, UInt256 amount)
     {
-        Assert(Message.Sender == Minter || Message.Sender == Owner, "Only the minter or owner can call this method");
+        Assert(Message.Sender == Interflux || Message.Sender == Owner, "Only the owner or interflux can call this method");
 
         UInt256 startingBalance = GetBalance(account);
 
@@ -260,7 +274,32 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return false;
     }
 
-    public struct TransferLog
+    public bool AddToBlackList(byte[] addresses)
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+
+        foreach (Address address in Serializer.ToArray<Address>(addresses)) 
+        {
+            SetBlackListed(address, true);
+        }
+
+        return true;
+    }
+
+    public bool RemoveFromBlackList(Address account)
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+
+        SetBlackListed(account, false);
+        return true;
+    }
+
+    private void BeforeTokenTransfer(Address from, Address to, UInt256 amount)
+    {
+        Assert(!GetBlackListed(from) && !GetBlackListed(to), "This address is blacklisted");
+    }
+
+public struct TransferLog
     {
         [Index]
         public Address From;

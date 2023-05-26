@@ -1,12 +1,12 @@
 ﻿using Stratis.SmartContracts;
 
-public interface IMinter
+public interface IInterflux
 {
-    Address Minter { get; }
+    Address Interflux { get; }
 
     /// <summary>
-    /// Sets the minter.
+    /// Sets the interflux multisig.
     /// </summary>
     /// <param name="address">The address of the minter.</param>
-    void SetMinter(Address address);
+    void SetInterflux(Address address);
 }
