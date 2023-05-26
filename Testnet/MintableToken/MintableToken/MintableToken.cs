@@ -275,7 +275,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return false;
     }
 
-    public bool AddToBlackList(byte[] accounts)
+    public void AddToBlackList(byte[] accounts)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
@@ -284,18 +284,14 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
             SetBlackListed(address, true);
             Log(new BlackListLog() { Account = address, BlackListed = true });
         }
-
-        return true;
     }
 
-    public bool RemoveFromBlackList(Address account)
+    public void RemoveFromBlackList(Address account)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
         SetBlackListed(account, false);
         Log(new BlackListLog() { Account = account, BlackListed = false });
-
-        return true;
     }
 
     private void BeforeTokenTransfer(Address from, Address to)

@@ -1,8 +1,7 @@
 ﻿using Stratis.SmartContracts;
 
 /// <summary>
-/// A subset of the ERC20Mintable interface used by OpenZeppelin contracts.
-/// For simplicity, we assume that the owner of the contract is the sole minter.
+/// Defines the IBlackListable interface.
 /// </summary>
 public interface IBlackListable
 {
@@ -10,12 +9,11 @@ public interface IBlackListable
     /// Blacklists one or more accounts.
     /// </summary>
     /// <param name="accounts">A run-length-encoded (RLE) array of accounts.</param>
-    bool AddToBlackList(byte[] accounts);
+    void AddToBlackList(byte[] accounts);
 
     /// <summary>
     /// Removes an account from the blacklist.
     /// </summary>
     /// <param name="account">The account to remove from the blacklist.</param>
-    /// <returns></returns>
-    bool RemoveFromBlackList(Address account);
+    void RemoveFromBlackList(Address account);
 }
