@@ -1,5 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
+using System.Net;
 
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
@@ -274,13 +275,14 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return false;
     }
 
-    public bool AddToBlackList(byte[] addresses)
+    public bool AddToBlackList(byte[] accounts)
     {
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
-        foreach (Address address in Serializer.ToArray<Address>(addresses)) 
+        foreach (Address address in Serializer.ToArray<Address>(accounts)) 
         {
             SetBlackListed(address, true);
+            Log(new BlackListLog() { Account = address, BlackListed = true });
         }
 
         return true;
@@ -291,6 +293,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Assert(Message.Sender == Owner, "Only the owner can call this method");
 
         SetBlackListed(account, false);
+        Log(new BlackListLog() { Account = account, BlackListed = false });
+
         return true;
     }
 
@@ -368,5 +372,11 @@ public struct TransferLog
     {
         [Index] public string Network;
         public string Address;
+    }
+
+    public struct BlackListLog
+    {
+        [Index] public Address Account;
+        public bool BlackListed;
     }
 }
