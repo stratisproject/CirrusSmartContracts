@@ -236,13 +236,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     }
 
     /// <inheritdoc />
-    public void MintWithMetadataForNetwork(string account, UInt256 amount, string metadata, string network)
+    public void MintWithMetadataForNetwork(Address account, UInt256 amount, string metadata, string destinationAccount, string destinationNetwork)
     {
-        MintWithMetadata(Message.Sender, amount, metadata);
+        MintWithMetadata(account, amount, metadata);
 
-        if (TransferTo(Interflux, amount))
+        if (TransferFrom(account, Interflux, amount))
         {
-            Log(new BurnMetadata() { From = Message.Sender, Amount = amount, Metadata = $"{account}:{network}" });
+            Log(new BurnMetadata() { From = account, Amount = amount, Metadata = $"{destinationAccount}:{destinationNetwork}" });
         }
     }
 

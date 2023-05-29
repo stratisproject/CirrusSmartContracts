@@ -11,10 +11,11 @@ public interface IMintableWithMetadataForNetwork
     /// This increases the total supply of the token.
     /// </summary>
     /// <remarks>Emits a TransferLog event with the 'from' address set to the zero address.</remarks>
-    /// <param name="account">The account the newly minted tokens should be credited to.</param>
+    /// <param name="account">The account that requested the tokens.</param>
     /// <param name="amount">The amount of tokens to mint.</param>
     /// <param name="metadata">Additional data to be recorded with the mint.
-    /// The structure and interpretation of this data is unspecified here.</param>
-    /// <param name="network">The chain containing the account.</param>
-    void MintWithMetadataForNetwork(string account, UInt256 amount, string metadata, string network);
+    /// The structure and interpretation of this data is unspecified here but it may matter to the minter.</param>
+    /// <param name="destinationAccount">The account that the funds will be redirected to on an external network.</param>
+    /// <param name="destinationNetwork">The chain containing the <paramref name="destinationAccount"/>.</param>
+    void MintWithMetadataForNetwork(Address account, UInt256 amount, string metadata, string destinationAccount, string destinationNetwork);
 }
