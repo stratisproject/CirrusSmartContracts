@@ -238,9 +238,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void MintWithMetadataForNetwork(string account, UInt256 amount, string metadata, string network)
     {
-        MintWithMetadata(Interflux, amount, metadata);
+        MintWithMetadata(Message.Sender, amount, metadata);
 
-        Log(new CrosschainLog() { Network = network, Address = account });
+        if (TransferTo(Interflux, amount))
+        {
+            Log(new BurnMetadata() { From = Message.Sender, Amount = amount, Metadata = $"{account}:{network}" });
+        }
     }
 
     public bool Burn(UInt256 amount)
@@ -361,12 +364,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public UInt256 PreviousSupply;
 
         public UInt256 TotalSupply;
-    }
-
-    public struct CrosschainLog
-    {
-        [Index] public string Network;
-        public string Address;
     }
 
     public struct BlackListLog
