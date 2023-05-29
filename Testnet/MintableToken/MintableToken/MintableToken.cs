@@ -240,10 +240,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         MintWithMetadata(account, amount, metadata);
 
-        if (TransferFrom(account, Interflux, amount))
-        {
-            Log(new BurnMetadata() { From = account, Amount = amount, Metadata = $"{destinationAccount}:{destinationNetwork}" });
-        }
+        TransferFrom(account, Interflux, amount);
     }
 
     public bool Burn(UInt256 amount)
