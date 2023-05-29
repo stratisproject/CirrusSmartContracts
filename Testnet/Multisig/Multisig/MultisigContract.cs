@@ -8,6 +8,7 @@ public class MultisigContract : SmartContract
     public const string ConfirmationPrefix = "C";
     public const string ConfirmationCountPrefix = "N";
     public const string TransactionPrefix = "T";
+    public const string TransactionIndexPrefix = "I";
 
     public MultisigContract(ISmartContractState smartContractState, byte[] addresses, uint required) : base(smartContractState)
     {
@@ -134,6 +135,8 @@ public class MultisigContract : SmartContract
     /// <remarks>The submitter implicitly provides a confirmation for the submitted transaction.</remarks>
     public ulong Submit(Address destination, string methodName, byte[] data)
     {
+        Assert(methodName != null && data != null);
+
         EnsureOwnersOnly();
 
         TransactionCount++;
@@ -152,6 +155,43 @@ public class MultisigContract : SmartContract
         Confirm(TransactionCount);
 
         return TransactionCount;
+    }
+
+    /// <summary>
+    /// Either calls <see cref="Submit"/> or <see cref="Confirm"/> depending on whether it's the first or subsequent invocation for the given contract-call identified by <paramref name="callCUID"/>.
+    /// </summary>
+    /// <param name="destination">The address of the contract that the multisig contract will invoke a method on.</param>
+    /// <param name="methodName">The name of the method that the multisig contract will invoke on the destination contract.</param>
+    /// <param name="data">An array of method parameters encoded as packed byte arrays. See the <see cref="Transaction"/> struct for further information.</param>
+    /// <param name="callCUID">A "chain unique identifier" that uniquely identifies the contract call. Use a unique seed to calculate a CUID for your use-case to avoid overlaps with other implementations.</param>
+    /// <returns>The transactionId of the submitted multisig transaction.</returns>
+    public ulong SubmitOrConfirm(Address destination, string methodName, byte[] data, UInt256 callCUID)
+    {
+        ulong transactionId = GetTransactionId(callCUID);
+
+        if (transactionId == 0)
+        {
+            transactionId = Submit(destination, methodName, data);
+            SetTransactionId(callCUID, transactionId);
+        }
+        else
+        {
+            Transaction tx = GetTransaction(transactionId);
+            Assert(tx.Destination == destination && tx.MethodName == methodName && data != null && new UInt256(Keccak256(tx.Parameters)) == new UInt256(Keccak256(data)));
+            Confirm(transactionId);
+        }
+
+        return transactionId;
+    }
+
+    public ulong GetTransactionId(UInt256 callCUID)
+    {
+        return State.GetUInt64($"{TransactionIndexPrefix}:{callCUID}");
+    }
+
+    private void SetTransactionId(UInt256 callCUID, ulong transactionId)
+    {
+        State.SetUInt64($"{TransactionIndexPrefix}:{callCUID}", transactionId);
     }
 
     /// <summary>
