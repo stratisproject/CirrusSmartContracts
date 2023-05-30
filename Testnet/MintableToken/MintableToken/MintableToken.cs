@@ -1,6 +1,5 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
-using System.Security.Cryptography.X509Certificates;
 
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
