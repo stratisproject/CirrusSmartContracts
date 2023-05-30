@@ -1,5 +1,6 @@
 ﻿using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
+using System.Security.Cryptography.X509Certificates;
 
 /// <summary>
 /// Implementation of a standard token contract for the Stratis Platform.
@@ -239,6 +240,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     public void MintWithMetadataForNetwork(Address account, UInt256 amount, string metadata, string destinationAccount, string destinationNetwork)
     {
         MintWithMetadata(account, amount, metadata);
+
+        if (string.IsNullOrEmpty(destinationAccount) && string.IsNullOrEmpty(destinationNetwork))
+        {
+            return;
+        }
+
+        Assert(!string.IsNullOrEmpty(destinationAccount) && !string.IsNullOrEmpty(destinationNetwork) && destinationNetwork != "CIRRUS", "Invalid destination");
 
         if (TransferFrom(account, Interflux, amount))
         {
