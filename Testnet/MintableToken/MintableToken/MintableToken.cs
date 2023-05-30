@@ -16,8 +16,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
     /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
-   public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol,
-        byte decimals) : base(smartContractState)
+    public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol,
+         byte decimals) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
@@ -61,7 +61,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         get => State.GetAddress(nameof(this.Owner));
         private set => State.SetAddress(nameof(this.Owner), value);
     }
-    
+
     public Address NewOwner
     {
         get => State.GetAddress(nameof(this.NewOwner));
@@ -241,7 +241,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         MintWithMetadata(account, amount, metadata);
 
-        if (string.IsNullOrEmpty(destinationAccount) && string.IsNullOrEmpty(destinationNetwork))
+        if (string.IsNullOrEmpty(destinationAccount) && ((string.IsNullOrEmpty(destinationNetwork) || destinationNetwork == "CIRRUS")))
         {
             return;
         }
