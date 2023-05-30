@@ -115,7 +115,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
+    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber, string address, string network)
     {
         string transactionReference = GetTransactionReference(uniqueNumber);
 
@@ -128,7 +128,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
             Assert(invoice.To != Message.Sender || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
-            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit, Network = network, Address = address };
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
@@ -200,6 +200,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
+        Log(new ChangeOutcome() { InvoiceReference = invoiceReference, Outcome = outcome });
+
         var invoice = GetInvoice(invoiceReference);
         invoice.Outcome = outcome;
         SetInvoice(invoiceReference, invoice);
@@ -264,6 +266,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public string Symbol;
         public UInt256 Amount;
         public Address To;
+        public string Address;
+        public string Network;
         public string Outcome;
         public bool IsAuthorized;
     }
@@ -298,5 +302,11 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         [Index] public string InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
+    }
+
+    public struct ChangeOutcome
+    {
+        [Index] public string InvoiceReference;
+        public string Outcome;
     }
 }
