@@ -246,8 +246,24 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         {
             Log(new CrosschainLog()
             {
-                Address = destinationAccount,
+                Account = destinationAccount,
                 Network = destinationNetwork
+            });
+        }
+    }
+
+    /// <inheritdoc />
+    public void MintWithMetadataForCirrus(Address account, UInt256 amount, string metadata, Address destinationAccount)
+    {
+        Assert(destinationAccount != Address.Zero, "Invalid destination");
+
+        MintWithMetadata(account, amount, metadata);
+
+        if (TransferFrom(account, destinationAccount, amount))
+        {
+            Log(new CirrusDestinationLog()
+            {
+                Account = destinationAccount,
             });
         }
     }
@@ -374,8 +390,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     public struct CrosschainLog
     {
-        [Index] public string Address;
+        [Index] public string Account;
         [Index] public string Network;
+    }
+    
+    public struct CirrusDestinationLog
+    {
+        [Index] public Address Account;
     }
 
     public struct BlackListLog
