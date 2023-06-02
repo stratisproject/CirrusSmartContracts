@@ -259,13 +259,15 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
         MintWithMetadata(account, amount, metadata);
 
-        if (TransferFrom(account, destinationAccount, amount))
+        if (account != destinationAccount)
         {
-            Log(new CirrusDestinationLog()
-            {
-                Account = destinationAccount,
-            });
+            TransferFrom(account, destinationAccount, amount);
         }
+                
+        Log(new CirrusDestinationLog()
+        {
+            Account = destinationAccount,
+        });
     }
 
     public bool Burn(UInt256 amount)
