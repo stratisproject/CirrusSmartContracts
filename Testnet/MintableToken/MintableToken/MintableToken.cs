@@ -301,7 +301,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         OnlyOwner();
 
         Assert(Interflux != Address.Zero, "Interflux address not set");
-        Assert(!string.IsNullOrEmpty(destinationAccount) && !string.IsNullOrEmpty(destinationNetwork) && destinationNetwork != "CIRRUS", "Invalid destination");
+        Assert(!string.IsNullOrEmpty(destinationAccount) && !string.IsNullOrEmpty(destinationNetwork) && destinationNetwork.ToLower() != NativeChain.ToLower(), "Invalid destination");
 
         InternalMint(account, amount);
 
