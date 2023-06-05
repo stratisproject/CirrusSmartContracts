@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IInterflux, IBlackListable
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IInterflux, IBlackList
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -14,17 +14,20 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <param name="totalSupply">The total token supply.</param>
     /// <param name="name">The name of the token.</param>
     /// <param name="symbol">The symbol used to identify the token.</param>
-    /// <param name="decimals">The amount of decimals for display and calculation purposes.</param>
+    /// <param name="nativeChain">The blockchain name of the token's native chain.</param>
+    /// <param name="nativeAddress">The contract address of the token's native blockchain if available.</param>    
     public MintableToken(ISmartContractState smartContractState, UInt256 totalSupply, string name, string symbol,
-         byte decimals) : base(smartContractState)
+         string nativeChain, string nativeAddress) : base(smartContractState)
     {
         this.TotalSupply = totalSupply;
         this.Name = name;
         this.Symbol = symbol;
-        this.Decimals = decimals;
         this.Owner = Message.Sender;
         this.NewOwner = Address.Zero;
+        this.NativeChain = nativeChain;
+        this.NativeAddress = nativeAddress;
         this.Interflux = Message.Sender;
+        this.Decimals = 8;
         this.SetBalance(Message.Sender, totalSupply);
     }
 
@@ -65,6 +68,18 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         get => State.GetAddress(nameof(this.NewOwner));
         private set => State.SetAddress(nameof(this.NewOwner), value);
+    }
+
+    public string NativeChain
+    {
+        get => State.GetString(nameof(this.NativeChain));
+        private set => State.SetString(nameof(this.NativeChain), value);
+    }
+
+    public string NativeAddress
+    {
+        get => State.GetString(nameof(this.NativeAddress));
+        private set => State.SetString(nameof(this.NativeAddress), value);
     }
 
     public Address Interflux
@@ -153,6 +168,42 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return true;
     }
 
+    private void OnlyOwner()
+    {
+        Assert(Message.Sender == Owner, "Only the owner can call this method");
+    }
+
+    public void AddBlackList(Address address)
+    {
+        OnlyOwner();
+
+        SetBlackListed(address, true);
+
+        Log(new AddedBlackListLog() { BlackListedUser = address });
+    }
+
+    public void RemoveBlackList(Address address)
+    {
+        OnlyOwner();
+
+        SetBlackListed(address, false);
+
+        Log(new RemovedBlackListLog() { BlackListedUser = address });
+    }
+
+    public void DestroyBlackFunds(Address address)
+    {
+        OnlyOwner();
+
+        Assert(GetBlackListed(address));
+
+        UInt256 dirtyFunds = GetBalance(address);
+        SetBalance(address, UInt256.Zero);
+        TotalSupply -= dirtyFunds;
+
+        Log(new DestroyBlackFundsLog() { BlackListedUser = address, DirtyFunds = dirtyFunds });
+    }
+
     /// <inheritdoc />
     public bool Approve(Address spender, UInt256 currentAmount, UInt256 amount)
     {
@@ -182,7 +233,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void SetNewOwner(Address address)
     {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
+        OnlyOwner();
 
         NewOwner = address;
     }
@@ -203,14 +254,14 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     public void SetInterflux(Address interflux)
     {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
+        OnlyOwner();
 
         this.Interflux = interflux;
     }
 
-    public void Mint(Address account, UInt256 amount)
+    private void InternalMint(Address account, UInt256 amount)
     {
-        Assert(Message.Sender == Interflux || Message.Sender == Owner, "Only the owner or interflux can call this method");
+        Assert(!GetBlackListed(account), "This address is blacklisted");
 
         UInt256 startingBalance = GetBalance(account);
 
@@ -225,12 +276,21 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
             PreviousSupply = (this.TotalSupply - amount),
             TotalSupply = this.TotalSupply
         });
+    }   
+
+    public void Mint(Address account, UInt256 amount)
+    {
+        Assert(Message.Sender == Interflux, "Only Interflux can call this method");
+
+        InternalMint(account, amount);
     }
 
     /// <inheritdoc />
     public void MintWithMetadata(Address account, UInt256 amount, string metadata)
     {
-        Mint(account, amount);
+        OnlyOwner();
+
+        InternalMint(account, amount);
 
         Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
     }
@@ -238,9 +298,14 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void MintWithMetadataForNetwork(Address account, UInt256 amount, string metadata, string destinationAccount, string destinationNetwork)
     {
+        OnlyOwner();
+
+        Assert(Interflux != Address.Zero, "Interflux address not set");
         Assert(!string.IsNullOrEmpty(destinationAccount) && !string.IsNullOrEmpty(destinationNetwork) && destinationNetwork != "CIRRUS", "Invalid destination");
 
-        MintWithMetadata(account, amount, metadata);
+        InternalMint(account, amount);
+
+        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
 
         if (TransferFrom(account, Interflux, amount))
         {
@@ -255,9 +320,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <inheritdoc />
     public void MintWithMetadataForCirrus(Address account, UInt256 amount, string metadata, Address destinationAccount)
     {
+        OnlyOwner();
+
         Assert(destinationAccount != Address.Zero, "Invalid destination");
 
-        MintWithMetadata(account, amount, metadata);
+        InternalMint(account, amount);
+
+        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
 
         if (account != destinationAccount)
         {
@@ -299,25 +368,6 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         }
 
         return false;
-    }
-
-    public void AddToBlackList(byte[] accounts)
-    {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
-
-        foreach (Address address in Serializer.ToArray<Address>(accounts)) 
-        {
-            SetBlackListed(address, true);
-            Log(new BlackListLog() { Account = address, BlackListed = true });
-        }
-    }
-
-    public void RemoveFromBlackList(Address account)
-    {
-        Assert(Message.Sender == Owner, "Only the owner can call this method");
-
-        SetBlackListed(account, false);
-        Log(new BlackListLog() { Account = account, BlackListed = false });
     }
 
     private void BeforeTokenTransfer(Address from, Address to)
@@ -401,9 +451,20 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         [Index] public Address Account;
     }
 
-    public struct BlackListLog
+    public struct AddedBlackListLog
     {
-        [Index] public Address Account;
-        public bool BlackListed;
+        [Index] public Address BlackListedUser;
+    }
+
+    public struct RemovedBlackListLog
+    {
+        [Index] public Address BlackListedUser;
+    }
+
+    public struct DestroyBlackFundsLog
+    {
+        [Index] public Address BlackListedUser;
+
+        public UInt256 DirtyFunds;
     }
 }
