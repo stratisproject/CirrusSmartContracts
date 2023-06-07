@@ -164,14 +164,15 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         return CreateInvoiceInternal(address, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
     }
-    /*
+    
     public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
     {
-        byte[] arguments = SSAS.Validate(address, url, signature, "11#uid,4#symbol,12#amount,4#targetAddres,4#targetNetwork");
+        byte[] arguments = SSAS.ValidateAndParse(address, url, signature, "uid#11,symbol#4,amount#12,targetAddress#4,targetNetwork#4");
+        Assert(arguments != null, "Invalid signature.");
         var res = Serializer.ToStruct<SignatureTemplate>(arguments);
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
-    */
+    
     /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {
