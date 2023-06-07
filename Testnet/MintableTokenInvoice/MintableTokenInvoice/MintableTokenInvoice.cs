@@ -276,16 +276,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         NewOwner = Address.Zero;
 
-        Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
-    }
-
-    /// <summary>
-    /// Provides a record that ownership was transferred from one account to another.
-    /// </summary>
-    public struct OwnershipTransferred
-    {
-        [Index] public Address PreviousOwner;
-        [Index] public Address NewOwner;
+        Log(new LogOwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
     /// <summary>
@@ -351,5 +342,14 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         [Index] public string InvoiceReference;
         public string Outcome;
+    }
+
+    /// <summary>
+    /// Provides a record that ownership was transferred from one account to another.
+    /// </summary>
+    public struct LogOwnershipTransferred
+    {
+        [Index] public Address PreviousOwner;
+        [Index] public Address NewOwner;
     }
 }
