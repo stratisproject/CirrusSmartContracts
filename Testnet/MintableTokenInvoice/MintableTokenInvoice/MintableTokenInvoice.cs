@@ -1,5 +1,5 @@
-﻿using Stratis.SmartContracts;
-using Stratis.SCL.Crypto;
+﻿using Stratis.SCL.Crypto;
+using Stratis.SmartContracts;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -149,7 +149,6 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     private struct SignatureTemplate
     {
         public UInt128 uniqueNumber;
-        public Address address;
         public string symbol;
         public UInt256 amount;
         public string targetAddress;
@@ -158,14 +157,21 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, address = address, amount = amount, symbol = symbol, targetAddress = targetAddress, targetNetwork = targetNetwork };
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = amount, symbol = symbol, targetAddress = targetAddress, targetNetwork = targetNetwork };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
         return CreateInvoiceInternal(address, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
     }
-
+    /*
+    public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
+    {
+        byte[] arguments = SSAS.Validate(address, url, signature, "11#uid,4#symbol,12#amount,4#targetAddres,4#targetNetwork");
+        var res = Serializer.ToStruct<SignatureTemplate>(arguments);
+        return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
+    }
+    */
     /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {

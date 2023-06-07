@@ -124,7 +124,6 @@ public class MintableTokenInvoiceTests : BaseContractTest
     private struct SignatureTemplate
     {
         public UInt128 uniqueNumber;
-        public Address address;
         public string symbol;
         public UInt256 amount;
         public string targetAddress;
@@ -153,7 +152,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
         var address = key.PubKey.Hash.ToBytes().ToAddress();
 
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, address = address, amount = 100, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network" };
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = 100, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network" };
         var message = new uint256(new InternalHashHelper().Keccak256(this.Serializer.Serialize(template)));
 
         var signature = key.SignCompact(message);
