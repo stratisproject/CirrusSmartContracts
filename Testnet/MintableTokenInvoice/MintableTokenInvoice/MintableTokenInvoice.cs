@@ -171,7 +171,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         Assert(arguments != null, "Invalid signature.");
         var res = Serializer.ToStruct<SignatureTemplate>(arguments);
 
-        Log(new LogCreateInvoiceFromURL() { Account = address, Url = url, Signature = signature });
+        Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.uniqueNumber, Account = address, Url = url, Signature = signature });
 
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
@@ -316,6 +316,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
     public struct LogCreateInvoiceFromURL
     {
+        [Index] public UInt128 UniqueNumber;
         [Index] public Address Account;
         public string Url;
         public byte[] Signature;
