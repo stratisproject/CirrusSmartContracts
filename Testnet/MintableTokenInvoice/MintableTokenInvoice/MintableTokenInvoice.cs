@@ -170,6 +170,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         byte[] arguments = SSAS.ValidateAndParse(address, url, signature, "uid#11,symbol#4,amount#12,targetAddress#4,targetNetwork#4");
         Assert(arguments != null, "Invalid signature.");
         var res = Serializer.ToStruct<SignatureTemplate>(arguments);
+
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
     
