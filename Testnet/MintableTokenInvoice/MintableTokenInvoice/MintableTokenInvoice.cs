@@ -134,7 +134,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         Assert(invoice.IsAuthorized, $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.");
 
-        Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
+        Log(new LogCreateInvoice() { InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
 
         // Only provide the transaction reference if all checks pass.
         return transactionReference;
@@ -170,6 +170,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         byte[] arguments = SSAS.ValidateAndParse(address, url, signature, "uid#11,symbol#4,amount#12,targetAddress#4,targetNetwork#4");
         Assert(arguments != null, "Invalid signature.");
         var res = Serializer.ToStruct<SignatureTemplate>(arguments);
+
+        Log(new LogCreateInvoiceFromURL() { Account = address, Url = url, Signature = signature });
 
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
@@ -207,7 +209,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         invoice.IsAuthorized = true;
         SetInvoice(invoiceReference, invoice);
 
-        Log(new ChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = invoice.IsAuthorized });
+        Log(new LogChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = invoice.IsAuthorized });
 
         return true;
     }
@@ -217,7 +219,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
+        Log(new LogChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
 
         AuthorizationLimit = newLimit;
     }
@@ -228,7 +230,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
 
         var invoiceReference = GetInvoiceReference(transactionReference);
  
-        Log(new ChangeOutcome() { InvoiceReference = invoiceReference, Outcome = outcome });
+        Log(new LogChangeOutcome() { InvoiceReference = invoiceReference, Outcome = outcome });
 
         var invoice = GetInvoice(invoiceReference);
         invoice.Outcome = outcome;
@@ -240,7 +242,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeIdentityContract() { OldContract = IdentityContract, NewContract = identityContract });
+        Log(new LogChangeIdentityContract() { OldContract = IdentityContract, NewContract = identityContract });
 
         IdentityContract = identityContract;
     }
@@ -250,7 +252,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeKYCProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
+        Log(new LogChangeKYCProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
 
         KYCProvider = kycProvider;
     }
@@ -300,39 +302,51 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public bool IsAuthorized;
     }
 
-    public struct InvoiceResult
+    public struct LogCreateInvoice
     {
         [Index] public string InvoiceReference;
-        public bool Success;
-        public string Reason;
+        [Index] public Address Sender;
+        [Index] public Address Account;
+        [Index] public string Symbol;
+        public UInt256 Amount;
+        [Index] public UInt128 UniqueNumber;
+        public string TargetAddress;
+        public string TargetNetwork;
     }
 
-    public struct ChangeAuthorizationLimit
+    public struct LogCreateInvoiceFromURL
+    {
+        [Index] public Address Account;
+        public string Url;
+        public byte[] Signature;
+    }
+
+    public struct LogChangeAuthorizationLimit
     {
         public UInt256 OldLimit;
         public UInt256 NewLimit;
     }
 
-    public struct ChangeKYCProvider
+    public struct LogChangeKYCProvider
     {
         public uint OldProvider;
         public uint NewProvider;
     }
 
-    public struct ChangeIdentityContract
+    public struct LogChangeIdentityContract
     {
         public Address OldContract;
         public Address NewContract;
     }
 
-    public struct ChangeInvoiceAuthorization
+    public struct LogChangeInvoiceAuthorization
     {
         [Index] public string InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
     }
 
-        public struct ChangeOutcome
+    public struct LogChangeOutcome
     {
         [Index] public string InvoiceReference;
         public string Outcome;
