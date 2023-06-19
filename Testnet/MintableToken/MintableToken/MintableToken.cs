@@ -5,7 +5,7 @@ using Stratis.SmartContracts.Standards;
 /// Implementation of a standard token contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IPullOwnership, IInterflux, IBlackList
+public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadata, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IOwnable, IInterflux, IBlackList
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -23,7 +23,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         this.Name = name;
         this.Symbol = symbol;
         this.Owner = Message.Sender;
-        this.NewOwner = Address.Zero;
+        this.PendingOwner = Address.Zero;
         this.NativeChain = nativeChain;
         this.NativeAddress = nativeAddress;
         this.Interflux = Message.Sender;
@@ -64,10 +64,10 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         private set => State.SetAddress(nameof(this.Owner), value);
     }
 
-    public Address NewOwner
+    public Address PendingOwner
     {
-        get => State.GetAddress(nameof(this.NewOwner));
-        private set => State.SetAddress(nameof(this.NewOwner), value);
+        get => State.GetAddress(nameof(this.PendingOwner));
+        private set => State.SetAddress(nameof(this.PendingOwner), value);
     }
 
     public string NativeChain
@@ -231,25 +231,27 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     }
 
     /// <inheritdoc />
-    public void SetNewOwner(Address address)
+    public void TransferOwnership(Address pendingOwner)
     {
         OnlyOwner();
 
-        NewOwner = address;
+        PendingOwner = pendingOwner;
+
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = PendingOwner });
     }
 
     /// <inheritdoc />
     public void ClaimOwnership()
     {
-        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+        Assert(Message.Sender == PendingOwner, "Only the new owner can call this method");
 
         var previousOwner = Owner;
 
-        Owner = NewOwner;
+        Owner = PendingOwner;
 
-        NewOwner = Address.Zero;
+        PendingOwner = Address.Zero;
 
-        Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
+        Log(new OwnershipTransferedLog { PreviousOwner = previousOwner, NewOwner = Message.Sender });
     }
 
     public void SetInterflux(Address interflux)
@@ -401,31 +403,25 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
         public UInt256 Amount;
     }
-
-    /// <summary>
-    /// Provides a record that ownership was transferred from one account to another.
-    /// </summary>
-    public struct OwnershipTransferred
-    {
-        [Index] public Address PreviousOwner;
-
-        [Index] public Address NewOwner;
-    }
-
+ 
     public struct MintMetadata
     {
-        [Index] public Address To;
+        [Index] 
+        public Address To;
 
-        [Index] public string Metadata;
+        [Index] 
+        public string Metadata;
 
         public UInt256 Amount;
     }
 
     public struct BurnMetadata
     {
-        [Index] public Address From;
+        [Index] 
+        public Address From;
 
-        [Index] public string Metadata;
+        [Index] 
+        public string Metadata;
 
         public UInt256 Amount;
     }
@@ -442,29 +438,57 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
     public struct CrosschainLog
     {
-        [Index] public string Account;
-        [Index] public string Network;
+        [Index] 
+        public string Account;
+
+        [Index] 
+        public string Network;
     }
     
     public struct CirrusDestinationLog
     {
-        [Index] public Address Account;
+        [Index] 
+        public Address Account;
     }
 
     public struct AddedBlackListLog
     {
-        [Index] public Address BlackListedUser;
+        [Index] 
+        public Address BlackListedUser;
     }
 
     public struct RemovedBlackListLog
     {
-        [Index] public Address BlackListedUser;
+        [Index] 
+        public Address BlackListedUser;
     }
 
     public struct DestroyBlackFundsLog
     {
-        [Index] public Address BlackListedUser;
+        [Index] 
+        public Address BlackListedUser;
 
         public UInt256 DirtyFunds;
+    }
+
+
+    /// <summary>
+    /// Provides a record that ownership was transferred from one account to another.
+    /// </summary>
+    public struct OwnershipTransferedLog
+    {
+        [Index]
+        public Address PreviousOwner;
+
+        [Index]
+        public Address NewOwner;
+    }
+
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index]
+        public Address CurrentOwner;
+        [Index]
+        public Address PendingOwner;
     }
 }
