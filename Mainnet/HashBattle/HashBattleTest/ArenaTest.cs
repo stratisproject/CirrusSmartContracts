@@ -58,10 +58,10 @@ namespace HashBattleTest
         private Arena StartBattleTest()
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.ownerAddress, 0));
-            Arena arena = new Arena(this.mockContractState.Object);
+            Arena arena = new Arena(this.mockContractState.Object, 4);
             ulong battleId = arena.StartBattle(1);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "Start", BattleId = battleId, Address = this.ownerAddress }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleStartedLog { BattleId = battleId, Address = this.ownerAddress }));
             return arena;
         }
 
@@ -70,7 +70,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.playerAddress1, 1));
             arena.EnterBattle(1);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "Enter", BattleId = 1, Address = this.playerAddress1 }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEnteredLog { BattleId = 1, Address = this.playerAddress1 }));
         }
 
         private void Player2EnterGameTest(Arena arena)
@@ -78,7 +78,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.playerAddress2, 1));
             arena.EnterBattle(1);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "Enter", BattleId = 1, Address = this.playerAddress2 }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEnteredLog { BattleId = 1, Address = this.playerAddress2 }));
         }
 
         private void Player3EnterGameTest(Arena arena)
@@ -86,7 +86,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.playerAddress3, 1));
             arena.EnterBattle(1);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "Enter", BattleId = 1, Address = this.playerAddress3 }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEnteredLog { BattleId = 1, Address = this.playerAddress3 }));
         }
 
         private void Player4EnterGameTest(Arena arena)
@@ -94,7 +94,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.playerAddress4, 1));
             arena.EnterBattle(1);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "Enter", BattleId = 1, Address = this.playerAddress4 }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEnteredLog { BattleId = 1, Address = this.playerAddress4 }));
         }
 
         private void Player1EndGameTest(Arena arena)
@@ -102,7 +102,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.ownerAddress, 0));
             arena.EndBattle(this.playerAddress1, 1, 10);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "End", BattleId = 1, Address = this.ownerAddress }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEndedLog { BattleId = 1, Address = this.ownerAddress }));
         }
 
         private void Player2EndGameTest(Arena arena)
@@ -110,7 +110,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.ownerAddress, 0));
             arena.EndBattle(this.playerAddress2, 1, 20);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "End", BattleId = 1, Address = this.ownerAddress }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEndedLog { BattleId = 1, Address = this.ownerAddress }));
         }
 
         private void Player3EndGameTest(Arena arena)
@@ -118,7 +118,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.ownerAddress, 0));
             arena.EndBattle(this.playerAddress3, 1, 30);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "End", BattleId = 1, Address = this.ownerAddress }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEndedLog { BattleId = 1, Address = this.ownerAddress }));
         }
 
         private void Player4EndGameTest(Arena arena)
@@ -126,7 +126,7 @@ namespace HashBattleTest
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.ownerAddress, 0));
             arena.EndBattle(this.playerAddress4, 1, 40);
 
-            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEventLog { Event = "End", BattleId = 1, Address = this.ownerAddress }));
+            this.mockContractLogger.Verify(m => m.Log(this.mockContractState.Object, new BattleEndedLog { BattleId = 1, Address = this.ownerAddress }));
         }
 
         private void GetGameWinnerTest(Arena arena)

@@ -7,40 +7,45 @@ using System.Text;
 /// </summary>
 public class Arena : SmartContract
 {
-    private const uint MaxUsers = 4;
-    public struct BattleMain
+    private void SetBattle(ulong battleId, BattleMain battle)
     {
-        public ulong BattleId;
-        public Address Winner;
-        public Address[] Users;
-        public ulong Fee;
-        public bool IsCancelled;
+        State.SetStruct($"battle:{battleId}", battle);
     }
-    public struct BattleUser
+    public BattleMain GetBattle(ulong battleId)
     {
-        public uint Score;
-        public bool ScoreSubmitted;
+        return State.GetStruct<BattleMain>($"battle:{battleId}");
     }
-    public struct BattleHighestScorer
+    private void SetUser(ulong battleId, Address address, BattleUser user)
     {
-        public uint Score;
-        public Address[] Scorers;
+        State.SetStruct($"user:{battleId}:{address}", user);
     }
-    public struct ClaimPendingDeployerOwnershipLog
+    public BattleUser GetUser(ulong battleId, Address address)
     {
-        [Index] public Address From;
-        [Index] public Address To;
+        return State.GetStruct<BattleUser>($"user:{battleId}:{address}");
     }
-    public struct SetPendingDeployerOwnershipLog
+    private void SetHighestScorer(ulong battleId, BattleHighestScorer highestScorer)
     {
-        [Index] public Address From;
-        [Index] public Address To;
+        State.SetStruct($"scorer:{battleId}", highestScorer);
     }
-    public struct BattleEventLog
+    public BattleHighestScorer GetHighestScorer(ulong battleId)
     {
-        [Index] public string Event;
-        [Index] public ulong BattleId;
-        [Index] public Address Address;
+        return State.GetStruct<BattleHighestScorer>($"scorer:{battleId}");
+    }
+    private void SetUserIndex(ulong battleId, uint userindex)
+    {
+        State.SetUInt32($"user:{battleId}", userindex);
+    }
+    private uint GetUserIndex(ulong battleId)
+    {
+        return State.GetUInt32($"user:{battleId}");
+    }
+    private void SetScoreSubmittedCount(ulong battleId, uint scoresubmitcount)
+    {
+        State.SetUInt32($"scoresubmit:{battleId}", scoresubmitcount);
+    }
+    private uint GetScoreSubmittedCount(ulong battleId)
+    {
+        return State.GetUInt32($"scoresubmit:{battleId}");
     }
     /// <summary>
     /// Set the address deploying the contract as battle owner
@@ -55,6 +60,11 @@ public class Arena : SmartContract
         get => State.GetAddress(nameof(PendingOwner));
         private set => State.SetAddress(nameof(PendingOwner), value);
     }
+    public uint MaxUsers
+    {
+        get => State.GetUInt32(nameof(MaxUsers));
+        private set => State.SetUInt32(nameof(MaxUsers), value);
+    }
     /// <summary>
     /// Set the unique battleId of each battle
     /// </summary>
@@ -64,31 +74,41 @@ public class Arena : SmartContract
         private set => State.SetUInt64(nameof(NextBattleId), value);
     }
 
-    public Arena(ISmartContractState smartContractState) : base(smartContractState)
+    public Arena(ISmartContractState smartContractState, uint maxUsers) : base(smartContractState)
     {
         Owner = Message.Sender;
+        MaxUsers = maxUsers;
         NextBattleId = 1;
     }
-    public void SetPendingOwnership(Address pendingOwner)
+
+    /// <summary>
+    /// Only owner can set new owner and new owner will be in pending state 
+    /// till new owner will call <see cref="ClaimOwnership"></see> method. 
+    /// </summary>
+    /// <param name="newOwner">The new owner which is going to be in pending state</param>
+    public void SetPendingOwner(Address newOwner)
     {
         EnsureOwnerOnly();
+        PendingOwner = newOwner;
 
-        PendingOwner = pendingOwner;
-
-        Log(new SetPendingDeployerOwnershipLog { From = Message.Sender, To = pendingOwner });
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = newOwner });
     }
-    public void ClaimPendingOwnership()
-    {
-        var pendingOwner = PendingOwner;
 
-        Assert(Message.Sender == pendingOwner, "HASHBATTLE: UNAUTHORIZED");
+    /// <summary>
+    /// Waiting be called after new owner is requested by <see cref="SetPendingOwner"/> call.
+    /// Pending owner will be new owner after successfull call. 
+    /// </summary>
+    public void ClaimOwnership()
+    {
+        var newOwner = PendingOwner;
+
+        Assert(newOwner == Message.Sender, "ClaimOwnership must be called by the new(pending) owner.");
 
         var oldOwner = Owner;
-
-        Owner = pendingOwner;
+        Owner = newOwner;
         PendingOwner = Address.Zero;
 
-        Log(new ClaimPendingDeployerOwnershipLog { From = oldOwner, To = pendingOwner });
+        Log(new OwnershipTransferedLog { PreviousOwner = oldOwner, NewOwner = newOwner });
     }
     /// <summary>
     /// Battle owner will start the battle
@@ -109,7 +129,7 @@ public class Arena : SmartContract
         };
         SetBattle(battleId, battle);
 
-        Log(new BattleEventLog { Event = "Start", BattleId = battleId, Address = Message.Sender });
+        Log(new BattleStartedLog { BattleId = battleId, Address = Message.Sender });
         return battleId;
     }
     /// <summary>
@@ -132,11 +152,11 @@ public class Arena : SmartContract
         var userindex = GetUserIndex(battleId);
         Assert(userindex != MaxUsers, "Max user reached for this battle.");
         battle.Users.SetValue(Message.Sender, userindex);
-        SetUserIndex(battleId, (userindex + 1));
+        SetUserIndex(battleId, userindex + 1);
 
         SetBattle(battleId, battle);
 
-        Log(new BattleEventLog { Event = "Enter", BattleId = battleId, Address = Message.Sender });
+        Log(new BattleEnteredLog { BattleId = battleId, Address = Message.Sender });
     }
     /// <summary>
     /// 4 different user will end the battle and submit the score
@@ -144,6 +164,9 @@ public class Arena : SmartContract
     public void EndBattle(Address userAddress, ulong battleId, uint score)
     {
         Assert(Message.Sender == Owner, "Only battle owner can end game.");
+
+        var ScoreSubmittedCount = GetScoreSubmittedCount(battleId);
+        Assert(ScoreSubmittedCount < MaxUsers, "All users already submitted score.");
 
         var battle = GetBattle(battleId);
 
@@ -153,37 +176,39 @@ public class Arena : SmartContract
 
         Assert(!user.ScoreSubmitted, "The user already submitted score.");
 
-        user.Score = score;
         user.ScoreSubmitted = true;
 
         SetUser(battleId, userAddress, user);
 
-        var ScoreSubmittedCount = GetScoreSubmittedCount(battleId);
         ScoreSubmittedCount += 1;
         SetScoreSubmittedCount(battleId, ScoreSubmittedCount);
 
         var highestScorer = GetHighestScorer(battleId);
 
         if (score > highestScorer.Score)
-            SetHighestScorer(battleId, new BattleHighestScorer { Scorers = new Address[] { userAddress }, Score = score });
+        {
+            highestScorer.Score = score;
+            highestScorer.HighestScorer = userAddress;
+            highestScorer.HighestScoreCount = 1;
+
+            SetHighestScorer(battleId, highestScorer);
+        }
         else if (score == highestScorer.Score)
         {
-            var scorers = highestScorer.Scorers;
-            Array.Resize(ref scorers, scorers.Length + 1);
-            scorers[scorers.Length - 1] = userAddress;
-            SetHighestScorer(battleId, new BattleHighestScorer { Scorers = scorers, Score = score });
+            highestScorer.HighestScoreCount++;
+            SetHighestScorer(battleId, highestScorer);
         }
 
         if (ScoreSubmittedCount == MaxUsers)
         {
             highestScorer = GetHighestScorer(battleId);
-            if (highestScorer.Scorers.Length > 1)
+            if (highestScorer.HighestScoreCount > 1)
                 CancelBattle(battle);
             else
-                ProcessWinner(battle, highestScorer.Scorers[0]);
+                ProcessWinner(battle, highestScorer.HighestScorer);
         }
 
-        Log(new BattleEventLog { Event = "End", BattleId = battleId, Address = Message.Sender });
+        Log(new BattleEndedLog { BattleId = battleId, Address = Message.Sender });
     }
     /// <summary>
     /// Get winner address
@@ -224,48 +249,51 @@ public class Arena : SmartContract
         Transfer(battle.Users[2], battle.Fee);
         Transfer(battle.Users[3], battle.Fee);
     }
-    private void SetBattle(ulong battleId, BattleMain battle)
-    {
-        State.SetStruct($"battle:{battleId}", battle);
-    }
-    public BattleMain GetBattle(ulong battleId)
-    {
-        return State.GetStruct<BattleMain>($"battle:{battleId}");
-    }
-    private void SetUser(ulong battleId, Address address, BattleUser user)
-    {
-        State.SetStruct($"user:{battleId}-{address}", user);
-    }
-    public BattleUser GetUser(ulong battleId, Address address)
-    {
-        return State.GetStruct<BattleUser>($"user:{battleId}-{address}");
-    }
-    private void SetHighestScorer(ulong battleId, BattleHighestScorer highestScorer)
-    {
-        State.SetStruct($"scorer:{battleId}", highestScorer);
-    }
-    public BattleHighestScorer GetHighestScorer(ulong battleId)
-    {
-        return State.GetStruct<BattleHighestScorer>($"scorer:{battleId}");
-    }
-    private void SetUserIndex(ulong battleId, uint userindex)
-    {
-        State.SetUInt32($"user:{battleId}", userindex);
-    }
-    private uint GetUserIndex(ulong battleId)
-    {
-        return State.GetUInt32($"user:{battleId}");
-    }
-    private void SetScoreSubmittedCount(ulong battleId, uint scoresubmitcount)
-    {
-        State.SetUInt32($"scoresubmit:{battleId}", scoresubmitcount);
-    }
-    private uint GetScoreSubmittedCount(ulong battleId)
-    {
-        return State.GetUInt32($"scoresubmit:{battleId}");
-    }
     private void EnsureOwnerOnly()
     {
-        Assert(Message.Sender == Owner, "HASHBATTLE: UNAUTHORIZED");
+        Assert(Message.Sender == Owner, "The method is owner only.");
+    }
+    public struct BattleMain
+    {
+        public ulong BattleId;
+        public Address Winner;
+        public Address[] Users;
+        public ulong Fee;
+        public bool IsCancelled;
+    }
+    public struct BattleUser
+    {
+        public bool ScoreSubmitted;
+    }
+    public struct BattleHighestScorer
+    {
+        public uint Score;
+        public uint HighestScoreCount;
+        public Address HighestScorer;
+    }
+    public struct OwnershipTransferedLog
+    {
+        [Index] public Address PreviousOwner;
+        [Index] public Address NewOwner;
+    }
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index] public Address CurrentOwner;
+        [Index] public Address PendingOwner;
+    }
+    public struct BattleStartedLog
+    {
+        [Index] public ulong BattleId;
+        [Index] public Address Address;
+    }
+    public struct BattleEnteredLog
+    {
+        [Index] public ulong BattleId;
+        [Index] public Address Address;
+    }
+    public struct BattleEndedLog
+    {
+        [Index] public ulong BattleId;
+        [Index] public Address Address;
     }
 }
