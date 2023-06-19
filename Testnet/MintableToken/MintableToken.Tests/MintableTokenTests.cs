@@ -62,9 +62,9 @@ namespace MintableTokenTests
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
 
-            standardToken.SetNewOwner(this.destination);
+            standardToken.TransferOwnership(this.destination);
 
-            this.mockPersistentState.Setup(s => s.GetAddress($"NewOwner")).Returns(this.destination);
+            this.mockPersistentState.Setup(s => s.GetAddress($"PendingOwner")).Returns(this.destination);
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.destination, 0));
 
             standardToken.ClaimOwnership();
@@ -72,7 +72,7 @@ namespace MintableTokenTests
             // Verify that PersistentState was called to update the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.destination));
 
-            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferred() { PreviousOwner = this.owner, NewOwner = this.destination }));
+            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferedLog() { PreviousOwner = this.owner, NewOwner = this.destination }));
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.SetNewOwner(this.destination));
+            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.TransferOwnership(this.destination));
         }
 
         [Fact]
