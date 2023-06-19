@@ -52,7 +52,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
     public void TransferOwnership_Succeeds_For_Owner()
     {
         var mintableTokenInvoice = this.CreateNewMintableTokenContract();
-        mintableTokenInvoice.SetNewOwner(this.AddressOne);
+        mintableTokenInvoice.TransferOwnership(this.AddressOne);
         this.SetupMessage(this.Contract, this.AddressOne);
         mintableTokenInvoice.ClaimOwnership();
         mintableTokenInvoice.Owner.Should().Be(this.AddressOne);
@@ -63,7 +63,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
     {
         var mintableTokenInvoice = this.CreateNewMintableTokenContract();
         this.SetupMessage(this.Contract, this.AddressOne);
-        Assert.ThrowsAny<SmartContractAssertException>(() => mintableTokenInvoice.SetNewOwner(this.AddressTwo));
+        Assert.ThrowsAny<SmartContractAssertException>(() => mintableTokenInvoice.TransferOwnership(this.AddressTwo));
     }
 
     [Fact]

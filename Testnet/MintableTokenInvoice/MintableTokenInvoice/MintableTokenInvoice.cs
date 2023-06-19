@@ -5,7 +5,7 @@ using Stratis.SmartContracts;
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableTokenInvoice : SmartContract, IPullOwnership
+public class MintableTokenInvoice : SmartContract, IOwnable
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -16,7 +16,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     public MintableTokenInvoice(ISmartContractState smartContractState, UInt256 authorizationLimit, Address identityContract) : base(smartContractState)
     {
         this.Owner = Message.Sender;
-        this.NewOwner = Address.Zero;
+        this.PendingOwner = Address.Zero;
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
         this.KYCProvider = 3 /* ClaimTopic.Shufti */;
@@ -29,10 +29,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         private set => State.SetAddress(nameof(this.Owner), value);
     }
 
-    public Address NewOwner
+    public Address PendingOwner
     {
-        get => State.GetAddress(nameof(this.NewOwner));
-        private set => State.SetAddress(nameof(this.NewOwner), value);
+        get => State.GetAddress(nameof(this.PendingOwner));
+        private set => State.SetAddress(nameof(this.PendingOwner), value);
     }
 
     public UInt256 AuthorizationLimit
@@ -258,25 +258,27 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     }
 
     /// <inheritdoc />
-    public void SetNewOwner(Address address)
+    public void TransferOwnership(Address address)
     {
         EnsureOwnerOnly();
 
-        NewOwner = address;
+        PendingOwner = address;
+
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = PendingOwner });
     }
 
     /// <inheritdoc />
     public void ClaimOwnership()
     {
-        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+        Assert(Message.Sender == PendingOwner, "Only the new owner can call this method");
 
         var previousOwner = Owner;
 
-        Owner = NewOwner;
+        Owner = PendingOwner;
 
-        NewOwner = Address.Zero;
+        PendingOwner = Address.Zero;
 
-        Log(new LogOwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
+        Log(new OwnershipTransferedLog() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
     /// <summary>
@@ -347,9 +349,20 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     /// <summary>
     /// Provides a record that ownership was transferred from one account to another.
     /// </summary>
-    public struct LogOwnershipTransferred
+    public struct OwnershipTransferedLog
     {
-        [Index] public Address PreviousOwner;
-        [Index] public Address NewOwner;
+        [Index]
+        public Address PreviousOwner;
+
+        [Index]
+        public Address NewOwner;
+    }
+
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index]
+        public Address CurrentOwner;
+        [Index]
+        public Address PendingOwner;
     }
 }
