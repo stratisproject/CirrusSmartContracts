@@ -108,7 +108,7 @@ public class Arena : SmartContract
         Owner = newOwner;
         PendingOwner = Address.Zero;
 
-        Log(new OwnershipTransferedLog { PreviousOwner = oldOwner, NewOwner = newOwner });
+        Log(new OwnershipTransferredLog { PreviousOwner = oldOwner, NewOwner = newOwner });
     }
     /// <summary>
     /// Battle owner will start the battle
@@ -119,7 +119,7 @@ public class Arena : SmartContract
         Assert(fee < ulong.MaxValue / MaxUsers, "Fee is too high");
 
         var battleId = NextBattleId;
-        NextBattleId += 1;
+        NextBattleId = battleId + 1;
 
         var battle = new BattleMain
         {
@@ -271,7 +271,7 @@ public class Arena : SmartContract
         public uint HighestScoreCount;
         public Address HighestScorer;
     }
-    public struct OwnershipTransferedLog
+    public struct OwnershipTransferredLog
     {
         [Index] public Address PreviousOwner;
         [Index] public Address NewOwner;
