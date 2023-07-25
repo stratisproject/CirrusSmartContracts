@@ -119,7 +119,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         var invoice = GetInvoice(invoiceReference);
         if (invoice.To != Address.Zero)
             // If called with the same unique number then the details should not change.
-            Assert(invoice.To != address || invoice.Symbol != symbol && invoice.Amount != amount && invoice.TargetNetwork != targetAddress && invoice.TargetNetwork != targetNetwork, "Transaction reference already exists");
+            Assert(invoice.To == address && invoice.Symbol == symbol && invoice.Amount == amount && invoice.TargetNetwork == targetAddress && invoice.TargetNetwork == targetNetwork, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
             invoice = new Invoice() { Symbol = symbol, Amount = amount, To = address, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
