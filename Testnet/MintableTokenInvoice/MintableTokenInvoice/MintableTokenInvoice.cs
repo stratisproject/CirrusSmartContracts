@@ -90,27 +90,21 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return $"INV-{invoiceReference.Substring(0, 4)}-{invoiceReference.Substring(4, 4)}-{invoiceReference.Substring(8, 4)}";
     }
 
-    private string ValidateKYC(Address sender)
+    private void EnsureKYCdUserOnly(Address sender)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
-        if (!(result?.Success ?? false))
-        {
-            return "Could not determine KYC status";
-        }
+        Assert(result?.Success ?? false, "Could not determine KYC status");
 
         // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
         // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
-        if (result.ReturnValue == null || !Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"))
-        {
-            return "Your KYC status is not valid";
-        }
-
-        return string.Empty;
+        Assert(result.ReturnValue != null && Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"), "Your KYC status is not valid");
     }
 
     private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
+        EnsureKYCdUserOnly(address);
+
         string transactionReference = GetTransactionReference(uniqueNumber, address);
 
         var invoiceReference = GetInvoiceReference(transactionReference);
@@ -126,9 +120,6 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
-
-        string result = ValidateKYC(address);
-        Assert(string.IsNullOrEmpty(result), "Obtain KYC verification for this address and then resubmit this request.");
 
         SetInvoice(invoiceReference, invoice);
 
@@ -186,7 +177,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         {
             // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
             if (recheckKYC)
-                ValidateKYC(invoice.To);
+                EnsureKYCdUserOnly(invoice.To);
         }
 
         return Serializer.Serialize(invoice);
