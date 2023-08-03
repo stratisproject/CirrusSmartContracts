@@ -187,16 +187,15 @@ public class MintableTokenInvoiceTests : BaseContractTest
     /// <returns>A series of object arrays containing data for token minting transactions.</returns>
     public static IEnumerable<object[]> TransferResults()
     {
-        yield return new object[] { (TransferResult)null, "Could not determine KYC status" };
         yield return new object[] { TransferResult.Failed(), "Could not determine KYC status" };
-        yield return new object[] { TransferResult.Transferred(null), "Your KYC status is not valid" };
-        yield return new object[] { TransferResult.Transferred(new byte[0]), "Your KYC status is not valid" };
+        yield return new object[] { TransferResult.Empty(), "Your KYC status is not valid" };
     }
 
     [Theory]
     [MemberData(nameof(TransferResults))]
     public void CantCreateInvoiceIfNotKYCed(TransferResult result, string outcome)
     {
+        TransferResult.Transferred(new byte[] { });
         var mintableTokenInvoice = this.CreateNewMintableTokenContract();
 
         UInt128 uniqueNumber = 1;

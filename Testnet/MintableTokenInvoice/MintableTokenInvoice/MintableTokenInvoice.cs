@@ -94,11 +94,10 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
-        Assert(result?.Success ?? false, "Could not determine KYC status");
+        Assert(result.Success, "Could not determine KYC status");
 
-        // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
-        // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
-        Assert(result.ReturnValue != null && Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"), "Your KYC status is not valid");
+        // Only verified users are saved in the Identity contract.
+        Assert(result.ReturnValue != null, "Your KYC status is not valid");
     }
 
     private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
