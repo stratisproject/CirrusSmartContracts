@@ -7,6 +7,7 @@ using NBitcoin.DataEncoders;
 using Newtonsoft.Json;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
+using System.Collections.Generic;
 using Xunit;
 
 // Claim as defined by Identity Server.
@@ -180,8 +181,21 @@ public class MintableTokenInvoiceTests : BaseContractTest
         Assert.Null(invoice.Outcome);
     }
 
-    [Fact]
-    public void CantCreateInvoiceIfNotKYCed()
+    /// <summary>
+    /// Provides data for testing token minting transactions.
+    /// </summary>
+    /// <returns>A series of object arrays containing data for token minting transactions.</returns>
+    public static IEnumerable<object[]> TransferResults()
+    {
+        yield return new object[] { (TransferResult)null, "Could not determine KYC status" };
+        yield return new object[] { TransferResult.Failed(), "Could not determine KYC status" };
+        yield return new object[] { TransferResult.Transferred(null), "Your KYC status is not valid" };
+        yield return new object[] { TransferResult.Transferred(new byte[0]), "Your KYC status is not valid" };
+    }
+
+    [Theory]
+    [MemberData(nameof(TransferResults))]
+    public void CantCreateInvoiceIfNotKYCed(TransferResult result, string outcome)
     {
         var mintableTokenInvoice = this.CreateNewMintableTokenContract();
 
@@ -193,11 +207,11 @@ public class MintableTokenInvoiceTests : BaseContractTest
             .Setup(x => x.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<ulong>()))
             .Returns((ISmartContractState state, Address address, ulong amount, string methodName, object[] args, ulong gasLimit) =>
             {
-                return null;
+                return result;
             });
 
         var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber, "Address", "Network"));
-        Assert.Contains("verification", ex.Message);
+        Assert.Equal(outcome, ex.Message);
     }
 
     [Fact]
