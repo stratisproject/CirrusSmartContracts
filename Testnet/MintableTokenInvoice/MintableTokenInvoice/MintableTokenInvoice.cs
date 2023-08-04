@@ -97,7 +97,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(result.Success, "Could not determine KYC status");
 
         // Only verified users are saved in the Identity contract.
-        Assert(result.ReturnValue != null, "Your KYC status is not valid");
+        Assert(result.ReturnValue != null && ((byte[])result.ReturnValue).Length != 0, "Your KYC status is not valid");
     }
 
     private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
