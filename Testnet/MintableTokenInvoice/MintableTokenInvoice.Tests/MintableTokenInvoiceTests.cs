@@ -181,6 +181,57 @@ public class MintableTokenInvoiceTests : BaseContractTest
         Assert.Null(invoice.Outcome);
     }
 
+
+    [Fact]
+    public void CanCreateInvoiceFromURL()
+    {
+        var mintableTokenInvoice = this.CreateNewMintableTokenContract();
+
+        UInt128 uniqueNumber = 1;
+
+        this.SetupMessage(this.Contract, this.AddressOne);
+
+        var claim = new Claim() { Description = "Identity Approved", IsRevoked = false, Key = "Identity Approved" };
+        var claimBytes = new ASCIIEncoder().DecodeData(JsonConvert.SerializeObject(claim));
+
+        this.MockInternalExecutor
+            .Setup(x => x.Call(It.IsAny<ISmartContractState>(), It.IsAny<Address>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<ulong>()))
+            .Returns((ISmartContractState state, Address address, ulong amount, string methodName, object[] args, ulong gasLimit) =>
+            {
+                return TransferResult.Transferred(claimBytes);
+            });
+
+        var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
+        var address = key.PubKey.Hash.ToBytes().ToAddress();
+
+        var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes());
+
+        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.000001&targetAddress=Address&targetNetwork=Network";
+        var signature = key.SignMessage(url);
+        byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
+        var transactionReference = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
+        var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
+
+        Assert.Equal("INV-2724-4779-8084", invoiceReference.ToString());
+
+        // 42 is checksum for INV numbers.
+        Assert.Equal(42UL, ulong.Parse(invoiceReference.Replace("-", string.Empty)[3..]) % 97);
+
+        Assert.Equal("REF-4623-8979-4313", transactionReference.ToString());
+
+        // 1 is checksum for REF numbers.
+        Assert.Equal(1UL, ulong.Parse(transactionReference.Replace("-", string.Empty)[3..]) % 97);
+
+        var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
+        var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
+
+        Assert.Equal(100, invoice.Amount);
+        Assert.Equal("GBPT", invoice.Symbol);
+        Assert.Equal(address, invoice.To);
+        Assert.True(invoice.IsAuthorized);
+        Assert.Null(invoice.Outcome);
+    }
+
     /// <summary>
     /// Provides data for testing token minting transactions.
     /// </summary>
