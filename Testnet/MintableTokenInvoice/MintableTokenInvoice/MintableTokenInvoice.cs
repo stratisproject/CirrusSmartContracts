@@ -1,5 +1,7 @@
 ﻿using Stratis.SCL.Crypto;
 using Stratis.SmartContracts;
+using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -157,15 +159,50 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     
     public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
     {
-        byte[] arguments = SSAS.ValidateAndParse(address, url, signature, "uid#11,symbol#4,amount#12,targetAddress#4,targetNetwork#4");
-        Assert(arguments != null, "Invalid signature.");
-        var res = Serializer.ToStruct<SignatureTemplate>(arguments);
+        Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
+        Assert(signer == address, "Invalid signature.");
+
+        var argDict = ParseQueryString(url);
+
+        var res = new SignatureTemplate
+        {
+            uniqueNumber = new UInt128(Convert.FromHexString(argDict["uid"])),
+            symbol = argDict["symbol"],
+            amount = UInt256.Parse(Math.Floor(decimal.Parse(argDict["amount"]) * 100000000m).ToString()),
+            targetAddress = argDict["targetAddress"],
+            targetNetwork = argDict["targetNetwork"],
+        };
 
         Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.uniqueNumber, Account = address, Url = url, Signature = signature });
 
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
-    
+
+    private static Dictionary<string, string> ParseQueryString(string queryString)
+    {
+        Dictionary<string, string> result = new Dictionary<string, string>();
+
+        int startOfQueryString = queryString.IndexOf('?') + 1;
+
+        if (!string.IsNullOrEmpty(queryString) && startOfQueryString != 0)
+        {
+            // Remove the '?' at the start of the query string
+            queryString = queryString.Substring(startOfQueryString);
+
+            foreach (var part in queryString.Split('&'))
+            {
+                var keyValue = part.Split('=');
+
+                if (keyValue.Length == 2)
+                {
+                    result[keyValue[0]] = Uri.UnescapeDataString(keyValue[1]);
+                }
+            }
+        }
+
+        return result;
+    }
+
     /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {
