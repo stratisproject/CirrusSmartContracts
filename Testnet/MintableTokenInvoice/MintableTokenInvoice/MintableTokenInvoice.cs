@@ -1,8 +1,6 @@
 ﻿using Stratis.SCL.Crypto;
 using Stratis.SmartContracts;
-using System.Collections.Generic;
 using System;
-using System.Linq;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -163,7 +161,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
-        var args = SSAS.GetURLArguments(url, new [] { "uid", "symbol", "amount", "targetAddress", "targetNetwork" });
+        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork" });
 
         string amount = args[2];
         int decimals = amount.Contains('.') ? amount.Length - amount.IndexOf('.') - 1 : 0;
@@ -171,12 +169,19 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
         amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
 
-        // This argument currently arrives in little-endian order but we will fix that later.
+        // This argument currently arrives in little-endian order.
         var uid = UInt128.Parse($"0x{args[0]}");
+        byte[] uidBytes = uid.ToBytes();
+        byte[] reversedBytes = new byte[uidBytes.Length];
+
+        for (int i = 0; i < uidBytes.Length; i++)
+        {
+            reversedBytes[i] = uidBytes[uidBytes.Length - 1 - i];
+        }
 
         var res = new SignatureTemplate
         {
-            uniqueNumber = new UInt128(uid.ToBytes().Reverse().ToArray()), // Fix the endianness.
+            uniqueNumber = new UInt128(reversedBytes),
             symbol = args[1],
             amount = UInt256.Parse(amount),
             targetAddress = args[3],
