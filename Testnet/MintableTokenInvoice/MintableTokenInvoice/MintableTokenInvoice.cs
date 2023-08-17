@@ -2,6 +2,7 @@
 using Stratis.SmartContracts;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
@@ -162,15 +163,24 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
-        var argDict = ParseQueryString(url);
+        var args = SSAS.GetURLArguments(url, new [] { "uid", "symbol", "amount", "targetAddress", "targetNetwork" });
+
+        string amount = args[2];
+        int decimals = amount.Contains('.') ? amount.Length - amount.IndexOf('.') - 1 : 0;
+        Assert(decimals <= 8, "Too many decimals");
+
+        amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
+
+        // This argument currently arrives in little-endian order but we will fix that later.
+        var uid = UInt128.Parse($"0x{args[0]}");
 
         var res = new SignatureTemplate
         {
-            uniqueNumber = new UInt128(Convert.FromHexString(argDict["uid"])),
-            symbol = argDict["symbol"],
-            amount = UInt256.Parse(Math.Floor(decimal.Parse(argDict["amount"]) * 100000000m).ToString()),
-            targetAddress = argDict["targetAddress"],
-            targetNetwork = argDict["targetNetwork"],
+            uniqueNumber = new UInt128(uid.ToBytes().Reverse().ToArray()), // Fix the endianness.
+            symbol = args[1],
+            amount = UInt256.Parse(amount),
+            targetAddress = args[3],
+            targetNetwork = args[4],
         };
 
         Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.uniqueNumber, Account = address, Url = url, Signature = signature });
@@ -178,30 +188,6 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
 
-    private static Dictionary<string, string> ParseQueryString(string queryString)
-    {
-        Dictionary<string, string> result = new Dictionary<string, string>();
-
-        int startOfQueryString = queryString.IndexOf('?') + 1;
-
-        if (!string.IsNullOrEmpty(queryString) && startOfQueryString != 0)
-        {
-            // Remove the '?' at the start of the query string
-            queryString = queryString.Substring(startOfQueryString);
-
-            foreach (var part in queryString.Split('&'))
-            {
-                var keyValue = part.Split('=');
-
-                if (keyValue.Length == 2)
-                {
-                    result[keyValue[0]] = Uri.UnescapeDataString(keyValue[1]);
-                }
-            }
-        }
-
-        return result;
-    }
 
     /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
