@@ -193,7 +193,6 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
     }
 
-
     /// <inheritdoc />
     public byte[] RetrieveInvoice(string invoiceReference, bool recheckKYC)
     {
