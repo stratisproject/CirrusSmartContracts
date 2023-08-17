@@ -1,5 +1,6 @@
 namespace MintableTokenInvoiceTests;
 
+using DBreeze.Utils;
 using FluentAssertions;
 using Moq;
 using NBitcoin;
@@ -204,7 +205,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
         var address = key.PubKey.Hash.ToBytes().ToAddress();
 
-        var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes());
+        var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes().Reverse());
 
         var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.000001&targetAddress=Address&targetNetwork=Network";
         var signature = key.SignMessage(url);
