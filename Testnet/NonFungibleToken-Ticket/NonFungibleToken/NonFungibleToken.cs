@@ -229,31 +229,42 @@ public class NonFungibleToken : SmartContract
         SafeTransferFromInternal(from, to, tokenId, data);
     }
 
-
     private struct SignatureTemplate
     {
+        public string action;
         public Address from;
         public Address to;
         public UInt256 tokenId;
         public UInt128 uniqueNumber;
     }
 
-    public void DelegatedTransfer(Address from, Address to, UInt256 tokenId, UInt128 uniqueNumber, byte[] signature)
+    /// <summary>
+    /// Throws if <see cref="signature"/> is not the signature of the current owner for <see cref="url"/>.
+    /// Throws if <see cref="url"/> does not contain "action=DelegatedTransfer".
+    /// Throws if <see cref="from"/> is not the current owner.
+    /// Throws if <see cref="to"/> is the zero address.
+    /// Throws if <see cref="tokenId"/> is not a valid NFT.
+    /// Throws if <see cref="uniqueNumber"/> has been used before.
+    /// </summary>
+    /// <remarks>The caller is responsible to confirm that <see cref="to"/> is capable of receiving NFTs or else
+    /// they maybe be permanently lost.</remarks>
+    /// <param name="url">The url containing the method arguments.</param>
+    /// <param name="signature">The signature of the <paramref name="url"/> string signed by the owner.</param>
+    public void DelegatedTransfer(string url, byte[] signature)
     {
+        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });       
+        Assert(args[1] == "DelegatedTransfer", "Invalid url action.");
+
+        var uniqueNumber = UInt128.Parse($"0x{args[0]}");
         Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
 
-        var template = new SignatureTemplate
-        {
-            from = from,
-            to = to,
-            tokenId = tokenId,
-            uniqueNumber = uniqueNumber
-        };
-
-        // Check if the owner signed the url. If so approve Message.Sender.
-        var res = Serializer.Serialize(template);
-        Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
+        var tokenId = UInt256.Parse($"0x{args[4]}");
+        Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
+
+        // TODO: Parse the Cirrus address strings to produce Address types.
+        var from = args[2];
+        var to = args[3];
 
         // Allow Message.Sender to perform the transfer.
         SetIdToApproval(tokenId, Message.Sender);
