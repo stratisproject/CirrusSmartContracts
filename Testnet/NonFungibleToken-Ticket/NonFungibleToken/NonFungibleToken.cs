@@ -1,9 +1,23 @@
 ﻿using Stratis.SmartContracts;
+using Stratis.SCL.Crypto;
+
 /// <summary>
 /// A non fungible token contract.
 /// </summary>
 public class NonFungibleToken : SmartContract
 {
+    /// <summary>
+    /// Function to check for replays of signed transfers.
+    /// </summary>
+    /// <param name="transferID">A unique number identifying the transfer.</param>
+    /// <returns>True if the transfer had already been performed, false otherwise.</returns>
+    public bool KnownTransfer(UInt128 transferID) => State.GetBool($"Transfer:{transferID}");
+
+    /// <summary>
+    /// Records the <paramref name="transferID"/> of a signed transfer.
+    /// </summary>
+    /// <param name="transferID">A unique number identifying the transfer.</param>
+    private void SetKnownTransfer(UInt128 transferID) => State.SetBool($"Transfer:{transferID}", true);
 
     /// <summary>
     /// Function to check which interfaces are supported by this contract.
@@ -215,6 +229,42 @@ public class NonFungibleToken : SmartContract
         SafeTransferFromInternal(from, to, tokenId, data);
     }
 
+
+    private struct SignatureTemplate
+    {
+        public Address from;
+        public Address to;
+        public UInt256 tokenId;
+        public UInt128 uniqueNumber;
+    }
+
+    public void DelegatedTransfer(Address from, Address to, UInt256 tokenId, UInt128 uniqueNumber, byte[] signature)
+    {
+        Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
+
+        var template = new SignatureTemplate
+        {
+            from = from,
+            to = to,
+            tokenId = tokenId,
+            uniqueNumber = uniqueNumber
+        };
+
+        // Check if the owner signed the url. If so approve Message.Sender.
+        var res = Serializer.Serialize(template);
+        Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
+        Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
+
+        // Allow Message.Sender to perform the transfer.
+        SetIdToApproval(tokenId, Message.Sender);
+
+        SetKnownTransfer(uniqueNumber);
+
+        TransferFrom(from, to, tokenId);
+
+        LogDelegatedTransfer(from, to, tokenId, uniqueNumber, signature);
+    }
+
     /// <summary>
     /// Transfers the ownership of an NFT from one address to another address. This function can
     /// be changed to payable.
@@ -423,6 +473,11 @@ public class NonFungibleToken : SmartContract
         Log(new TransferLog() { From = from, To = to, TokenId = tokenId });
     }
 
+    private void LogDelegatedTransfer(Address from, Address to, UInt256 tokenId, UInt128 uniqueNumber, byte[] signature)
+    {
+        Log(new DelegatedTransferLog() { From = from, To = to, TokenId = tokenId, UniqueNumber = uniqueNumber, Signature = signature });
+    }
+
     /// <summary>
     /// This logs when the approved Address for an NFT is changed or reaffirmed. The zero
     /// Address indicates there is no approved Address. When a Transfer logs, this also
@@ -610,6 +665,19 @@ public class NonFungibleToken : SmartContract
         INonFungibleTokenMetadata = 4,
         INonFungibleTokenEnumerable = 5,
         ITicketContract = 100,
+    }
+
+    public struct DelegatedTransferLog
+    {
+        [Index]
+        public Address From;
+        [Index]
+        public Address To;
+        [Index]
+        public UInt256 TokenId;
+
+        public UInt128 UniqueNumber;
+        public byte[] Signature;
     }
 
     public struct TransferLog
