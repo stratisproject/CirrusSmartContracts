@@ -252,8 +252,8 @@ public class NonFungibleToken : SmartContract
     /// <param name="signature">The signature of the <paramref name="url"/> string signed by the owner.</param>
     public void DelegatedTransfer(string url, byte[] signature)
     {
-        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });       
-        Assert(args[1] == "DelegatedTransfer", "Invalid url action.");
+        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });     
+        Assert(args != null && args.Length == 5 && args[1] == nameof(DelegatedTransfer), "Invalid url.");
 
         var uniqueNumber = UInt128.Parse($"0x{args[0]}");
         Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
@@ -262,9 +262,9 @@ public class NonFungibleToken : SmartContract
         Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
 
-        // TODO: Parse the Cirrus address strings to produce Address types.
-        var from = args[2];
-        var to = args[3];
+        // "ParseAddress" should work regardless of whether main or test address strings are passed.
+        var from = SSAS.ParseAddress(args[2]);
+        var to = SSAS.ParseAddress(args[3]);
 
         // Allow Message.Sender to perform the transfer.
         SetIdToApproval(tokenId, Message.Sender);
