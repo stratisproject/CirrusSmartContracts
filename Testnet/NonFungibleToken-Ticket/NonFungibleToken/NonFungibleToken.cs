@@ -252,7 +252,8 @@ public class NonFungibleToken : SmartContract
     /// <param name="signature">The signature of the <paramref name="url"/> string signed by the owner.</param>
     public void DelegatedTransfer(string url, byte[] signature)
     {
-        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });     
+        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });
+
         Assert(args != null && args.Length == 5 && args[1] == nameof(DelegatedTransfer), "Invalid url.");
 
         var uniqueNumber = UInt128.Parse($"0x{args[0]}");
@@ -263,8 +264,9 @@ public class NonFungibleToken : SmartContract
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
 
         // "ParseAddress" should work regardless of whether main or test address strings are passed.
-        var from = SSAS.ParseAddress(args[2]);
-        var to = SSAS.ParseAddress(args[3]);
+        var from = Serializer.ToAddress(SSAS.ParseAddress(args[2], out byte prefix1));
+        var to = Serializer.ToAddress(SSAS.ParseAddress(args[3], out byte prefix2));
+        Assert(prefix1 == prefix2, "'From' and 'To' address prefixes are different.");
 
         // Allow Message.Sender to perform the transfer.
         SetIdToApproval(tokenId, Message.Sender);

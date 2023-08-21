@@ -3,6 +3,7 @@ using FluentAssertions;
 using Moq;
 using Moq.Language.Flow;
 using NBitcoin;
+using NBitcoin.Networks;
 using NonFungibleTokenContract.Tests;
 using Stratis.SmartContracts;
 using System;
@@ -18,9 +19,18 @@ public class NonFungibleTokenTests
     private Mock<IInternalTransactionExecutor> transactionExecutorMock;
     private ISerializer serializer;
     private Address contractAddress;
+    private Network network;
     private string name;
     private string symbol;
     private bool ownerOnlyMinting;
+
+    class ChameleonNetwork : Network
+    {
+        public ChameleonNetwork(byte base58Prefix)
+        {
+            this.Base58Prefixes = new byte[][] { new byte[] { base58Prefix } };
+        }
+    }
 
     public NonFungibleTokenTests()
     {
@@ -37,6 +47,7 @@ public class NonFungibleTokenTests
         this.name = "Tickets Token";
         this.symbol = "TCKT";
         this.ownerOnlyMinting = true;
+        this.network = new ChameleonNetwork(119);
     }
 
     public string GetTokenURI(UInt256 tokenId) => $"https://example.com/api/tokens/{tokenId}";
@@ -594,6 +605,12 @@ public class NonFungibleTokenTests
         contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
     }
 
+    private string AddressToString(Address address)
+    {
+        var address160 = Stratis.SmartContracts.CLR.AddressExtensions.ToUint160(address);
+        return Stratis.SmartContracts.CLR.AddressExtensions.ToBase58Address(address160, this.network);
+    }
+
     [Fact]
     public void DelegatedTransfer_ValidTokenTransfer_MessageSender_TransfersTokenFrom_To()
     {
@@ -608,7 +625,7 @@ public class NonFungibleTokenTests
         var nonFungibleToken = CreateNonFungibleToken();
         var uid = Guid.NewGuid();
 
-        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&action=DelegatedTransfer&from={ownerAddress}&to={targetAddress}&tokenId=1";
+        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&action=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
         byte[] signature = Convert.FromBase64String(key.SignMessage(url));
 
         nonFungibleToken.DelegatedTransfer(url, signature);
