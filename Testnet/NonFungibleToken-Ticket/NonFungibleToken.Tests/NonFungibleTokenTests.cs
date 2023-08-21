@@ -591,6 +591,30 @@ public class NonFungibleTokenTests
     }
 
     [Fact]
+    public void DelegatedTransfer_ValidTokenTransfer_MessageSender_TransfersTokenFrom_To()
+    {
+        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
+        var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
+        state.SetAddress("IdToOwner:1", ownerAddress);
+        state.SetUInt256($"Balance:{ownerAddress}", 1);
+
+        smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
+
+        var nonFungibleToken = CreateNonFungibleToken();
+
+        string url = "";
+        byte[] signature = new byte[0];
+
+        nonFungibleToken.DelegatedTransfer(url, signature);
+
+        Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
+        Assert.Equal(0, state.GetUInt256($"Balance:{ownerAddress}"));
+        Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
+
+        contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
+    }
+
+    [Fact]
     public void TransferFrom_NFTokenOwnerZero_ThrowsException()
     {
         var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
