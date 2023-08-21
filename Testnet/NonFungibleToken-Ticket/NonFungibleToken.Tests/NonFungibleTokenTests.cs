@@ -2,6 +2,7 @@
 using FluentAssertions;
 using Moq;
 using Moq.Language.Flow;
+using NBitcoin;
 using NonFungibleTokenContract.Tests;
 using Stratis.SmartContracts;
 using System;
@@ -15,6 +16,7 @@ public class NonFungibleTokenTests
     private Mock<IContractLogger> contractLoggerMock;
     private InMemoryState state;
     private Mock<IInternalTransactionExecutor> transactionExecutorMock;
+    private ISerializer serializer;
     private Address contractAddress;
     private string name;
     private string symbol;
@@ -25,10 +27,12 @@ public class NonFungibleTokenTests
         this.contractLoggerMock = new Mock<IContractLogger>();
         this.smartContractStateMock = new Mock<ISmartContractState>();
         this.transactionExecutorMock = new Mock<IInternalTransactionExecutor>();
+        this.serializer = new Stratis.SmartContracts.CLR.Serialization.Serializer(new Stratis.SmartContracts.CLR.Serialization.ContractPrimitiveSerializerV2(null));
         this.state = new InMemoryState();
         this.smartContractStateMock.Setup(s => s.PersistentState).Returns(this.state);
         this.smartContractStateMock.Setup(s => s.ContractLogger).Returns(this.contractLoggerMock.Object);
         this.smartContractStateMock.Setup(x => x.InternalTransactionExecutor).Returns(this.transactionExecutorMock.Object);
+        this.smartContractStateMock.Setup(x => x.Serializer).Returns(this.serializer);
         this.contractAddress = "0x0000000000000000000000000000000000000001".HexToAddress();
         this.name = "Tickets Token";
         this.symbol = "TCKT";
@@ -593,7 +597,8 @@ public class NonFungibleTokenTests
     [Fact]
     public void DelegatedTransfer_ValidTokenTransfer_MessageSender_TransfersTokenFrom_To()
     {
-        var ownerAddress = "0x0000000000000000000000000000000000000006".HexToAddress();
+        var key = new Key();
+        var ownerAddress = Convert.ToHexString(key.PubKey.Hash.ToBytes()).HexToAddress();
         var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
         state.SetAddress("IdToOwner:1", ownerAddress);
         state.SetUInt256($"Balance:{ownerAddress}", 1);
@@ -601,9 +606,10 @@ public class NonFungibleTokenTests
         smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
 
         var nonFungibleToken = CreateNonFungibleToken();
+        var uid = Guid.NewGuid();
 
-        string url = "";
-        byte[] signature = new byte[0];
+        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&action=DelegatedTransfer&from={ownerAddress}&to={targetAddress}&tokenId=1";
+        byte[] signature = Convert.FromBase64String(key.SignMessage(url));
 
         nonFungibleToken.DelegatedTransfer(url, signature);
 
