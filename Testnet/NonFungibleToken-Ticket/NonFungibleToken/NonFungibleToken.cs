@@ -259,7 +259,7 @@ public class NonFungibleToken : SmartContract
         var uniqueNumber = UInt128.Parse($"0x{args[0]}");
         Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
 
-        var tokenId = UInt256.Parse($"0x{args[4]}");
+        var tokenId = UInt256.Parse(args[4]);
         Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
 
