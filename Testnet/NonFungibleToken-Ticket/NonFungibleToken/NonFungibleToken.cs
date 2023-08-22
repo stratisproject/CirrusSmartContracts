@@ -252,7 +252,7 @@ public class NonFungibleToken : SmartContract
     /// <param name="signature">The signature of the <paramref name="url"/> string signed by the owner.</param>
     public void DelegatedTransfer(string url, byte[] signature)
     {
-        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "action", "from", "to", "tokenId" });
+        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "method", "from", "to", "tokenId" });
 
         Assert(args != null && args.Length == 5 && args[1] == nameof(DelegatedTransfer), "Invalid url.");
 

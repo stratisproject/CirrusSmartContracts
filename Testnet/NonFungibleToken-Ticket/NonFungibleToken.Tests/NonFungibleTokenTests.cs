@@ -625,7 +625,7 @@ public class NonFungibleTokenTests
         var nonFungibleToken = CreateNonFungibleToken();
         var uid = Guid.NewGuid();
 
-        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&action=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
+        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&method=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
         byte[] signature = Convert.FromBase64String(key.SignMessage(url));
 
         nonFungibleToken.DelegatedTransfer(url, signature);
