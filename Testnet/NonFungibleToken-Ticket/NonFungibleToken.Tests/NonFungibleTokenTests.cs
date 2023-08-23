@@ -617,6 +617,7 @@ public class NonFungibleTokenTests
         var key = new Key();
         var ownerAddress = Convert.ToHexString(key.PubKey.Hash.ToBytes()).HexToAddress();
         var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
+        var contractAddress = "0x0000000000000000000000000000000000000000".HexToAddress();
         state.SetAddress("IdToOwner:1", ownerAddress);
         state.SetUInt256($"Balance:{ownerAddress}", 1);
 
@@ -625,7 +626,7 @@ public class NonFungibleTokenTests
         var nonFungibleToken = CreateNonFungibleToken();
         var uid = Guid.NewGuid();
 
-        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&method=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
+        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&contract={this.AddressToString(contractAddress)}&method=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
         byte[] signature = Convert.FromBase64String(key.SignMessage(url));
 
         nonFungibleToken.DelegatedTransfer(url, signature);

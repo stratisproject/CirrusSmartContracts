@@ -229,22 +229,17 @@ public class NonFungibleToken : SmartContract
         SafeTransferFromInternal(from, to, tokenId, data);
     }
 
-    private struct SignatureTemplate
-    {
-        public string action;
-        public Address from;
-        public Address to;
-        public UInt256 tokenId;
-        public UInt128 uniqueNumber;
-    }
-
     /// <summary>
-    /// Throws if <see cref="signature"/> is not the signature of the current owner for <see cref="url"/>.
-    /// Throws if <see cref="url"/> does not contain "action=DelegatedTransfer".
-    /// Throws if <see cref="from"/> is not the current owner.
-    /// Throws if <see cref="to"/> is the zero address.
-    /// Throws if <see cref="tokenId"/> is not a valid NFT.
-    /// Throws if <see cref="uniqueNumber"/> has been used before.
+    /// <para>Throws if <see cref="signature"/> can't be resolved from <see cref="url"/>.</para>
+    /// <para>Throws if the following <see cref="url"/> fields are invalid:
+    /// <list type="bullet">
+    /// <item>Throws if "method" is not "DelegatedTransfer".</item>
+    /// <item>Throws if "contract" is not this.Address.</item>
+    /// <item>Throws if "uid" has successfully been used before.</item>
+    /// <item>Throws if "from" is not the current owner or has a different address prexix from the "to" address or contract address.</item>
+    /// <item>Throws if "to" is the zero address or has a different address prexix from the "to" address or contract address.</item>
+    /// <item>Throws if "tokenId" is not a valid NFT or does not belong to the signee.</item>
+    /// </list></para>
     /// </summary>
     /// <remarks>The caller is responsible to confirm that <see cref="to"/> is capable of receiving NFTs or else
     /// they maybe be permanently lost.</remarks>
@@ -252,21 +247,23 @@ public class NonFungibleToken : SmartContract
     /// <param name="signature">The signature of the <paramref name="url"/> string signed by the owner.</param>
     public void DelegatedTransfer(string url, byte[] signature)
     {
-        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "method", "from", "to", "tokenId" });
+        string[] args = SSAS.GetURLArguments(url, new string[] { "uid", "contract", "method", "from", "to", "tokenId" });
 
-        Assert(args != null && args.Length == 5 && args[1] == nameof(DelegatedTransfer), "Invalid url.");
+        Assert(args != null && args.Length == 6 && args[2] == nameof(DelegatedTransfer), "Invalid url.");
+        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[1], out byte prefix0)) == this.Address, "Invalid contract address.");
 
         var uniqueNumber = UInt128.Parse($"0x{args[0]}");
         Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
 
-        var tokenId = UInt256.Parse(args[4]);
+        var tokenId = UInt256.Parse(args[5]);
         Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
 
         // "ParseAddress" should work regardless of whether main or test address strings are passed.
-        var from = Serializer.ToAddress(SSAS.ParseAddress(args[2], out byte prefix1));
-        var to = Serializer.ToAddress(SSAS.ParseAddress(args[3], out byte prefix2));
+        var from = Serializer.ToAddress(SSAS.ParseAddress(args[3], out byte prefix1));
+        var to = Serializer.ToAddress(SSAS.ParseAddress(args[4], out byte prefix2));
         Assert(prefix1 == prefix2, "'From' and 'To' address prefixes are different.");
+        Assert(prefix1 == prefix0, "Contract address versus 'From' and 'To' address prefixes are different.");
 
         // Allow Message.Sender to perform the transfer.
         SetIdToApproval(tokenId, Message.Sender);
