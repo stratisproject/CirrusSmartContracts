@@ -158,14 +158,14 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     
     public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
     {
-        Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
+        Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
         var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork" });
 
         string amount = args[2];
         int decimals = amount.Contains('.') ? amount.Length - amount.IndexOf('.') - 1 : 0;
-        Assert(decimals <= 8, "Too many decimals");
+        Assert(decimals <= 2, "Too many decimals");
 
         amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
 
