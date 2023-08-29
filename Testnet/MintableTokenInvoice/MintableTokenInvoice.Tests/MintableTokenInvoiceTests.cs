@@ -207,7 +207,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
 
         var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes().Reverse());
 
-        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.000001&targetAddress=Address&targetNetwork=Network";
+        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&targetAddress=Address&targetNetwork=Network";
         var signature = key.SignMessage(url);
         byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
         var transactionReference = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
@@ -226,7 +226,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var invoiceBytes = mintableTokenInvoice.RetrieveInvoice(invoiceReference, true);
         var invoice = this.Serializer.ToStruct<Invoice>(invoiceBytes);
 
-        Assert.Equal(100, invoice.Amount);
+        Assert.Equal(1000000, invoice.Amount);
         Assert.Equal("GBPT", invoice.Symbol);
         Assert.Equal(address, invoice.To);
         Assert.True(invoice.IsAuthorized);
@@ -284,7 +284,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return TransferResult.Transferred(claimBytes);
             });
 
-        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 2000, uniqueNumber, "Address", "Network"));
+        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 20000000, uniqueNumber, "Address", "Network"));
         Assert.Contains("authorization", ex.Message);
     }
 
