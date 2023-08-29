@@ -144,11 +144,12 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public UInt256 amount;
         public string targetAddress;
         public string targetNetwork;
+        public Address contract;
     }
 
     public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = amount, symbol = symbol, targetAddress = targetAddress, targetNetwork = targetNetwork };
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = amount, symbol = symbol, targetAddress = targetAddress, targetNetwork = targetNetwork, contract = this.Address };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
@@ -161,7 +162,10 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
-        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork" });
+        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork", "contract" });
+
+        Assert(args != null && args.Length == 6, "Invalid url.");
+        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[5], out _)) == this.Address, "Invalid contract address.");
 
         string amount = args[2];
         int decimals = amount.Contains('.') ? amount.Length - amount.IndexOf('.') - 1 : 0;
