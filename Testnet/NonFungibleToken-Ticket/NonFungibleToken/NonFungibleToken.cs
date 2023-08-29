@@ -256,7 +256,7 @@ public class NonFungibleToken : SmartContract
         Assert(!KnownTransfer(uniqueNumber), "The transfer has already been performed.");
 
         var tokenId = UInt256.Parse(args[5]);
-        Assert(ECRecover.TryGetSignerNoHash(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
+        Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == GetIdToOwner(tokenId), "Invalid signature.");
 
         // "ParseAddress" should work regardless of whether main or test address strings are passed.
