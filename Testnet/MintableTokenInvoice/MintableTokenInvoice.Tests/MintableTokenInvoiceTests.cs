@@ -25,6 +25,14 @@ public class Claim
     public bool IsRevoked { get; set; }
 }
 
+class ChameleonNetwork : Network
+{
+    public ChameleonNetwork(byte base58Prefix)
+    {
+        this.Base58Prefixes = new byte[][] { new byte[] { base58Prefix } };
+    }
+}
+
 public struct Invoice
 {
     public string Symbol;
@@ -130,6 +138,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         public UInt256 amount;
         public string targetAddress;
         public string targetNetwork;
+        public Address contract;
     }
 
     [Fact]
@@ -154,7 +163,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
         var address = key.PubKey.Hash.ToBytes().ToAddress();
 
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = 100, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network" };
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = 100, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network", contract = this.Contract };
         var message = new uint256(new InternalHashHelper().Keccak256(this.Serializer.Serialize(template)));
 
         var signature = key.SignCompact(message);
@@ -207,7 +216,9 @@ public class MintableTokenInvoiceTests : BaseContractTest
 
         var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes().Reverse());
 
-        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&targetAddress=Address&targetNetwork=Network";
+        var contractAddress = this.Contract.ToUint160().ToBase58Address(new ChameleonNetwork(1));
+
+        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&targetAddress=Address&targetNetwork=Network&contract={contractAddress}";
         var signature = key.SignMessage(url);
         byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
         var transactionReference = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
