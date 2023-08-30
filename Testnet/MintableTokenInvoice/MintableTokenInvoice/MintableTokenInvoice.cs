@@ -137,19 +137,9 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return CreateInvoiceInternal(Message.Sender, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
     }
 
-    private struct SignatureTemplate
-    {
-        public UInt128 uniqueNumber;
-        public string symbol;
-        public UInt256 amount;
-        public string targetAddress;
-        public string targetNetwork;
-        public Address contract;
-    }
-
     public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = amount, symbol = symbol, targetAddress = targetAddress, targetNetwork = targetNetwork, contract = this.Address };
+        var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
@@ -168,23 +158,24 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(Serializer.ToAddress(SSAS.ParseAddress(args[5], out _)) == this.Address, "Invalid contract address.");
 
         string amount = args[2];
-        int decimals = amount.Contains('.') ? amount.Length - amount.IndexOf('.') - 1 : 0;
+        int decimalIndex = amount.IndexOf('.');
+        int decimals = decimalIndex >= 0 ? amount.Length - decimalIndex - 1 : 0;
         Assert(decimals <= 2, "Too many decimals");
 
         amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
 
         var res = new SignatureTemplate
         {
-            uniqueNumber = UInt128.Parse($"0x{args[0]}"),
-            symbol = args[1],
-            amount = UInt256.Parse(amount),
-            targetAddress = args[3],
-            targetNetwork = args[4],
+            UniqueNumber = UInt128.Parse($"0x{args[0]}"),
+            Symbol = args[1],
+            Amount = UInt256.Parse(amount),
+            TargetAddress = args[3],
+            TargetNetwork = args[4],
         };
 
-        Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.uniqueNumber, Account = address, Url = url, Signature = signature });
+        Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.UniqueNumber, Account = address, Url = url, Signature = signature });
 
-        return CreateInvoiceInternal(address, res.symbol, res.amount, res.uniqueNumber, res.targetAddress, res.targetNetwork);
+        return CreateInvoiceInternal(address, res.Symbol, res.Amount, res.UniqueNumber, res.TargetAddress, res.TargetNetwork);
     }
 
     /// <inheritdoc />
@@ -215,7 +206,11 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         var invoice = GetInvoice(invoiceReference);
 
         Assert(invoice.To != Address.Zero, "The invoice does not exist.");
-        Assert(!string.IsNullOrEmpty(invoice.Outcome), "The transaction has already been processed.");
+
+        // If the invoice already has an outcome then just return it.
+        Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
+
+        Assert(!invoice.IsAuthorized, "The invoice is already authorized.");
 
         invoice.IsAuthorized = true;
         SetInvoice(invoiceReference, invoice);
@@ -290,6 +285,16 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         PendingOwner = Address.Zero;
 
         Log(new OwnershipTransferedLog() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
+    }
+
+    private struct SignatureTemplate
+    {
+        public UInt128 UniqueNumber;
+        public string Symbol;
+        public UInt256 Amount;
+        public string TargetAddress;
+        public string TargetNetwork;
+        public Address Contract;
     }
 
     /// <summary>
