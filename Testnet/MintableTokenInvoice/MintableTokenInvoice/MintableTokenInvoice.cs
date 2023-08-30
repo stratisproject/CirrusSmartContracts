@@ -123,7 +123,12 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
         SetInvoice(invoiceReference, invoice);
 
-        Assert(invoice.IsAuthorized, $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.");
+        // If the invoice is not authorized then return a message to the user.
+        // We don't assert because we want to make the invoice available for appreoval and allow the user to resubmit the invoice.
+        if (!invoice.IsAuthorized)
+        {
+            return $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.";
+        }
 
         Log(new LogCreateInvoice() { InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
 
