@@ -126,7 +126,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
 
         // If the invoice is not authorized then return a message to the user.
-        // We don't assert because we want to make the invoice available for appreoval and allow the user to resubmit the invoice.
+        // We don't assert because we want to make the invoice available for approval and allow the user to resubmit the invoice.
         // We don't want to return the transaction reference until the invoice is authorized.
         if (!invoice.IsAuthorized)
         {
