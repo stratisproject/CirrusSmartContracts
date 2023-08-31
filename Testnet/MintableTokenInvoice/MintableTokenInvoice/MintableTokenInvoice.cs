@@ -1,11 +1,12 @@
-﻿using Stratis.SmartContracts;
+﻿using Stratis.SCL.Crypto;
+using Stratis.SmartContracts;
 using System;
 
 /// <summary>
 /// Implementation of a mintable token invoice contract for the Stratis Platform.
 /// </summary>
 [Deploy]
-public class MintableTokenInvoice : SmartContract, IPullOwnership
+public class MintableTokenInvoice : SmartContract, IOwnable
 {
     /// <summary>
     /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
@@ -13,10 +14,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="authorizationLimit">Any amounts greater or equal to this will require authorization.</param>
     /// <param name="identityContract">The address of the identity contract.</param>
-   public MintableTokenInvoice(ISmartContractState smartContractState, UInt256 authorizationLimit, Address identityContract) : base(smartContractState)
-   {
+    public MintableTokenInvoice(ISmartContractState smartContractState, UInt256 authorizationLimit, Address identityContract) : base(smartContractState)
+    {
         this.Owner = Message.Sender;
-        this.NewOwner = Address.Zero;
+        this.PendingOwner = Address.Zero;
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
         this.KYCProvider = 3 /* ClaimTopic.Shufti */;
@@ -29,10 +30,10 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         private set => State.SetAddress(nameof(this.Owner), value);
     }
 
-    public Address NewOwner
+    public Address PendingOwner
     {
-        get => State.GetAddress(nameof(this.NewOwner));
-        private set => State.SetAddress(nameof(this.NewOwner), value);
+        get => State.GetAddress(nameof(this.PendingOwner));
+        private set => State.SetAddress(nameof(this.PendingOwner), value);
     }
 
     public UInt256 AuthorizationLimit
@@ -69,10 +70,9 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public Address address;
     }
 
-    private string GetTransactionReference(UInt128 uniqueNumber)
+    private string GetTransactionReference(UInt128 uniqueNumber, Address address)
     {
-        var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = Message.Sender };
-
+        var template = new TransactionReferenceTemplate() { uniqueNumber = uniqueNumber, address = address };
         var res = Serializer.Serialize(template);
 
         var temp = Keccak256(res);
@@ -91,33 +91,21 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         return $"INV-{invoiceReference.Substring(0, 4)}-{invoiceReference.Substring(4, 4)}-{invoiceReference.Substring(8, 4)}";
     }
 
-    private string ValidateKYC(Address sender, string invoiceReference)
+    private void EnsureKYCdUserOnly(Address sender)
     {
         // KYC check. Call Identity contract.
         ITransferResult result = this.Call(IdentityContract, 0, "GetClaim", new object[] { sender, KYCProvider });
-        if (!(result?.Success ?? false))
-        {
-            string reason = "Could not determine KYC status";
-            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            return reason;
-        }
+        Assert(result.Success, "Could not determine KYC status");
 
-        // The return value is a json string encoding of a Model.Claim object, represented as a byte array using ascii encoding.
-        // The "Key" and "Description" fields of the json-encoded "Claim" object are expected to contain "Identity Approved".
-        if (result.ReturnValue == null || !Serializer.ToString((byte[])result.ReturnValue).Contains("Identity Approved"))
-        {
-            string reason = "Your KYC status is not valid";
-            Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = false, Reason = reason });
-            return reason;
-        }
-
-        return string.Empty;
+        // Only verified users are saved in the Identity contract.
+        Assert(result.ReturnValue != null && ((byte[])result.ReturnValue).Length != 0, "Your KYC status is not valid");
     }
 
-    /// <inheritdoc />
-    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber)
+    private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
-        string transactionReference = GetTransactionReference(uniqueNumber);
+        EnsureKYCdUserOnly(address);
+
+        string transactionReference = GetTransactionReference(uniqueNumber, address);
 
         var invoiceReference = GetInvoiceReference(transactionReference);
 
@@ -125,25 +113,75 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         var invoice = GetInvoice(invoiceReference);
         if (invoice.To != Address.Zero)
             // If called with the same unique number then the details should not change.
-            Assert(invoice.To != Message.Sender || invoice.Symbol != symbol && invoice.Amount != amount, "Transaction reference already exists");
+            Assert(invoice.To == address && invoice.Symbol == symbol && invoice.Amount == amount && invoice.TargetNetwork == targetAddress && invoice.TargetNetwork == targetNetwork, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
-            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = Message.Sender, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = address, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
 
-        string result = ValidateKYC(Message.Sender, invoiceReference);
-        Assert(string.IsNullOrEmpty(result), "Obtain KYC verification for this address and then resubmit this request.");
-
         SetInvoice(invoiceReference, invoice);
 
-        Assert(invoice.IsAuthorized, $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.");
+        Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
 
-        Log(new InvoiceResult() { InvoiceReference = invoiceReference, Success = true });
+        // If the invoice is not authorized then return a message to the user.
+        // We don't assert because we want to make the invoice available for approval and allow the user to resubmit the invoice.
+        // We don't want to return the transaction reference until the invoice is authorized.
+        if (!invoice.IsAuthorized)
+        {
+            return $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.";
+        }
 
         // Only provide the transaction reference if all checks pass.
         return transactionReference;
+    }
+
+    /// <inheritdoc />
+    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
+    {
+        return CreateInvoiceInternal(Message.Sender, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
+    }
+
+    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
+    {
+        var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
+        var res = Serializer.Serialize(template);
+        Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
+        Assert(signer == address, "Invalid signature.");
+
+        return CreateInvoiceInternal(address, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
+    }
+    
+    public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
+    {
+        Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
+        Assert(signer == address, "Invalid signature.");
+
+        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork", "contract" });
+
+        Assert(args != null && args.Length == 6, "Invalid url.");
+        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[5], out _)) == this.Address, "Invalid contract address.");
+
+        string amount = args[2];
+        int decimalIndex = amount.IndexOf('.');
+        int decimals = decimalIndex >= 0 ? amount.Length - decimalIndex - 1 : 0;
+        Assert(decimals <= 2, "Too many decimals");
+
+        amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
+
+        var res = new SignatureTemplate
+        {
+            UniqueNumber = UInt128.Parse($"0x{args[0]}"),
+            Symbol = args[1],
+            Amount = UInt256.Parse(amount),
+            TargetAddress = args[3],
+            TargetNetwork = args[4],
+        };
+
+        Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.UniqueNumber, Account = address, Url = url, Signature = signature });
+
+        return CreateInvoiceInternal(address, res.Symbol, res.Amount, res.UniqueNumber, res.TargetAddress, res.TargetNetwork);
     }
 
     /// <inheritdoc />
@@ -156,7 +194,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         {
             // Do another last minute KYC check just in case the KYC was revoked since the invoice was created.
             if (recheckKYC)
-                ValidateKYC(invoice.To, invoiceReference);
+                EnsureKYCdUserOnly(invoice.To);
         }
 
         return Serializer.Serialize(invoice);
@@ -174,12 +212,16 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         var invoice = GetInvoice(invoiceReference);
 
         Assert(invoice.To != Address.Zero, "The invoice does not exist.");
-        Assert(!string.IsNullOrEmpty(invoice.Outcome), "The transaction has already been processed.");
+
+        // If the invoice already has an outcome then just return it.
+        Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
+
+        Assert(!invoice.IsAuthorized, "The invoice is already authorized.");
 
         invoice.IsAuthorized = true;
         SetInvoice(invoiceReference, invoice);
 
-        Log(new ChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = invoice.IsAuthorized });
+        Log(new LogChangeInvoiceAuthorization() { InvoiceReference = invoiceReference, NewAuthorized = true, OldAuthorized = invoice.IsAuthorized });
 
         return true;
     }
@@ -189,7 +231,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
+        Log(new LogChangeAuthorizationLimit() { OldLimit = AuthorizationLimit, NewLimit = newLimit });
 
         AuthorizationLimit = newLimit;
     }
@@ -199,6 +241,8 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         EnsureOwnerOnly();
 
         var invoiceReference = GetInvoiceReference(transactionReference);
+ 
+        Log(new LogChangeOutcome() { InvoiceReference = invoiceReference, Outcome = outcome });
 
         var invoice = GetInvoice(invoiceReference);
         invoice.Outcome = outcome;
@@ -210,7 +254,7 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeIdentityContract() { OldContract = IdentityContract, NewContract = identityContract });
+        Log(new LogChangeIdentityContract() { OldContract = IdentityContract, NewContract = identityContract });
 
         IdentityContract = identityContract;
     }
@@ -220,40 +264,43 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
     {
         EnsureOwnerOnly();
 
-        Log(new ChangeKYCProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
+        Log(new LogChangeKYCProvider() { OldProvider = KYCProvider, NewProvider = kycProvider });
 
         KYCProvider = kycProvider;
     }
 
     /// <inheritdoc />
-    public void SetNewOwner(Address address)
+    public void TransferOwnership(Address address)
     {
         EnsureOwnerOnly();
 
-        NewOwner = address;
+        PendingOwner = address;
+
+        Log(new OwnershipTransferRequestedLog { CurrentOwner = Owner, PendingOwner = PendingOwner });
     }
 
     /// <inheritdoc />
     public void ClaimOwnership()
     {
-        Assert(Message.Sender == NewOwner, "Only the new owner can call this method");
+        Assert(Message.Sender == PendingOwner, "Only the new owner can call this method");
 
         var previousOwner = Owner;
 
-        Owner = NewOwner;
+        Owner = PendingOwner;
 
-        NewOwner = Address.Zero;
+        PendingOwner = Address.Zero;
 
-        Log(new OwnershipTransferred() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
+        Log(new OwnershipTransferedLog() { NewOwner = Message.Sender, PreviousOwner = previousOwner });
     }
 
-    /// <summary>
-    /// Provides a record that ownership was transferred from one account to another.
-    /// </summary>
-    public struct OwnershipTransferred
+    private struct SignatureTemplate
     {
-        [Index] public Address PreviousOwner;
-        [Index] public Address NewOwner;
+        public UInt128 UniqueNumber;
+        public string Symbol;
+        public UInt256 Amount;
+        public string TargetAddress;
+        public string TargetNetwork;
+        public Address Contract;
     }
 
     /// <summary>
@@ -264,39 +311,81 @@ public class MintableTokenInvoice : SmartContract, IPullOwnership
         public string Symbol;
         public UInt256 Amount;
         public Address To;
+        public string TargetAddress;
+        public string TargetNetwork;
         public string Outcome;
         public bool IsAuthorized;
     }
 
-    public struct InvoiceResult
+    public struct LogCreateInvoice
     {
         [Index] public string InvoiceReference;
-        public bool Success;
-        public string Reason;
+        [Index] public Address Sender;
+        [Index] public Address Account;
+        [Index] public string Symbol;
+        public UInt256 Amount;
+        [Index] public UInt128 UniqueNumber;
+        public string TargetAddress;
+        public string TargetNetwork;
+        public bool IsAuthorized;
     }
 
-    public struct ChangeAuthorizationLimit
+    public struct LogCreateInvoiceFromURL
+    {
+        [Index] public UInt128 UniqueNumber;
+        [Index] public Address Account;
+        public string Url;
+        public byte[] Signature;
+    }
+
+    public struct LogChangeAuthorizationLimit
     {
         public UInt256 OldLimit;
         public UInt256 NewLimit;
     }
 
-    public struct ChangeKYCProvider
+    public struct LogChangeKYCProvider
     {
         public uint OldProvider;
         public uint NewProvider;
     }
 
-    public struct ChangeIdentityContract
+    public struct LogChangeIdentityContract
     {
         public Address OldContract;
         public Address NewContract;
     }
 
-    public struct ChangeInvoiceAuthorization
+    public struct LogChangeInvoiceAuthorization
     {
         [Index] public string InvoiceReference;
         public bool OldAuthorized;
         public bool NewAuthorized;
+    }
+
+    public struct LogChangeOutcome
+    {
+        [Index] public string InvoiceReference;
+        public string Outcome;
+    }
+
+    /// <summary>
+    /// Provides a record that ownership was transferred from one account to another.
+    /// </summary>
+    public struct OwnershipTransferedLog
+    {
+        [Index]
+        public Address PreviousOwner;
+
+        [Index]
+        public Address NewOwner;
+    }
+
+    public struct OwnershipTransferRequestedLog
+    {
+        [Index]
+        public Address CurrentOwner;
+        [Index]
+        public Address PendingOwner;
     }
 }

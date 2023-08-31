@@ -1,12 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Stratis.SmartContracts" Version="2.0.0" />
     <PackageReference Include="Stratis.SmartContracts.Standards" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Stratis.SCL">
+      <HintPath>..\..\..\..\StratisFullNode-1\src\Stratis.SCL\bin\Debug\net6.0\Stratis.SCL.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

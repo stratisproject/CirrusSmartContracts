@@ -66,7 +66,7 @@ public class BaseContractTest
         var addresses = new[] { this.AddressOne, this.AddressTwo, this.AddressThree };
         var bytes = this.Serializer.Serialize(addresses);
 
-        return new MintableTokenInvoice(this.MockContractState.Object, 1000, this.IdentityContract);
+        return new MintableTokenInvoice(this.MockContractState.Object, 10000000, this.IdentityContract);
     }
 
     protected void SetupMessage(Address contractAddress, Address sender, ulong value = 0)
