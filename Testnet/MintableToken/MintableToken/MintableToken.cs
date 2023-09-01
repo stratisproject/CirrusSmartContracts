@@ -29,6 +29,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         this.Interflux = Message.Sender;
         this.Decimals = 8;
         this.SetBalance(Message.Sender, totalSupply);
+
+        Log(new OwnershipTransferredLog { PreviousOwner = Address.Zero, NewOwner = Message.Sender });
+        Log(new InterfluxChangedLog { PreviousInterflux = Address.Zero, NewInterflux = Message.Sender });
     }
 
     public string Symbol
@@ -251,14 +254,18 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
         PendingOwner = Address.Zero;
 
-        Log(new OwnershipTransferedLog { PreviousOwner = previousOwner, NewOwner = Message.Sender });
+        Log(new OwnershipTransferredLog { PreviousOwner = previousOwner, NewOwner = Message.Sender });
     }
 
     public void SetInterflux(Address interflux)
     {
         OnlyOwner();
 
+        var previousInterflux = Interflux;
+
         this.Interflux = interflux;
+
+        Log(new InterfluxChangedLog { PreviousInterflux = previousInterflux, NewInterflux = Message.Sender });
     }
 
     private void InternalMint(Address account, UInt256 amount)
@@ -475,13 +482,22 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     /// <summary>
     /// Provides a record that ownership was transferred from one account to another.
     /// </summary>
-    public struct OwnershipTransferedLog
+    public struct OwnershipTransferredLog
     {
         [Index]
         public Address PreviousOwner;
 
         [Index]
         public Address NewOwner;
+    }
+
+    public struct InterfluxChangedLog
+    {
+        [Index]
+        public Address PreviousInterflux;
+
+        [Index]
+        public Address NewInterflux;
     }
 
     public struct OwnershipTransferRequestedLog

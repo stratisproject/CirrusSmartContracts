@@ -72,7 +72,7 @@ namespace MintableTokenTests
             // Verify that PersistentState was called to update the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.destination));
 
-            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferedLog() { PreviousOwner = this.owner, NewOwner = this.destination }));
+            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferredLog() { PreviousOwner = this.owner, NewOwner = this.destination }));
         }
 
         [Fact]
