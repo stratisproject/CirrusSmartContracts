@@ -140,6 +140,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         return true;
     }
 
+    public bool TransferToWithMetadata(Address to, UInt256 amount, string metadata)
+    {
+        Log(new MetadataLog { Metadata = metadata });
+
+        return TransferTo(to, amount);
+    }
+
     /// <inheritdoc />
     public bool TransferFrom(Address from, Address to, UInt256 amount)
     {
@@ -451,7 +458,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         [Index] 
         public string Network;
     }
-    
+
+    public struct MetadataLog
+    {
+        public string Metadata;
+    }
+
     public struct CirrusDestinationLog
     {
         [Index] 
