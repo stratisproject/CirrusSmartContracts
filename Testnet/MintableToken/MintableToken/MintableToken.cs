@@ -343,7 +343,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         InternalMint(account, amount);
 
-        var fee = CalculateFee(amount);
+        var fee = CalculateMintingFee(amount);
 
         Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata, Fee = fee });
 
