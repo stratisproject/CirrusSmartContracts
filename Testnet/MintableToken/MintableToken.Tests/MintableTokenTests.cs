@@ -110,7 +110,7 @@ namespace MintableTokenTests
             // Setup the balance of the sender's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
 
-            mintableToken.MintWithMetadataForCirrus(this.sender, mintAmount, "ExternalId", this.sender);
+            mintableToken.MintWithMetadataForCirrus(this.sender, mintAmount, 0, "ExternalId", this.sender);
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.TransferLog { From = Address.Zero, To = this.sender, Amount = mintAmount }));
 
@@ -140,7 +140,7 @@ namespace MintableTokenTests
             // Attempt the mint from a different address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.MintWithMetadataForCirrus(this.sender, mintAmount, "ExternalId", this.sender));
+            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.MintWithMetadataForCirrus(this.sender, mintAmount, 0, "ExternalId", this.sender));
         }
 
         [Fact]
