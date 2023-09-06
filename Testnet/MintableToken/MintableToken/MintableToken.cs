@@ -105,7 +105,7 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         private set => State.SetAddress(nameof(this.Interflux), value);
     }
 
-    public UInt256 CalculateFee(UInt256 amount)
+    public UInt256 CalculateMintingFee(UInt256 amount)
     {
         var fee = amount * this.MintingFeeFactor / 100000000 + this.MintingFeeBase;
 
