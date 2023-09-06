@@ -37,6 +37,7 @@ public struct Invoice
 {
     public string Symbol;
     public UInt256 Amount;
+    public UInt256 Fee;
     public Address To;
     public string TargetAddress;
     public string Network;
@@ -108,7 +109,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return TransferResult.Transferred(claimBytes);
             });
 
-        var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber, "Address", "Network");
+        var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, 0, uniqueNumber, "Address", "Network");
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
         Assert.Equal("INV-1760-4750-2039", invoiceReference.ToString());
@@ -136,6 +137,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         public UInt128 uniqueNumber;
         public string symbol;
         public UInt256 amount;
+        public UInt256 fee;
         public string targetAddress;
         public string targetNetwork;
         public Address contract;
@@ -163,12 +165,12 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
         var address = key.PubKey.Hash.ToBytes().ToAddress();
 
-        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = 100, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network", contract = this.Contract };
+        var template = new SignatureTemplate() { uniqueNumber = uniqueNumber, amount = 100, fee = 0, symbol = "GBPT", targetAddress = "Address", targetNetwork = "Network", contract = this.Contract };
         var message = new uint256(new InternalHashHelper().Keccak256(this.Serializer.Serialize(template)));
 
         var signature = key.SignCompact(message);
 
-        var transactionReference = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, uniqueNumber, "Address", "Network", signature);
+        var transactionReference = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, 0, uniqueNumber, "Address", "Network", signature);
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
         Assert.Equal("INV-2724-4779-8084", invoiceReference.ToString());
@@ -272,7 +274,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return result;
             });
 
-        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 100, uniqueNumber, "Address", "Network"));
+        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 100, 0, uniqueNumber, "Address", "Network"));
         Assert.Equal(outcome, ex.Message);
     }
 
@@ -295,8 +297,8 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return TransferResult.Transferred(claimBytes);
             });
 
-        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 20000000, uniqueNumber, "Address", "Network"));
-        Assert.Contains("authorization", ex.Message);
+        var ex = mintableTokenInvoice.CreateInvoice("GBPT", 20000000, 0, uniqueNumber, "Address", "Network");
+        Assert.Contains("authorization", ex);
     }
 
     [Fact]
@@ -324,7 +326,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
         this.SetupMessage(this.Contract, this.AddressOne);
 
         // Check that we don't "create" an invoice for a payment reference associated with an existing outcome.
-        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 200, uniqueNumber, "Address", "Network"));
+        var ex = Assert.Throws<SmartContractAssertException>(() => mintableTokenInvoice.CreateInvoice("GBPT", 200, 0, uniqueNumber, "Address", "Network"));
         Assert.Contains("processed", ex.Message);
     }
 
