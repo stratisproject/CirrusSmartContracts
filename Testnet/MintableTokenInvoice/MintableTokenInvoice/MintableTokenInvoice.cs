@@ -101,7 +101,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(result.ReturnValue != null && ((byte[])result.ReturnValue).Length != 0, "Your KYC status is not valid");
     }
 
-    private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
+    private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
         EnsureKYCdUserOnly(address);
 
@@ -113,10 +113,10 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         var invoice = GetInvoice(invoiceReference);
         if (invoice.To != Address.Zero)
             // If called with the same unique number then the details should not change.
-            Assert(invoice.To == address && invoice.Symbol == symbol && invoice.Amount == amount && invoice.TargetNetwork == targetAddress && invoice.TargetNetwork == targetNetwork, "Transaction reference already exists");
+            Assert(invoice.To == address && invoice.Symbol == symbol && invoice.Amount == amount && invoice.Fee == fee && invoice.TargetNetwork == targetAddress && invoice.TargetNetwork == targetNetwork, "Transaction reference already exists");
         else
             // Allow the outcome of an invoice to be set when only references have been provided.
-            invoice = new Invoice() { Symbol = symbol, Amount = amount, To = address, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
+            invoice = new Invoice() { Symbol = symbol, Amount = amount, Fee = fee, To = address, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Outcome = invoice.Outcome, IsAuthorized = amount < AuthorizationLimit };
 
         // If the invoice already has an outcome then just return it.
         Assert(string.IsNullOrEmpty(invoice.Outcome), invoice.Outcome);
@@ -138,19 +138,20 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     }
 
     /// <inheritdoc />
-    public string CreateInvoice(string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
+    public string CreateInvoice(string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
-        return CreateInvoiceInternal(Message.Sender, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
+        return CreateInvoiceInternal(Message.Sender, symbol, amount, fee, uniqueNumber, targetAddress, targetNetwork);
     }
 
-    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
+    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
+        // E.g. for amount 110 and fee = 10 we mint 110 tokens and keep 10 minted tokens as fee.
         var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
-        return CreateInvoiceInternal(address, symbol, amount, uniqueNumber, targetAddress, targetNetwork);
+        return CreateInvoiceInternal(address, symbol, amount, fee, uniqueNumber, targetAddress, targetNetwork);
     }
     
     public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
@@ -158,30 +159,40 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
 
-        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "targetAddress", "targetNetwork", "contract" });
+        var args = SSAS.GetURLArguments(url, new string[] { "uid", "symbol", "amount", "fee", "targetAddress", "targetNetwork", "contract" });
 
-        Assert(args != null && args.Length == 6, "Invalid url.");
-        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[5], out _)) == this.Address, "Invalid contract address.");
+        Assert(args != null && args.Length == 7, "Invalid url.");
+        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[6], out _)) == this.Address, "Invalid contract address.");
 
+        // Parse amount.
         string amount = args[2];
-        int decimalIndex = amount.IndexOf('.');
-        int decimals = decimalIndex >= 0 ? amount.Length - decimalIndex - 1 : 0;
-        Assert(decimals <= 2, "Too many decimals");
+        int amountDecimalIndex = amount.IndexOf('.');
+        int amountDecimals = amountDecimalIndex >= 0 ? amount.Length - amountDecimalIndex - 1 : 0;
+        Assert(amountDecimals <= 2, "Too many decimals in amount");
 
-        amount = amount.PadRight(amount.Length + 8 - decimals, '0').Replace(".", "");
+        amount = amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", "");
+
+        // Parse fee.
+        string fee = args[2];
+        int feeDecimalIndex = fee.IndexOf('.');
+        int feeDecimals = feeDecimalIndex >= 0 ? fee.Length - feeDecimalIndex - 1 : 0;
+        Assert(feeDecimals <= 2, "Too many decimals in fee");
+
+        fee = fee.PadRight(fee.Length + 8 - feeDecimals, '0').Replace(".", "");
 
         var res = new SignatureTemplate
         {
             UniqueNumber = UInt128.Parse($"0x{args[0]}"),
             Symbol = args[1],
             Amount = UInt256.Parse(amount),
-            TargetAddress = args[3],
-            TargetNetwork = args[4],
+            Fee = UInt256.Parse(fee),
+            TargetAddress = args[4],
+            TargetNetwork = args[5],
         };
 
         Log(new LogCreateInvoiceFromURL() { UniqueNumber = res.UniqueNumber, Account = address, Url = url, Signature = signature });
 
-        return CreateInvoiceInternal(address, res.Symbol, res.Amount, res.UniqueNumber, res.TargetAddress, res.TargetNetwork);
+        return CreateInvoiceInternal(address, res.Symbol, res.Amount, res.Fee, res.UniqueNumber, res.TargetAddress, res.TargetNetwork);
     }
 
     /// <inheritdoc />
@@ -298,6 +309,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public UInt128 UniqueNumber;
         public string Symbol;
         public UInt256 Amount;
+        public UInt256 Fee;
         public string TargetAddress;
         public string TargetNetwork;
         public Address Contract;
@@ -310,6 +322,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     {
         public string Symbol;
         public UInt256 Amount;
+        public UInt256 Fee;
         public Address To;
         public string TargetAddress;
         public string TargetNetwork;
