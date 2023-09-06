@@ -21,6 +21,8 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
         this.KYCProvider = 3 /* ClaimTopic.Shufti */;
+        // Will use SetMintingFee to set the fee (if any).
+        this.SetMintingFee(0, 0);
     }
 
     /// <inheritdoc />
@@ -54,6 +56,18 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         private set => State.SetUInt32(nameof(this.KYCProvider), value);
     }
 
+    public UInt256 FeeBase
+    {
+        get => State.GetUInt256(nameof(this.FeeBase));
+        private set => State.SetUInt256(nameof(this.FeeBase), value);
+    }
+
+    public UInt256 FeeFactor
+    {
+        get => State.GetUInt256(nameof(this.FeeFactor));
+        private set => State.SetUInt256(nameof(this.FeeFactor), value);
+    }
+
     private void SetInvoice(string invoiceReference, Invoice invoice)
     {
         State.SetStruct($"Invoice:{invoiceReference}", invoice);
@@ -68,6 +82,29 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     {
         public UInt128 uniqueNumber;
         public Address address;
+    }
+
+    public void SetMintingFee(UInt256 feeBase, UInt256 feeFactor)
+    {
+        Assert(Message.Sender == this.Owner);
+
+        var previousFeeBase = this.FeeBase;
+        var previousFeeFactor = this.FeeFactor;
+
+        this.FeeBase = feeBase;
+        this.FeeFactor = feeFactor;
+
+        Log(new FeeChangedLog { PreviousFeeBase = previousFeeBase, PreviousFeeFactor = previousFeeFactor, FeeBase = feeBase, FeeFactor = feeFactor });
+    }
+
+    public UInt256 CalculateFee(UInt256 amount)
+    {
+        var fee = amount * this.FeeFactor / 100000000 + this.FeeBase;
+
+        // Round up to 2 decimals.
+        fee = ((fee + 999999) / 1000000) * 1000000;
+
+        return fee;
     }
 
     private string GetTransactionReference(UInt128 uniqueNumber, Address address)
@@ -145,6 +182,8 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
     public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
+        Assert(fee == CalculateFee(amount), "The provided to fee does not match the expected fee.");
+
         // E.g. for amount 110 and fee = 10 we mint 110 tokens and keep 10 minted tokens as fee.
         var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Fee = fee, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
         var res = Serializer.Serialize(template);
@@ -170,7 +209,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         int amountDecimals = amountDecimalIndex >= 0 ? amount.Length - amountDecimalIndex - 1 : 0;
         Assert(amountDecimals <= 2, "Too many decimals in amount");
 
-        amount = amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", "");
+        var amountUInt256 = UInt256.Parse(amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", ""));
 
         // Parse fee.
         string fee = args[2];
@@ -178,14 +217,16 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         int feeDecimals = feeDecimalIndex >= 0 ? fee.Length - feeDecimalIndex - 1 : 0;
         Assert(feeDecimals <= 2, "Too many decimals in fee");
 
-        fee = fee.PadRight(fee.Length + 8 - feeDecimals, '0').Replace(".", "");
+        var feeUInt256 = UInt256.Parse(fee.PadRight(fee.Length + 8 - feeDecimals, '0').Replace(".", ""));
+
+        Assert(feeUInt256 == CalculateFee(amountUInt256), "The agreed to fee does not match the expected fee.");
 
         var res = new SignatureTemplate
         {
             UniqueNumber = UInt128.Parse($"0x{args[0]}"),
             Symbol = args[1],
-            Amount = UInt256.Parse(amount),
-            Fee = UInt256.Parse(fee),
+            Amount = amountUInt256,
+            Fee = feeUInt256,
             TargetAddress = args[4],
             TargetNetwork = args[5],
         };
@@ -401,5 +442,14 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public Address CurrentOwner;
         [Index]
         public Address PendingOwner;
+    }
+
+    public struct FeeChangedLog
+    {
+        public UInt256 PreviousFeeBase { get; set; }
+        public UInt256 PreviousFeeFactor { get; set; }
+
+        public UInt256 FeeBase { get; set; }
+        public UInt256 FeeFactor { get; set; }
     }
 }
