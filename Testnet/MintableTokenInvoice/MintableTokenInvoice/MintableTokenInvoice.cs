@@ -123,7 +123,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
         SetInvoice(invoiceReference, invoice);
 
-        Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
+        Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, Fee = fee, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
 
         // If the invoice is not authorized then return a message to the user.
         // We don't assert because we want to make the invoice available for approval and allow the user to resubmit the invoice.
@@ -146,7 +146,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
     public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
         // E.g. for amount 110 and fee = 10 we mint 110 tokens and keep 10 minted tokens as fee.
-        var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
+        var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Fee = fee, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
@@ -337,6 +337,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         [Index] public Address Account;
         [Index] public string Symbol;
         public UInt256 Amount;
+        public UInt256 Fee;
         [Index] public UInt128 UniqueNumber;
         public string TargetAddress;
         public string TargetNetwork;
