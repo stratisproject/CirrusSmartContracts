@@ -29,9 +29,23 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         this.Interflux = Message.Sender;
         this.Decimals = 8;
         this.SetBalance(Message.Sender, totalSupply);
+        this.MintingFeeFactor = 010000000; // 0.1 (assuming 8 decimals).
+        this.MintingFeeBase = 0;
 
         Log(new OwnershipTransferredLog { PreviousOwner = Address.Zero, NewOwner = Message.Sender });
         Log(new InterfluxChangedLog { PreviousInterflux = Address.Zero, NewInterflux = Message.Sender });
+        Log(new MintingFeeChangedLog { PreviousFeeBase = 0, PreviousFeeFactor = 0, FeeBase = this.MintingFeeBase, FeeFactor = this.MintingFeeFactor });
+    }
+
+    public UInt256 MintingFeeBase
+    {
+        get => State.GetUInt256(nameof(this.MintingFeeBase));
+        private set => State.SetUInt256(nameof(this.MintingFeeBase), value);
+    }
+    public UInt256 MintingFeeFactor
+    {
+        get => State.GetUInt256(nameof(this.MintingFeeFactor));
+        private set => State.SetUInt256(nameof(this.MintingFeeFactor), value);
     }
 
     public string Symbol
@@ -89,6 +103,29 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     {
         get => State.GetAddress(nameof(this.Interflux));
         private set => State.SetAddress(nameof(this.Interflux), value);
+    }
+
+    public UInt256 CalculateFee(UInt256 amount)
+    {
+        var fee = amount * this.MintingFeeFactor / 100000000 + this.MintingFeeBase;
+
+        // Round up to 2 decimals.
+        fee = ((fee + 999999) / 1000000) * 1000000;
+
+        return fee;
+    }
+
+    public void SetMintingFee(UInt256 feeBase, UInt256 feeFactor)
+    {
+        Assert(Message.Sender == this.Owner);
+
+        var previousFeeBase = this.MintingFeeBase;
+        var previousFeeFactor = this.MintingFeeFactor;
+
+        this.MintingFeeBase = feeBase;
+        this.MintingFeeFactor = feeFactor;
+
+        Log(new MintingFeeChangedLog { PreviousFeeBase = previousFeeBase, PreviousFeeFactor = previousFeeFactor, FeeBase = feeBase, FeeFactor = feeFactor });
     }
 
     /// <inheritdoc />
@@ -302,13 +339,17 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     }
 
     /// <inheritdoc />
-    public void MintWithMetadata(Address account, UInt256 amount, string metadata)
+    private UInt256 MintWithMetadata(Address account, UInt256 amount, string metadata)
     {
-        OnlyOwner();
-
         InternalMint(account, amount);
 
-        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
+        var fee = CalculateFee(amount);
+
+        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata, Fee = fee });
+
+        Assert(TransferFrom(account, this.Owner, fee), "Fee transfer failed");
+
+        return fee;
     }
 
     /// <inheritdoc />
@@ -319,11 +360,9 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Assert(Interflux != Address.Zero, "Interflux address not set");
         Assert(!string.IsNullOrEmpty(destinationAccount) && !string.IsNullOrEmpty(destinationNetwork) && !string.Equals(destinationNetwork, NativeChain, System.StringComparison.OrdinalIgnoreCase), "Invalid destination");
 
-        InternalMint(account, amount);
+        var fee = MintWithMetadata(account, amount, metadata);
 
-        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
-
-        if (TransferFrom(account, Interflux, amount))
+        if (TransferFrom(account, Interflux, amount - fee))
         {
             Log(new CrosschainLog()
             {
@@ -340,13 +379,11 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
 
         Assert(destinationAccount != Address.Zero, "Invalid destination");
 
-        InternalMint(account, amount);
-
-        Log(new MintMetadata() { To = account, Amount = amount, Metadata = metadata });
+        var fee = MintWithMetadata(account, amount, metadata);
 
         if (account != destinationAccount)
         {
-            TransferFrom(account, destinationAccount, amount);
+            TransferFrom(account, destinationAccount, amount - fee);
         }
                 
         Log(new CirrusDestinationLog()
@@ -427,6 +464,8 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public string Metadata;
 
         public UInt256 Amount;
+
+        public UInt256 Fee;
     }
 
     public struct BurnMetadata
@@ -518,5 +557,13 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         public Address CurrentOwner;
         [Index]
         public Address PendingOwner;
+    }
+    public struct MintingFeeChangedLog
+    {
+        public UInt256 PreviousFeeBase { get; set; }
+        public UInt256 PreviousFeeFactor { get; set; }
+
+        public UInt256 FeeBase { get; set; }
+        public UInt256 FeeFactor { get; set; }
     }
 }
