@@ -21,8 +21,9 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         this.AuthorizationLimit = authorizationLimit;
         this.IdentityContract = identityContract;
         this.KYCProvider = 3 /* ClaimTopic.Shufti */;
-        // Will use SetMintingFee to set the fee (if any).
-        this.SetMintingFee(0, 0);
+
+        // Will use SetFee to set the fee (if any).
+        this.SetFee(0, 0);
     }
 
     /// <inheritdoc />
@@ -84,7 +85,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public Address address;
     }
 
-    public void SetMintingFee(UInt256 feeBase, UInt256 feeFactor)
+    public void SetFee(UInt256 feeBase, UInt256 feeFactor)
     {
         Assert(Message.Sender == this.Owner);
 
@@ -180,11 +181,10 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return CreateInvoiceInternal(Message.Sender, symbol, amount, fee, uniqueNumber, targetAddress, targetNetwork);
     }
 
-    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
+    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
-        Assert(fee == CalculateFee(amount), "The provided to fee does not match the expected fee.");
+        UInt256 fee = CalculateFee(amount);
 
-        // E.g. for amount 110 and fee = 10 we mint 110 tokens and keep 10 minted tokens as fee.
         var template = new SignatureTemplate() { UniqueNumber = uniqueNumber, Amount = amount, Fee = fee, Symbol = symbol, TargetAddress = targetAddress, TargetNetwork = targetNetwork, Contract = this.Address };
         var res = Serializer.Serialize(template);
         Assert(ECRecover.TryGetSigner(res, signature, out Address signer), "Could not resolve signer.");
@@ -203,21 +203,8 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(args != null && args.Length == 7, "Invalid url.");
         Assert(Serializer.ToAddress(SSAS.ParseAddress(args[6], out _)) == this.Address, "Invalid contract address.");
 
-        // Parse amount.
-        string amount = args[2];
-        int amountDecimalIndex = amount.IndexOf('.');
-        int amountDecimals = amountDecimalIndex >= 0 ? amount.Length - amountDecimalIndex - 1 : 0;
-        Assert(amountDecimals <= 2, "Too many decimals in amount");
-
-        var amountUInt256 = UInt256.Parse(amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", ""));
-
-        // Parse fee.
-        string fee = args[2];
-        int feeDecimalIndex = fee.IndexOf('.');
-        int feeDecimals = feeDecimalIndex >= 0 ? fee.Length - feeDecimalIndex - 1 : 0;
-        Assert(feeDecimals <= 2, "Too many decimals in fee");
-
-        var feeUInt256 = UInt256.Parse(fee.PadRight(fee.Length + 8 - feeDecimals, '0').Replace(".", ""));
+        var amountUInt256 = ParseAmount(args[2]);
+        var feeUInt256 = ParseAmount(args[3]);
 
         Assert(feeUInt256 == CalculateFee(amountUInt256), "The agreed to fee does not match the expected fee.");
 
@@ -250,6 +237,16 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         }
 
         return Serializer.Serialize(invoice);
+    }
+
+    private UInt256 ParseAmount(string amount)
+    {
+        // Parse amount.
+        int amountDecimalIndex = amount.IndexOf('.');
+        int amountDecimals = amountDecimalIndex >= 0 ? amount.Length - amountDecimalIndex - 1 : 0;
+        Assert(amountDecimals <= 2, "Too many decimals in amount");
+
+        return UInt256.Parse(amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", ""));
     }
 
     private void EnsureOwnerOnly()
@@ -446,10 +443,10 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
     public struct FeeChangedLog
     {
-        public UInt256 PreviousFeeBase { get; set; }
-        public UInt256 PreviousFeeFactor { get; set; }
+        public UInt256 PreviousFeeBase;
+        public UInt256 PreviousFeeFactor;
 
-        public UInt256 FeeBase { get; set; }
-        public UInt256 FeeFactor { get; set; }
+        public UInt256 FeeBase;
+        public UInt256 FeeFactor;
     }
 }
