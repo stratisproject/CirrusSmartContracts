@@ -517,12 +517,4 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         [Index]
         public Address PendingOwner;
     }
-    public struct MintingFeeChangedLog
-    {
-        public UInt256 PreviousFeeBase { get; set; }
-        public UInt256 PreviousFeeFactor { get; set; }
-
-        public UInt256 FeeBase { get; set; }
-        public UInt256 FeeFactor { get; set; }
-    }
 }
