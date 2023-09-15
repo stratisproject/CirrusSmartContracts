@@ -170,7 +170,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
 
         var signature = key.SignCompact(message);
 
-        var transactionReference = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, 0, uniqueNumber, "Address", "Network", signature);
+        var transactionReference = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, uniqueNumber, "Address", "Network", signature);
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
         Assert.Equal("INV-2724-4779-8084", invoiceReference.ToString());
@@ -220,7 +220,7 @@ public class MintableTokenInvoiceTests : BaseContractTest
 
         var contractAddress = this.Contract.ToUint160().ToBase58Address(new ChameleonNetwork(1));
 
-        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&targetAddress=Address&targetNetwork=Network&contract={contractAddress}";
+        var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&fee=0&targetAddress=Address&targetNetwork=Network&contract={contractAddress}";
         var signature = key.SignMessage(url);
         byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
         var transactionReference = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
