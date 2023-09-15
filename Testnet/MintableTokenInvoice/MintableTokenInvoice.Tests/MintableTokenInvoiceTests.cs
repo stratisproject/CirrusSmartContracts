@@ -33,6 +33,13 @@ class ChameleonNetwork : Network
     }
 }
 
+public struct InvoiceCreationResult
+{
+    public string TransactionReference;
+    public string InvoiceReference;
+    public string ActionRequired;
+}
+
 public struct Invoice
 {
     public string Symbol;
@@ -109,8 +116,12 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return TransferResult.Transferred(claimBytes);
             });
 
-        var transactionReference = mintableTokenInvoice.CreateInvoice("GBPT", 100, 0, uniqueNumber, "Address", "Network");
+        byte[] resultBytes = mintableTokenInvoice.CreateInvoice("GBPT", 100, 0, uniqueNumber, "Address", "Network");
+        var result = this.Serializer.ToStruct<InvoiceCreationResult>(resultBytes);
+        var transactionReference = result.TransactionReference;
+
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
+        Assert.Equal(result.InvoiceReference, invoiceReference);
 
         Assert.Equal("INV-1760-4750-2039", invoiceReference.ToString());
 
@@ -170,9 +181,12 @@ public class MintableTokenInvoiceTests : BaseContractTest
 
         var signature = key.SignCompact(message);
 
-        var transactionReference = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, uniqueNumber, "Address", "Network", signature);
+        byte[] resultBytes = mintableTokenInvoice.CreateInvoiceFor(address, "GBPT", 100, uniqueNumber, "Address", "Network", signature);
+        var result = this.Serializer.ToStruct<InvoiceCreationResult>(resultBytes);
+        var transactionReference = result.TransactionReference;
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
+        Assert.Equal(result.InvoiceReference, invoiceReference);
         Assert.Equal("INV-2724-4779-8084", invoiceReference.ToString());
 
         // 42 is checksum for INV numbers.
@@ -223,9 +237,12 @@ public class MintableTokenInvoiceTests : BaseContractTest
         var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&symbol=GBPT&amount=0.01&fee=0&targetAddress=Address&targetNetwork=Network&contract={contractAddress}";
         var signature = key.SignMessage(url);
         byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
-        var transactionReference = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
+        byte[] resultBytes = mintableTokenInvoice.CreateInvoiceFromURL(address, url, signatureBytes);
+        var result = this.Serializer.ToStruct<InvoiceCreationResult>(resultBytes);
+        var transactionReference = result.TransactionReference;
         var invoiceReference = mintableTokenInvoice.GetInvoiceReference(transactionReference);
 
+        Assert.Equal(result.InvoiceReference, invoiceReference);
         Assert.Equal("INV-2724-4779-8084", invoiceReference.ToString());
 
         // 42 is checksum for INV numbers.
@@ -297,8 +314,9 @@ public class MintableTokenInvoiceTests : BaseContractTest
                 return TransferResult.Transferred(claimBytes);
             });
 
-        var ex = mintableTokenInvoice.CreateInvoice("GBPT", 20000000, 0, uniqueNumber, "Address", "Network");
-        Assert.Contains("authorization", ex);
+        byte[] resultBytes = mintableTokenInvoice.CreateInvoice("GBPT", 20000000, 0, uniqueNumber, "Address", "Network");
+        var result = this.Serializer.ToStruct<InvoiceCreationResult>(resultBytes);
+        Assert.Contains("authorization", result.ActionRequired);
     }
 
     [Fact]
