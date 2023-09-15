@@ -211,6 +211,12 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         SetBalance(address, UInt256.Zero);
         TotalSupply -= dirtyFunds;
 
+        Log(new SupplyChangeLog()
+        {
+            PreviousSupply = (this.TotalSupply + dirtyFunds),
+            TotalSupply = this.TotalSupply
+        });
+
         Log(new DestroyBlackFundsLog() { BlackListedUser = address, DirtyFunds = dirtyFunds });
     }
 
