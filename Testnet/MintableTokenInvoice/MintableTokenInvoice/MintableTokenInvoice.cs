@@ -139,7 +139,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         Assert(result.ReturnValue != null && ((byte[])result.ReturnValue).Length != 0, "Your KYC status is not valid");
     }
 
-    private string CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
+    private byte[] CreateInvoiceInternal(Address address, string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
         EnsureKYCdUserOnly(address);
 
@@ -161,27 +161,37 @@ public class MintableTokenInvoice : SmartContract, IOwnable
 
         SetInvoice(invoiceReference, invoice);
 
-        Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, Fee = fee, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork });
+        var res = new InvoiceCreationResult();
 
         // If the invoice is not authorized then return a message to the user.
         // We don't assert because we want to make the invoice available for approval and allow the user to resubmit the invoice.
         // We don't want to return the transaction reference until the invoice is authorized.
         if (!invoice.IsAuthorized)
         {
-            return $"Obtain authorization for this invoice ({invoiceReference}) then resubmit this request.";
+            res.ActionRequired = "Obtain authorization for this invoice, then resubmit this request.";
+            res.InvoiceReference = invoiceReference;
+            res.TransactionReference = string.Empty;
+        }
+        else
+        {
+            res.ActionRequired = string.Empty;
+            res.InvoiceReference = invoiceReference;
+            res.TransactionReference = transactionReference;
         }
 
+        Log(new LogCreateInvoice() { IsAuthorized = invoice.IsAuthorized, InvoiceReference = invoiceReference, Sender = Message.Sender, Account = address, Symbol = symbol, Amount = amount, Fee = fee, UniqueNumber = uniqueNumber, TargetAddress = targetAddress, TargetNetwork = targetNetwork, ActionRequired = res.ActionRequired });
+
         // Only provide the transaction reference if all checks pass.
-        return transactionReference;
+        return Serializer.Serialize(res);
     }
 
     /// <inheritdoc />
-    public string CreateInvoice(string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
+    public byte[] CreateInvoice(string symbol, UInt256 amount, UInt256 fee, UInt128 uniqueNumber, string targetAddress, string targetNetwork)
     {
         return CreateInvoiceInternal(Message.Sender, symbol, amount, fee, uniqueNumber, targetAddress, targetNetwork);
     }
 
-    public string CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
+    public byte[] CreateInvoiceFor(Address address, string symbol, UInt256 amount, UInt128 uniqueNumber, string targetAddress, string targetNetwork, byte[] signature)
     {
         UInt256 fee = CalculateFee(amount);
 
@@ -193,7 +203,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         return CreateInvoiceInternal(address, symbol, amount, fee, uniqueNumber, targetAddress, targetNetwork);
     }
     
-    public string CreateInvoiceFromURL(Address address, string url, byte[] signature)
+    public byte[] CreateInvoiceFromURL(Address address, string url, byte[] signature)
     {
         Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
         Assert(signer == address, "Invalid signature.");
@@ -353,6 +363,17 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public Address Contract;
     }
 
+    public struct InvoiceCreationResult
+    {
+        [Index]
+        public string TransactionReference;
+
+        [Index]
+        public string InvoiceReference;
+
+        public string ActionRequired;
+    }
+
     /// <summary>
     /// Holds the details for the minting operation.
     /// </summary>
@@ -380,6 +401,7 @@ public class MintableTokenInvoice : SmartContract, IOwnable
         public string TargetAddress;
         public string TargetNetwork;
         public bool IsAuthorized;
+        public string ActionRequired;
     }
 
     public struct LogCreateInvoiceFromURL
