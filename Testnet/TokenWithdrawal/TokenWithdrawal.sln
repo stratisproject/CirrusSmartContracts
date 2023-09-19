@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33403.182
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenBanking", "OpenBanking\OpenBanking.csproj", "{1B17F6BC-35B9-4597-A3D0-26DA453DFFF4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TokenWithdrawal", "TokenWithdrawal\TokenWithdrawal.csproj", "{1B17F6BC-35B9-4597-A3D0-26DA453DFFF4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

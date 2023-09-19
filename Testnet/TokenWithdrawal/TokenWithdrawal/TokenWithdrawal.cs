@@ -1,9 +1,9 @@
 ﻿using Stratis.SmartContracts;
 
 [Deploy]
-public class OpenBanking : SmartContract
+public class TokenWithdrawal : SmartContract
 {
-    public OpenBanking(ISmartContractState smartContractState) : base(smartContractState)
+    public TokenWithdrawal(ISmartContractState smartContractState) : base(smartContractState)
     {
         // Initialize your state variables if needed
     }
