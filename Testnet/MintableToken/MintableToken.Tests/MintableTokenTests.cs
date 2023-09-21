@@ -1,10 +1,22 @@
+using System.Linq;
 using Moq;
+using NBitcoin.DataEncoders;
+using NBitcoin;
 using Stratis.SmartContracts;
 using Stratis.SmartContracts.CLR;
+using Stratis.SmartContracts.CLR.Serialization;
 using Xunit;
 
 namespace MintableTokenTests
 {
+    public class ChameleonNetwork : Network
+    {
+        public ChameleonNetwork(byte base58Prefix)
+        {
+            this.Base58Prefixes = new byte[][] { new byte[] { base58Prefix } };
+        }
+    }
+
     /// <summary>
     /// These tests validate the functionality that differs between the original standard token and the extended version.
     /// </summary>
@@ -37,6 +49,9 @@ namespace MintableTokenTests
             this.name = "Test Token";
             this.symbol = "TST";
             this.decimals = 8;
+
+            var serializer = new Serializer(new ContractPrimitiveSerializerV2(null)); // new SmartContractsPoARegTest()
+            this.mockContractState.Setup(x => x.Serializer).Returns(serializer);
         }
 
         [Fact]
@@ -229,6 +244,43 @@ namespace MintableTokenTests
             this.mockPersistentState.Verify(s => s.SetUInt256($"TotalSupply", 100_000 - burnAmount));
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.BurnMetadata() { From = this.sender, Amount = burnAmount, Metadata = "Hello world" }));
+        }
+
+        [Fact]
+        public void CanPerformDelegatedTransfer()
+        {
+            UInt256 balance = 100;
+            UInt256 burnAmount = 20;
+
+            this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
+
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
+
+            // Setup the total supply
+            this.mockPersistentState.Setup(s => s.GetUInt256($"TotalSupply")).Returns(100_000);
+
+            // Setup the balance of the sender's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
+
+            // Setup the balance of the recipient's address in persistent state
+            this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{Address.Zero}")).Returns(0);
+
+            var uniqueNumber = new UInt128("1");
+
+            var key = new Key(new HexEncoder().DecodeData("c6edd54dd0671f1415a94ad388265c4465a8b328cc51a0a1fe770d910b48b0d1"));
+            var address = key.PubKey.Hash.ToBytes().ToAddress();
+
+            var hexUniqueNumber = Encoders.Hex.EncodeData(uniqueNumber.ToBytes().Reverse().ToArray());
+
+            var contractAddress = this.contract.ToUint160().ToBase58Address(new ChameleonNetwork(1));
+            var fromAddress = address.ToUint160().ToBase58Address(new ChameleonNetwork(1));
+            var toAddress = this.destination.ToUint160().ToBase58Address(new ChameleonNetwork(1));
+
+            var url = $"webdemo.stratisplatform.com:7167/api/auth?uid={hexUniqueNumber}&from={fromAddress}&to={toAddress}&amount=1.23&metadata=metadata&contract={contractAddress}";
+            var signature = key.SignMessage(url);
+            byte[] signatureBytes = Encoders.Base64.DecodeData(signature);
+
+            standardToken.DelegatedTransferWithMetadata(url, signatureBytes);
         }
     }
 }
