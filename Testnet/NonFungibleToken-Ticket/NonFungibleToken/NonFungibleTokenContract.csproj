@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Stratis.SmartContracts" Version="2.0.0" />
-    <PackageReference Include="Stratis.SmartContracts.Standards" Version="1.0.0" />
+    <PackageReference Include="Stratis.SmartContracts.Standards" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\StratisFullNode-1\src\Stratis.SCL\Stratis.SCL.csproj" />
   </ItemGroup>
   
 </Project>

@@ -2,6 +2,8 @@
 using FluentAssertions;
 using Moq;
 using Moq.Language.Flow;
+using NBitcoin;
+using NBitcoin.Networks;
 using NonFungibleTokenContract.Tests;
 using Stratis.SmartContracts;
 using System;
@@ -15,24 +17,37 @@ public class NonFungibleTokenTests
     private Mock<IContractLogger> contractLoggerMock;
     private InMemoryState state;
     private Mock<IInternalTransactionExecutor> transactionExecutorMock;
+    private ISerializer serializer;
     private Address contractAddress;
+    private Network network;
     private string name;
     private string symbol;
     private bool ownerOnlyMinting;
+
+    class ChameleonNetwork : Network
+    {
+        public ChameleonNetwork(byte base58Prefix)
+        {
+            this.Base58Prefixes = new byte[][] { new byte[] { base58Prefix } };
+        }
+    }
 
     public NonFungibleTokenTests()
     {
         this.contractLoggerMock = new Mock<IContractLogger>();
         this.smartContractStateMock = new Mock<ISmartContractState>();
         this.transactionExecutorMock = new Mock<IInternalTransactionExecutor>();
+        this.serializer = new Stratis.SmartContracts.CLR.Serialization.Serializer(new Stratis.SmartContracts.CLR.Serialization.ContractPrimitiveSerializerV2(null));
         this.state = new InMemoryState();
         this.smartContractStateMock.Setup(s => s.PersistentState).Returns(this.state);
         this.smartContractStateMock.Setup(s => s.ContractLogger).Returns(this.contractLoggerMock.Object);
         this.smartContractStateMock.Setup(x => x.InternalTransactionExecutor).Returns(this.transactionExecutorMock.Object);
+        this.smartContractStateMock.Setup(x => x.Serializer).Returns(this.serializer);
         this.contractAddress = "0x0000000000000000000000000000000000000001".HexToAddress();
         this.name = "Tickets Token";
         this.symbol = "TCKT";
         this.ownerOnlyMinting = true;
+        this.network = new ChameleonNetwork(119);
     }
 
     public string GetTokenURI(UInt256 tokenId) => $"https://example.com/api/tokens/{tokenId}";
@@ -582,6 +597,39 @@ public class NonFungibleTokenTests
         var nonFungibleToken = CreateNonFungibleToken();
 
         nonFungibleToken.TransferFrom(ownerAddress, targetAddress, 1);
+
+        Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
+        Assert.Equal(0, state.GetUInt256($"Balance:{ownerAddress}"));
+        Assert.Equal(1, state.GetUInt256($"Balance:{targetAddress}"));
+
+        contractLoggerMock.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new NonFungibleToken.TransferLog { From = ownerAddress, To = targetAddress, TokenId = 1 }));
+    }
+
+    private string AddressToString(Address address)
+    {
+        var address160 = Stratis.SmartContracts.CLR.AddressExtensions.ToUint160(address);
+        return Stratis.SmartContracts.CLR.AddressExtensions.ToBase58Address(address160, this.network);
+    }
+
+    [Fact]
+    public void DelegatedTransfer_ValidTokenTransfer_MessageSender_TransfersTokenFrom_To()
+    {
+        var key = new Key();
+        var ownerAddress = Convert.ToHexString(key.PubKey.Hash.ToBytes()).HexToAddress();
+        var targetAddress = "0x0000000000000000000000000000000000000007".HexToAddress();
+        var contractAddress = "0x0000000000000000000000000000000000000000".HexToAddress();
+        state.SetAddress("IdToOwner:1", ownerAddress);
+        state.SetUInt256($"Balance:{ownerAddress}", 1);
+
+        smartContractStateMock.Setup(m => m.Message.Sender).Returns(ownerAddress);
+
+        var nonFungibleToken = CreateNonFungibleToken();
+        var uid = Guid.NewGuid();
+
+        string url = $"?uid={Convert.ToHexString(uid.ToByteArray().Reverse().ToArray())}&contract={this.AddressToString(contractAddress)}&method=DelegatedTransfer&from={this.AddressToString(ownerAddress)}&to={this.AddressToString(targetAddress)}&tokenId=1";
+        byte[] signature = Convert.FromBase64String(key.SignMessage(url));
+
+        nonFungibleToken.DelegatedTransfer(url, signature);
 
         Assert.Equal(targetAddress, state.GetAddress("IdToOwner:1"));
         Assert.Equal(0, state.GetUInt256($"Balance:{ownerAddress}"));
