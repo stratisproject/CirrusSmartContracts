@@ -1,4 +1,5 @@
-﻿using Stratis.SmartContracts;
+﻿using Stratis.SCL.Crypto;
+using Stratis.SmartContracts;
 using Stratis.SmartContracts.Standards;
 
 /// <summary>
@@ -8,7 +9,8 @@ using Stratis.SmartContracts.Standards;
 public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurnable, IMintableWithMetadataForNetwork, IBurnableWithMetadata, IOwnable, IInterflux, IBlackList
 {
     /// <summary>
-    /// Constructor used to create a new instance of the token. Assigns the total token supply to the creator of the contract.
+    /// Initializes a new instance of the <see cref="MintableToken"/> class.
+    /// Assigns the total token supply to the creator of the contract.
     /// </summary>
     /// <param name="smartContractState">The execution state for the contract.</param>
     /// <param name="totalSupply">The total token supply.</param>
@@ -33,6 +35,19 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Log(new OwnershipTransferredLog { PreviousOwner = Address.Zero, NewOwner = Message.Sender });
         Log(new InterfluxChangedLog { PreviousInterflux = Address.Zero, NewInterflux = Message.Sender });
     }
+
+    /// <summary>
+    /// Function to check for replays of signed transfers.
+    /// </summary>
+    /// <param name="transferID">A unique number identifying the transfer.</param>
+    /// <returns>True if the transfer had already been performed, false otherwise.</returns>
+    public bool KnownTransfer(UInt128 transferID) => State.GetBool($"Transfer:{transferID}");
+
+    /// <summary>
+    /// Records the <paramref name="transferID"/> of a signed transfer.
+    /// </summary>
+    /// <param name="transferID">A unique number identifying the transfer.</param>
+    private void SetKnownTransfer(UInt128 transferID) => State.SetBool($"Transfer:{transferID}", true);
 
     public string Symbol
     {
@@ -113,31 +128,37 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
     }
 
     /// <inheritdoc />
-    public bool TransferTo(Address to, UInt256 amount)
+    private bool TransferInternal(Address from, Address to, UInt256 amount)
     {
-        BeforeTokenTransfer(Message.Sender, to);
+        BeforeTokenTransfer(from, to);
 
         if (amount == 0)
         {
-            Log(new TransferLog { From = Message.Sender, To = to, Amount = 0 });
+            Log(new TransferLog { From = from, To = to, Amount = 0 });
 
             return true;
         }
 
-        UInt256 senderBalance = GetBalance(Message.Sender);
+        UInt256 senderBalance = GetBalance(from);
 
         if (senderBalance < amount)
         {
             return false;
         }
 
-        SetBalance(Message.Sender, senderBalance - amount);
+        SetBalance(from, senderBalance - amount);
 
         SetBalance(to, checked(GetBalance(to) + amount));
 
-        Log(new TransferLog { From = Message.Sender, To = to, Amount = amount });
+        Log(new TransferLog { From = from, To = to, Amount = amount });
 
         return true;
+    }
+
+    /// <inheritdoc />
+    public bool TransferTo(Address to, UInt256 amount)
+    {
+        return TransferInternal(Message.Sender, to, amount);
     }
 
     public bool TransferToWithMetadata(Address to, UInt256 amount, string metadata)
@@ -176,6 +197,44 @@ public class MintableToken : SmartContract, IStandardToken256, IMintable, IBurna
         Log(new TransferLog { From = from, To = to, Amount = amount });
 
         return true;
+    }
+
+    public void DelegatedTransferWithMetadata(string url, byte[] signature)
+    {
+        var args = SSAS.GetURLArguments(url, new string[] { "uid", "contract", "from", "to", "amount", "metadata" });
+
+        Assert(args != null && args.Length == 6, "Invalid url.");
+        Assert(Serializer.ToAddress(SSAS.ParseAddress(args[1], out byte contractPrefix)) == this.Address, "Invalid 'contract' address.");
+
+        var uniqueNumber = UInt128.Parse($"0x{args[0]}");
+        Assert(!KnownTransfer(uniqueNumber), "The 'uid' has already been used.");
+
+        Assert(SSAS.TryGetSignerSHA256(Serializer.Serialize(url), signature, out Address signer), "Could not resolve signer.");
+
+        Address from = Serializer.ToAddress(SSAS.ParseAddress(args[2], out byte fromPrefix));
+        Assert(signer == from, "Signer of 'metadata' does not match 'from' address.");
+        Assert(fromPrefix == contractPrefix, "The 'from' address prefix is different from 'contract' address prefix.");
+
+        Address to = Serializer.ToAddress(SSAS.ParseAddress(args[3], out byte toPrefix));
+        Assert(toPrefix == contractPrefix, "The 'to' address prefix is different from 'contract' address prefix.");
+
+        var amount = ParseAmount(args[4]);
+
+        TransferInternal(from, to, amount);
+
+        SetKnownTransfer(uniqueNumber);
+
+        Log(new MetadataLog { Metadata = args[5] });
+    }
+
+    private UInt256 ParseAmount(string amount)
+    {
+        // Parse amount.
+        int amountDecimalIndex = amount.IndexOf('.');
+        int amountDecimals = amountDecimalIndex >= 0 ? amount.Length - amountDecimalIndex - 1 : 0;
+        Assert(amountDecimals <= 2, "Too many decimals in amount");
+
+        return UInt256.Parse(amount.PadRight(amount.Length + 8 - amountDecimals, '0').Replace(".", string.Empty));
     }
 
     private void OnlyOwner()
