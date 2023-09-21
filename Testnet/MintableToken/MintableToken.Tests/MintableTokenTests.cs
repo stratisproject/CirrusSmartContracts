@@ -45,7 +45,7 @@ namespace MintableTokenTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, "CIRRUS", "Address");
 
             // Verify that PersistentState was called with the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.owner));
@@ -57,14 +57,14 @@ namespace MintableTokenTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
 
-            standardToken.SetNewOwner(this.destination);
+            standardToken.TransferOwnership(this.destination);
 
-            this.mockPersistentState.Setup(s => s.GetAddress($"NewOwner")).Returns(this.destination);
+            this.mockPersistentState.Setup(s => s.GetAddress($"PendingOwner")).Returns(this.destination);
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.destination, 0));
 
             standardToken.ClaimOwnership();
@@ -72,7 +72,7 @@ namespace MintableTokenTests
             // Verify that PersistentState was called to update the contract owner
             this.mockPersistentState.Verify(s => s.SetAddress($"Owner", this.destination));
 
-            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferred() { PreviousOwner = this.owner, NewOwner = this.destination }));
+            this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.OwnershipTransferredLog() { PreviousOwner = this.owner, NewOwner = this.destination }));
         }
 
         [Fact]
@@ -81,14 +81,14 @@ namespace MintableTokenTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.SetNewOwner(this.destination));
+            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.TransferOwnership(this.destination));
         }
 
         [Fact]
@@ -99,18 +99,18 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var mintableToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the total supply
             this.mockPersistentState.Setup(s => s.GetUInt256($"TotalSupply")).Returns(100_000);
 
             // Setup the minter of the contract; without this the mint will fail
-            this.mockPersistentState.Setup(s => s.GetAddress($"Minter")).Returns(this.sender);
+            this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.sender);
 
             // Setup the balance of the sender's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
 
-            standardToken.MintWithMetadata(this.sender, mintAmount, "ExternalId");
+            mintableToken.MintWithMetadataForCirrus(this.sender, mintAmount, 0, "ExternalId", this.sender);
 
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.TransferLog { From = Address.Zero, To = this.sender, Amount = mintAmount }));
 
@@ -132,7 +132,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the owner of the contract
             this.mockPersistentState.Setup(s => s.GetAddress($"Owner")).Returns(this.owner);
@@ -140,7 +140,7 @@ namespace MintableTokenTests
             // Attempt the mint from a different address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.MintWithMetadata(this.sender, mintAmount, "ExternalId"));
+            Assert.ThrowsAny<SmartContractAssertException>(() => standardToken.MintWithMetadataForCirrus(this.sender, mintAmount, 0, "ExternalId", this.sender));
         }
 
         [Fact]
@@ -151,7 +151,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the total supply
             this.mockPersistentState.Setup(s => s.GetUInt256($"TotalSupply")).Returns(100_000);
@@ -184,7 +184,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the total supply
             this.mockPersistentState.Setup(s => s.GetUInt256($"TotalSupply")).Returns(100_000);
@@ -206,7 +206,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the total supply
             this.mockPersistentState.Setup(s => s.GetUInt256($"TotalSupply")).Returns(100_000);

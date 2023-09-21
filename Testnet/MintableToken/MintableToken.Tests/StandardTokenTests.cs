@@ -47,7 +47,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
             UInt256 totalSupply = 100_000;
-            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, "CIRRUS", "Address");
 
             // Verify that PersistentState was called with the total supply
             this.mockPersistentState.Verify(s => s.SetUInt256(nameof(MintableToken.TotalSupply), totalSupply));
@@ -59,7 +59,7 @@ namespace MintableTokenTests
             UInt256 totalSupply = 100_000;
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, totalSupply, this.name, this.symbol, "CIRRUS", "Address");
 
             // Verify that PersistentState was called with the total supply
             this.mockPersistentState.Verify(s => s.SetUInt256($"Balance:{this.owner}", totalSupply));
@@ -72,7 +72,7 @@ namespace MintableTokenTests
 
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.spender}")).Returns(balance);
@@ -88,7 +88,7 @@ namespace MintableTokenTests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             standardToken.Approve(this.spender, 0, approval);
 
@@ -106,7 +106,7 @@ namespace MintableTokenTests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt256($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -127,7 +127,7 @@ namespace MintableTokenTests
             // Setup the Message.Sender address
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.owner, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Set up an existing allowance
             this.mockPersistentState.Setup(s => s.GetUInt64($"Allowance:{this.owner}:{this.spender}")).Returns(approval);
@@ -145,7 +145,7 @@ namespace MintableTokenTests
         {
             this.mockContractState.Setup(m => m.Message).Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             standardToken.Allowance(this.owner, this.spender);
 
@@ -161,7 +161,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             Assert.True((bool)standardToken.TransferTo(this.destination, amount));
             this.mockContractLogger.Verify(l => l.Log(It.IsAny<ISmartContractState>(), new MintableToken.TransferLog { From = this.sender, To = this.destination, Amount = amount }));
@@ -178,7 +178,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the sender's address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
@@ -208,7 +208,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(balance);
@@ -230,7 +230,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the address in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.sender}")).Returns(senderBalance);
@@ -258,7 +258,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             int callOrder = 1;
 
@@ -304,7 +304,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             Assert.True((bool)standardToken.TransferFrom(this.owner, this.destination, amount));
 
@@ -322,7 +322,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -359,7 +359,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -387,7 +387,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(balance);
@@ -416,7 +416,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{this.owner}")).Returns(ownerBalance);
@@ -448,7 +448,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, this.sender, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             int callOrder = 1;
 
@@ -510,7 +510,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
@@ -546,7 +546,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Setup the balance of the owner in persistent state
             this.mockPersistentState.Setup(s => s.GetUInt256($"Balance:{subject}")).Returns(balance);
@@ -593,7 +593,7 @@ namespace MintableTokenTests
             this.mockContractState.Setup(m => m.Message)
                 .Returns(new Message(this.contract, subject, 0));
 
-            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, this.decimals);
+            var standardToken = new MintableToken(this.mockContractState.Object, 100_000, this.name, this.symbol, "CIRRUS", "Address");
 
             // Verify we set the name and the symbol
             this.mockPersistentState.Verify(s => s.SetString(nameof(standardToken.Name), this.name));
